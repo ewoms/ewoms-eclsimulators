@@ -1,84 +1,19 @@
-# Open Porous Media Simulators and Automatic Differentiation Library
+[ewoms-eclsimulators logo]{ewoms-eclsimulators.svg image-align:right clear: both}
 
-CONTENT
--------
+The ewoms-eclsimulators module
+==============================
 
-opm-simulators contains simulator programs for porous media flow. It
-also contains a small library for automatic differentiation
-built on the Eigen linear algebra package which is used by many of the
-simulators to handle the building of Jacobians. The most important
-(and tested) part is the Flow reservoir simulator, which is a fully
-implicit black-oil simulator that also supports solvent and polymer
-options. It is built using automatic differentiation, using the local
-AD class Evaluation from opm-material.
+This eWoms module provides ready-to-use simulators that can substitute
+the commercial ECLIPSE 100 and -- to a much lesser extend -- ECLIPSE 300
+reservoir simulators. The simulators implemented by this module accept
+input in the same format and produce compatible output as above
+simulators.
 
-LICENSE
--------
+Installation
+============
 
-The library is distributed under the GNU General Public License,
-version 3 or later (GPLv3+).
-
-
-PLATFORMS
----------
-
-The opm-simulators module is designed to run on Linux platforms. It is
-also regularly run on Mac OS X. No efforts have been made to ensure
-that the code will compile and run on windows platforms.
-
-
-REQUIREMENTS
-------------
-
-opm-simulators requires several other OPM modules, see
-http://opm-project.org/?page_id=274. In addition, opm-simulators
-requires the Dune module dune-istl and Eigen, version 3.1 (has not been
-tested with later versions).
-
-
-DOWNLOADING
------------
-
-For a read-only download:
-git clone git://github.com/OPM/opm-simulators.git
-
-If you want to contribute, fork OPM/opm-simulators on github.
-
-
-BUILDING
---------
-
-See build instructions at http://opm-project.org/?page_id=36
-
-
-DOCUMENTATION
--------------
-
-Efforts have been made to document the code with Doxygen.
-In order to build the documentation, enter the command
-
- make doc
-
-in the topmost directory. The class AutoDiffBlock is the most
-important and most well-documented.
-
-
-REPORTING ISSUES
-----------------
-
-Issues can be reported in the Git issue tracker online at:
-
-    https://github.com/OPM/opm-simulators/issues
-
-To help diagnose build errors, please provide a link to a build log together
-with the issue description.
-
-You can capture such a log from the build using the `script' utility, e.g.:
-
-    LOGFILE=$(date +%Y%m%d-%H%M-)build.log ;
-    cmake -E cmake_echo_color --cyan --bold "Log file: $LOGFILE" ;
-    script -q $LOGFILE -c 'cmake ../opm-core -DCMAKE_BUILD_TYPE=Debug' &&
-    script -q $LOGFILE -a -c 'ionice nice make -j 4 -l 3' ||
-    cat CMakeCache.txt CMakeFiles/CMake*.log >> $LOGFILE
-
-The resulting file can be uploaded to for instance gist.github.com.
+Like all eWoms modules, ewoms-eclsimulators uses the DUNE build system to
+handle the building and installation process. It is thus supposed to
+be build using the `dunecontrol` utility. Please confer to the [INSTALL](https://github.com/ewoms/ewoms-common/blob/master/INSTALL.md)
+file located in the ewoms-common module for detailed build
+instructions.

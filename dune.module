@@ -1,13 +1,8 @@
-####################################################################
-# Dune module information file: This file gets parsed by dunecontrol
-# and by the CMake build scripts.
-####################################################################
-
-Module: opm-simulators
-Description: Simulators and utilities for automatic differentiation
+Module: ewoms-eclsimulators
+Description: Advanced ECL compatible simulators
 Version: 2020.04-pre
 Label: 2020.04-pre
-Maintainer: atgeirr@sintef.no
-MaintainerName: Atgeirr F. Rasmussen
-Url: http://opm-project.org
-Depends: dune-istl (>= 2.4) opm-common opm-material opm-grid opm-models
+Maintainer: ewoms@ewoms.org
+MaintainerName: The eWoms Project
+Url: https://ewoms.org
+Depends: dune-common (>= 2.5) dune-geometry (>= 2.5) dune-grid (>= 2.5) ewoms-common ewoms-material ewoms-eclio ewoms-eclgrids ewoms-numerics

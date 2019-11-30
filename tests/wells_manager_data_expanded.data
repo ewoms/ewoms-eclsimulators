@@ -29,7 +29,6 @@ DZV
 DEPTHZ
 121*2000 /
 
-
 SCHEDULE
 
 WELSPECS
@@ -52,7 +51,6 @@ WCONINJE
      'INJ1' 'GAS' 'OPEN' 'RATE' 100 200 400 /
 /
 
-
 DATES
  1 'FEB' 2000 /
 /
@@ -61,7 +59,6 @@ WELSPECS
     'INJ1' 'G3'    1  1    8335 'GAS'  /
     'QNJ2' 'G3'    1  1    8335 'GAS'  /
 /
-
 
 COMPDAT
     'QNJ2'   3  4 1  2 'OPEN' 1   10.6092   0.5  /
@@ -76,8 +73,6 @@ WCONINJE
    'INJ1' 'WATER' 'OPEN' 'RESV' 10 20 40 /
    'QNJ2' 'WATER' 'OPEN' 'RESV' 7 33 39 /
 /
-
-
 
 TSTEP
 14.0 /

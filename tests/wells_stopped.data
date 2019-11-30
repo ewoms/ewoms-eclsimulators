@@ -4,7 +4,6 @@ OIL
 GAS
 WATER
 
-
 DIMENS
    10 10  1  /
 
@@ -19,7 +18,7 @@ DYV
 /
 
 DZ
-100*20.0 
+100*20.0
 /
 
 TOPS
@@ -55,7 +54,6 @@ WCONPROD
 WCONINJE
      'INJ1' 'GAS' 'OPEN' 'RATE' 100 200 400 /
 /
-
 
 TSTEP
   1 /

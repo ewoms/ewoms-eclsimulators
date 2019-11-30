@@ -1,20 +1,20 @@
 // -*- mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 // vi: set et ts=4 sw=4 sts=4:
 /*
-  This file is part of the Open Porous Media project (OPM).
+  This file is part of the eWoms project.
 
-  OPM is free software: you can redistribute it and/or modify
+  eWoms is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
 
-  OPM is distributed in the hope that it will be useful,
+  eWoms is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with OPM.  If not, see <http://www.gnu.org/licenses/>.
+  along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 
   Consult the COPYING file in the top-level source directory of this
   module for the precise wording of the license and the list of
@@ -22,21 +22,21 @@
 */
 #include "config.h"
 
-#include <ebos/equil/equilibrationhelpers.hh>
-#include <ebos/eclproblem.hh>
-#include <opm/models/utils/start.hh>
+#include <eebos/equil/equilibrationhelpers.hh>
+#include <eebos/eclproblem.hh>
+#include <ewoms/numerics/utils/start.hh>
 
-#include <opm/grid/UnstructuredGrid.h>
-#include <opm/grid/GridManager.hpp>
+#include <ewoms/eclgrids/unstructuredgrid.h>
+#include <ewoms/eclgrids/gridmanager.hh>
 
-#include <opm/parser/eclipse/Units/Units.hpp>
+#include <ewoms/eclio/parser/units/units.hh>
 
-#include <opm/io/eclipse/ESmry.hpp>
+#include <ewoms/eclio/io/esmry.hh>
 
-#include <opm/output/eclipse/Summary.hpp>
-#include <ebos/collecttoiorank.hh>
-#include <ebos/ecloutputblackoilmodule.hh>
-#include <ebos/eclwriter.hh>
+#include <ewoms/eclio/output/summary.hh>
+#include <eebos/collecttoiorank.hh>
+#include <eebos/ecloutputblackoilmodule.hh>
+#include <eebos/eclwriter.hh>
 
 #if HAVE_DUNE_FEM
 #include <dune/fem/misc/mpimanager.hh>
@@ -85,19 +85,19 @@ SET_BOOL_PROP(TestEclOutputTypeTag, EnableAsyncEclOutput, false);
 END_PROPERTIES
 
 namespace {
-std::unique_ptr<Opm::EclIO::ESmry> readsum(const std::string& base)
+std::unique_ptr<Ewoms::EclIO::ESmry> readsum(const std::string& base)
 {
-    return std::make_unique<Opm::EclIO::ESmry>(base);
+    return std::make_unique<Ewoms::EclIO::ESmry>(base);
 }
 
-double ecl_sum_get_field_var(const Opm::EclIO::ESmry* smry,
+double ecl_sum_get_field_var(const Ewoms::EclIO::ESmry* smry,
                              const int                timeIdx,
                              const std::string&       var)
 {
     return smry->get(var)[timeIdx];
 }
 
-double ecl_sum_get_general_var(const Opm::EclIO::ESmry* smry,
+double ecl_sum_get_general_var(const Ewoms::EclIO::ESmry* smry,
                                const int                timeIdx,
                                const std::string&       var)
 {
@@ -118,7 +118,7 @@ initSimulator(const char *filename)
         filenameArg.c_str()
     };
 
-    Opm::setupParameters_<TypeTag>(/*argc=*/sizeof(argv)/sizeof(argv[0]), argv, /*registerParams=*/false);
+    Ewoms::setupParameters_<TypeTag>(/*argc=*/sizeof(argv)/sizeof(argv[0]), argv, /*registerParams=*/false);
 
     return std::unique_ptr<Simulator>(new Simulator);
 }
@@ -131,16 +131,16 @@ void test_summary()
 
     auto simulator = initSimulator<TypeTag>(filename.data());
     typedef typename GET_PROP_TYPE(TypeTag, Vanguard) Vanguard;
-    typedef Opm::CollectDataToIORank< Vanguard > CollectDataToIORankType;
+    typedef Ewoms::CollectDataToIORank< Vanguard > CollectDataToIORankType;
     CollectDataToIORankType collectToIORank(simulator->vanguard());
-    Opm::EclOutputBlackOilModule<TypeTag> eclOutputModule(*simulator, collectToIORank);
+    Ewoms::EclOutputBlackOilModule<TypeTag> eclOutputModule(*simulator, collectToIORank);
 
-    typedef Opm::EclWriter<TypeTag> EclWriterType;
+    typedef Ewoms::EclWriter<TypeTag> EclWriterType;
     // create the actual ECL writer
     std::unique_ptr<EclWriterType> eclWriter = std::unique_ptr<EclWriterType>(new EclWriterType(*simulator));
 
     simulator->model().applyInitialSolution();
-    Opm::data::Wells dw;
+    Ewoms::data::Wells dw;
     bool substep = false;
     simulator->startNextEpisode(0.0, 1e30);
 
@@ -183,7 +183,6 @@ void test_summary()
     const double roip1 = ( 0.25 * 0.1 * 400 * (1 - 0.2) );
     CHECK_CLOSE(roip1, ecl_sum_get_general_var( resp, 1, "ROIP:1" ), 1e-3 );
 
-
     // region 2
     // rpr = sum_ (p * hcpv ) / hcpv, hcpv = pv * (1 - sw)
     const double rpr2 =  ( (5 * 0.1 * 100 + 6 * 0.2 * 100) * (1 - 0.2) ) / ( (100*0.1 + 100*0.2) * (1 - 0.2));
@@ -195,9 +194,9 @@ void test_summary()
 
 void test_readWriteWells()
 {
-    using opt = Opm::data::Rates::opt;
+    using opt = Ewoms::data::Rates::opt;
 
-    Opm::data::Rates r1, r2, rc1, rc2, rc3;
+    Ewoms::data::Rates r1, r2, rc1, rc2, rc3;
     r1.set( opt::wat, 5.67 );
     r1.set( opt::oil, 6.78 );
     r1.set( opt::gas, 7.89 );
@@ -218,14 +217,13 @@ void test_readWriteWells()
     rc3.set( opt::oil, 27.19 );
     rc3.set( opt::gas, 28.41 );
 
-    Opm::data::Well w1, w2;
+    Ewoms::data::Well w1, w2;
     w1.rates = r1;
     w1.bhp = 1.23;
     w1.temperature = 3.45;
     w1.control = 1;
     //w1.injectionControl = 1;
     //w1.productionControl = 1;
-
 
     /*
      *  the connection keys (active indices) and well names correspond to the
@@ -242,7 +240,7 @@ void test_readWriteWells()
     //w1.productionControl = 2;
     w2.connections.push_back( { 188, rc3, 36.22, 19.28, 0.0, 0.0, 0.0, 0.0 } );
 
-    Opm::data::Wells wellRates;
+    Ewoms::data::Wells wellRates;
 
     wellRates["OP_1"] = w1;
     wellRates["OP_2"] = w2;
@@ -253,14 +251,13 @@ void test_readWriteWells()
 
     wellRates.write(buffer);
 
-    Opm::data::Wells wellRatesCopy;
+    Ewoms::data::Wells wellRatesCopy;
     wellRatesCopy.read(buffer);
 
     CHECK( wellRatesCopy.get( "OP_1" , opt::wat) , wellRates.get( "OP_1" , opt::wat));
     CHECK( wellRatesCopy.get( "OP_2" , 188 , opt::wat) , wellRates.get( "OP_2" , 188 , opt::wat));
 }
 } // Anonymous namespace
-
 
 int main(int argc, char** argv)
 {
@@ -271,11 +268,10 @@ int main(int argc, char** argv)
 #endif
 
     typedef TTAG(TestEclOutputTypeTag) TypeTag;
-    Opm::registerAllParameters_<TypeTag>();
+    Ewoms::registerAllParameters_<TypeTag>();
     test_summary();
     test_readWriteWells();
 
     return 0;
 }
-
 

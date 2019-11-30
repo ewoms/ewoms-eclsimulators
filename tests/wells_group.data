@@ -36,7 +36,6 @@ GRUPTREE
  'G2' 'FIELD' /
 /
 
-
 WELSPECS
     'INJ1' 'G1'    1  1    8335 'GAS'  /
     'PROD1' 'G2'   10 10    8400 'OIL'  /
@@ -54,7 +53,6 @@ WEFAC
 
 TSTEP
   14.0 /
-
 
 WELSPECS
     'INJ2' 'G1'    1  1    8335 'GAS'  /
@@ -95,7 +93,5 @@ WCONPROD
 
 TSTEP
   3 /
-
-
 
 END

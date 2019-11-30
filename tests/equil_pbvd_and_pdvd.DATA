@@ -26,8 +26,7 @@ NSTACK
 
 EQLDIMS
 -- NTEQUL
-     1 / 
-     
+     1 /
 
 FMTOUT
 FMTIN
@@ -46,14 +45,12 @@ DZ
 20*5.0
 /
 
-
 TOPS
 0.0
 /
 
 PORO
 20*0.2 /
-
 
 PERMZ
   20*1.0
@@ -69,8 +66,6 @@ PERMX
 
 BOX
  1 1 1 1 1 1 /
-
-
 
 PROPS     ======
 
@@ -111,7 +106,6 @@ SGOF
 PVTW
 --RefPres  Bw      Comp   Vw    Cv
    1.      1.0   4.0E-5  0.96  0.0 /
-   
 
 ROCK
 --RefPres  Comp
@@ -130,7 +124,7 @@ EQUIL
 PBVD
  0  1.0
  50 150. /
- 
+
 PDVD
    50.  150.
  100.  100 /
@@ -150,6 +144,5 @@ TSTEP
 
 RPTSCHED
 'PRES' 'PGAS' 'PWAT' 'SOIL' 'SWAT' 'SGAS' 'RS' 'RESTART=3' 'NEWTON=2' /
-
 
 END

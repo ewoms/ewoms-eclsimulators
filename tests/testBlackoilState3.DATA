@@ -3,14 +3,12 @@ RUNSPEC
 TITLE
 UNIT TEST
 
-
-START             
+START
 1 NOV 1979  /
 
-OIL 
+OIL
 GAS
 WATER
-
 
 METRIC
 
@@ -18,24 +16,19 @@ DIMENS
     10  10   10   /
 
 GRID
-DXV 
+DXV
 10*10 /
 
-DYV 
+DYV
 10*10 /
 
-DZV 
+DZV
 10*10 /
 
 DEPTHZ
 121*1000 /
 
-
-
-
-
 SCHEDULE
-
 
 RPTSCHED
     RESTART=2/
@@ -69,12 +62,11 @@ COMPDAT
       'OP_3'   7   7    3    3 'OPEN' 1*        18.032     0.311  1608.615 1*        1*         'Y'    18.526 /
       'OP_3'   7   7    4    4 'OPEN' 1*        56.817     0.311  5047.177 1*        1*         'Y'    18.155 /
       'OP_3'   7   7    5    5 'OPEN' 1*         4.728     0.311   420.067 1*        1*         'Y'    18.162 /
-/      
+/
 
 DATES
  1 JUN 1980/
 /
-
 
 WELSPECS
       'OP_4'       'OP'   2   2 1*         'OIL' 1*       1*  1*   1*  1*   1*  1*  /
@@ -107,9 +99,6 @@ COMPDAT
       'WI_2'   3   9    1    7 'OPEN' 1*         1.168     0.311   107.872 1*        1*         'Y'    21.925 /
       'WI_3'   3   6    1    3 'OPEN' 1*        27.412     0.311  2445.337 1*        1*         'Y'    18.521 /
 /
-
-
-
 
 DATES
  1 NOV 1982/

@@ -1,20 +1,20 @@
 // -*- mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 // vi: set et ts=4 sw=4 sts=4:
 /*
-  This file is part of the Open Porous Media project (OPM).
+  This file is part of the eWoms project.
 
-  OPM is free software: you can redistribute it and/or modify
+  eWoms is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
 
-  OPM is distributed in the hope that it will be useful,
+  eWoms is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with OPM.  If not, see <http://www.gnu.org/licenses/>.
+  along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 
   Consult the COPYING file in the top-level source directory of this
   module for the precise wording of the license and the list of
@@ -22,14 +22,14 @@
 */
 #include "config.h"
 
-#include <ebos/equil/equilibrationhelpers.hh>
-#include <ebos/eclproblem.hh>
-#include <opm/models/utils/start.hh>
+#include <eebos/equil/equilibrationhelpers.hh>
+#include <eebos/eclproblem.hh>
+#include <ewoms/numerics/utils/start.hh>
 
-#include <opm/grid/UnstructuredGrid.h>
-#include <opm/grid/GridManager.hpp>
+#include <ewoms/eclgrids/unstructuredgrid.h>
+#include <ewoms/eclgrids/gridmanager.hh>
 
-#include <opm/parser/eclipse/Units/Units.hpp>
+#include <ewoms/eclio/parser/units/units.hh>
 
 #if HAVE_DUNE_FEM
 #include <dune/fem/misc/mpimanager.hh>
@@ -86,7 +86,7 @@ initSimulator(const char *filename)
         filenameArg.c_str()
     };
 
-    Opm::setupParameters_<TypeTag>(/*argc=*/sizeof(argv)/sizeof(argv[0]), argv, /*registerParams=*/false);
+    Ewoms::setupParameters_<TypeTag>(/*argc=*/sizeof(argv)/sizeof(argv[0]), argv, /*registerParams=*/false);
 
     return std::unique_ptr<Simulator>(new Simulator);
 }
@@ -123,25 +123,25 @@ static void initDefaultFluidSystem()
     FluidSystem::setEnableVaporizedOil(false);
     FluidSystem::setReferenceDensities(rhoRefO, rhoRefW, rhoRefG, /*regionIdx=*/0);
 
-    auto gasPvt = std::make_shared<Opm::GasPvtMultiplexer<double>>();
-    gasPvt->setApproach(Opm::GasPvtMultiplexer<double>::DryGasPvt);
-    auto& dryGasPvt = gasPvt->getRealPvt<Opm::GasPvtMultiplexer<double>::DryGasPvt>();
+    auto gasPvt = std::make_shared<Ewoms::GasPvtMultiplexer<double>>();
+    gasPvt->setApproach(Ewoms::GasPvtMultiplexer<double>::DryGasPvt);
+    auto& dryGasPvt = gasPvt->getRealPvt<Ewoms::GasPvtMultiplexer<double>::DryGasPvt>();
     dryGasPvt.setNumRegions(/*numPvtRegion=*/1);
     dryGasPvt.setReferenceDensities(/*regionIdx=*/0, rhoRefO, rhoRefG, rhoRefW);
     dryGasPvt.setGasFormationVolumeFactor(/*regionIdx=*/0, Bg);
     dryGasPvt.setGasViscosity(/*regionIdx=*/0, mug);
 
-    auto oilPvt = std::make_shared<Opm::OilPvtMultiplexer<double>>();
-    oilPvt->setApproach(Opm::OilPvtMultiplexer<double>::DeadOilPvt);
-    auto& deadOilPvt = oilPvt->getRealPvt<Opm::OilPvtMultiplexer<double>::DeadOilPvt>();
+    auto oilPvt = std::make_shared<Ewoms::OilPvtMultiplexer<double>>();
+    oilPvt->setApproach(Ewoms::OilPvtMultiplexer<double>::DeadOilPvt);
+    auto& deadOilPvt = oilPvt->getRealPvt<Ewoms::OilPvtMultiplexer<double>::DeadOilPvt>();
     deadOilPvt.setNumRegions(/*numPvtRegion=*/1);
     deadOilPvt.setReferenceDensities(/*regionIdx=*/0, rhoRefO, rhoRefG, rhoRefW);
     deadOilPvt.setInverseOilFormationVolumeFactor(/*regionIdx=*/0, Bo);
     deadOilPvt.setOilViscosity(/*regionIdx=*/0, muo);
 
-    auto waterPvt = std::make_shared<Opm::WaterPvtMultiplexer<double>>();
-    waterPvt->setApproach(Opm::WaterPvtMultiplexer<double>::ConstantCompressibilityWaterPvt);
-    auto& ccWaterPvt = waterPvt->getRealPvt<Opm::WaterPvtMultiplexer<double>::ConstantCompressibilityWaterPvt>();
+    auto waterPvt = std::make_shared<Ewoms::WaterPvtMultiplexer<double>>();
+    waterPvt->setApproach(Ewoms::WaterPvtMultiplexer<double>::ConstantCompressibilityWaterPvt);
+    auto& ccWaterPvt = waterPvt->getRealPvt<Ewoms::WaterPvtMultiplexer<double>::ConstantCompressibilityWaterPvt>();
     ccWaterPvt.setNumRegions(/*numPvtRegions=*/1);
     ccWaterPvt.setReferenceDensities(/*regionIdx=*/0, rhoRefO, rhoRefG, rhoRefW);
     ccWaterPvt.setViscosity(/*regionIdx=*/0, 1);
@@ -157,11 +157,11 @@ static void initDefaultFluidSystem()
     FluidSystem::initEnd();
 }
 
-static Opm::EquilRecord mkEquilRecord( double datd, double datp,
+static Ewoms::EquilRecord mkEquilRecord( double datd, double datp,
                                        double zwoc, double pcow_woc,
                                        double zgoc, double pcgo_goc )
 {
-    return Opm::EquilRecord( datd, datp, zwoc, pcow_woc, zgoc, pcgo_goc, true, true, 0);
+    return Ewoms::EquilRecord( datd, datp, zwoc, pcow_woc, zgoc, pcgo_goc, true, true, 0);
 }
 
 void test_PhasePressure();
@@ -177,17 +177,17 @@ void test_PhasePressure()
     auto simulator = initSimulator<TypeTag>("equil_base.DATA");
     initDefaultFluidSystem<TypeTag>();
 
-    Opm::EQUIL::EquilReg
+    Ewoms::EQUIL::EquilReg
         region(record,
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
         0);
 
     std::vector<int> cells(simulator->vanguard().grid().size(0));
     std::iota(cells.begin(), cells.end(), 0);
 
     const double grav   = 10;
-    const PPress ppress = Opm::EQUIL::phasePressures<FluidSystem>(simulator->vanguard().grid(), region, cells, grav);
+    const PPress ppress = Ewoms::EQUIL::phasePressures<FluidSystem>(simulator->vanguard().grid(), region, cells, grav);
 
     const int first = 0, last = simulator->vanguard().grid().size(0) - 1;
     const double reltol = 1.0e-8;
@@ -207,33 +207,33 @@ void test_CellSubset()
     typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_base.DATA");
     const auto& eclipseState = simulator->vanguard().eclState();
-    Opm::GridManager gm(eclipseState.getInputGrid());
+    Ewoms::GridManager gm(eclipseState.getInputGrid());
     const UnstructuredGrid& grid = *(gm.c_grid());
     initDefaultFluidSystem<TypeTag>();
 
-    Opm::EquilRecord record[] = { mkEquilRecord( 0, 1e5, 2.5, -0.075e5, 0, 0 ),
+    Ewoms::EquilRecord record[] = { mkEquilRecord( 0, 1e5, 2.5, -0.075e5, 0, 0 ),
                                   mkEquilRecord( 5, 1.35e5, 7.5, -0.225e5, 5, 0 ) };
 
-    Opm::EQUIL::EquilReg region[] =
+    Ewoms::EQUIL::EquilReg region[] =
     {
-        Opm::EQUIL::EquilReg(record[0],
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
+        Ewoms::EQUIL::EquilReg(record[0],
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
         0)
         ,
-        Opm::EQUIL::EquilReg(record[0],
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
+        Ewoms::EQUIL::EquilReg(record[0],
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
         0)
         ,
-        Opm::EQUIL::EquilReg(record[1],
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
+        Ewoms::EQUIL::EquilReg(record[1],
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
         0)
         ,
-        Opm::EQUIL::EquilReg(record[1],
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
+        Ewoms::EQUIL::EquilReg(record[1],
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
         0)
     };
 
@@ -265,7 +265,7 @@ void test_CellSubset()
         const int    rno  = int(r - cells.begin());
         const double grav = 10;
         const PPress p    =
-            Opm::EQUIL::phasePressures<FluidSystem>(simulator->vanguard().grid(), region[rno], *r, grav);
+            Ewoms::EQUIL::phasePressures<FluidSystem>(simulator->vanguard().grid(), region[rno], *r, grav);
 
         PVal::size_type i = 0;
         for (std::vector<int>::const_iterator
@@ -293,7 +293,7 @@ void test_RegMapping()
     typedef std::vector<double> PVal;
     typedef std::vector<PVal> PPress;
 
-    Opm::EquilRecord record[] = { mkEquilRecord( 0, 1e5, 2.5, -0.075e5, 0, 0 ),
+    Ewoms::EquilRecord record[] = { mkEquilRecord( 0, 1e5, 2.5, -0.075e5, 0, 0 ),
                                   mkEquilRecord( 5, 1.35e5, 7.5, -0.225e5, 5, 0 ) };
 
     typedef TTAG(TestEquilTypeTag) TypeTag;
@@ -301,26 +301,26 @@ void test_RegMapping()
     auto simulator = initSimulator<TypeTag>("equil_base.DATA");
     initDefaultFluidSystem<TypeTag>();
 
-    Opm::EQUIL::EquilReg region[] =
+    Ewoms::EQUIL::EquilReg region[] =
     {
-        Opm::EQUIL::EquilReg(record[0],
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
+        Ewoms::EQUIL::EquilReg(record[0],
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
         0)
         ,
-        Opm::EQUIL::EquilReg(record[0],
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
+        Ewoms::EQUIL::EquilReg(record[0],
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
         0)
         ,
-        Opm::EQUIL::EquilReg(record[1],
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
+        Ewoms::EQUIL::EquilReg(record[1],
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
         0)
         ,
-        Opm::EQUIL::EquilReg(record[1],
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
-        std::make_shared<Opm::EQUIL::Miscibility::NoMixing>(),
+        Ewoms::EQUIL::EquilReg(record[1],
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
+        std::make_shared<Ewoms::EQUIL::Miscibility::NoMixing>(),
         0)
         };
 
@@ -345,7 +345,7 @@ void test_RegMapping()
         }
     }
 
-    Opm::RegionMapping<> eqlmap(eqlnum);
+    Ewoms::RegionMapping<> eqlmap(eqlnum);
 
     PPress ppress(2, PVal(simulator->vanguard().grid().size(0), 0));
     for (const auto& r : eqlmap.activeRegions()) {
@@ -354,7 +354,7 @@ void test_RegMapping()
         const int    rno  = r;
         const double grav = 10;
         const PPress p    =
-            Opm::EQUIL::phasePressures<FluidSystem>(simulator->vanguard().grid(), region[rno], rng, grav);
+            Ewoms::EQUIL::phasePressures<FluidSystem>(simulator->vanguard().grid(), region[rno], rng, grav);
 
         PVal::size_type i = 0;
         for (const auto& c : rng) {
@@ -382,10 +382,10 @@ void test_DeckAllDead()
     typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_deadfluids.DATA");
     const auto& eclipseState = simulator->vanguard().eclState();
-    Opm::GridManager gm(eclipseState.getInputGrid());
+    Ewoms::GridManager gm(eclipseState.getInputGrid());
     const UnstructuredGrid& grid = *(gm.c_grid());
 
-    Opm::EQUIL::DeckDependent::InitialStateComputer<TypeTag> comp(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 10.0);
+    Ewoms::EQUIL::DeckDependent::InitialStateComputer<TypeTag> comp(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 10.0);
     const auto& pressures = comp.press();
     REQUIRE(pressures.size() == 3);
     REQUIRE(int(pressures[0].size()) == grid.number_of_cells);
@@ -421,7 +421,7 @@ void test_CapillaryInversion()
         const std::vector<double> s = { 0.2, 0.2, 0.2, 0.466666666666, 0.733333333333, 1.0, 1.0, 1.0, 1.0 };
         REQUIRE(pc.size() == s.size());
         for (size_t i = 0; i < pc.size(); ++i) {
-            const double s_computed = Opm::EQUIL::satFromPc<FluidSystem, MaterialLaw, MaterialLawManager>(*simulator->problem().materialLawManager(), phase, cell, pc[i], increasing);
+            const double s_computed = Ewoms::EQUIL::satFromPc<FluidSystem, MaterialLaw, MaterialLawManager>(*simulator->problem().materialLawManager(), phase, cell, pc[i], increasing);
             CHECK_CLOSE(s_computed, s[i], reltol);
         }
     }
@@ -434,7 +434,7 @@ void test_CapillaryInversion()
         const std::vector<double> s = { 0.8, 0.8, 0.8, 0.533333333333, 0.266666666666, 0.0, 0.0, 0.0, 0.0 };
         REQUIRE(pc.size() == s.size());
         for (size_t i = 0; i < pc.size(); ++i) {
-            const double s_computed = Opm::EQUIL::satFromPc<FluidSystem, MaterialLaw, MaterialLawManager>(*simulator->problem().materialLawManager(), phase, cell, pc[i], increasing);
+            const double s_computed = Ewoms::EQUIL::satFromPc<FluidSystem, MaterialLaw, MaterialLawManager>(*simulator->problem().materialLawManager(), phase, cell, pc[i], increasing);
             CHECK_CLOSE(s_computed, s[i], reltol);
         }
     }
@@ -447,7 +447,7 @@ void test_CapillaryInversion()
         const std::vector<double> s = { 0.2, 0.333333333333, 0.6, 0.866666666666, 1.0 };
         REQUIRE(pc.size() == s.size());
         for (size_t i = 0; i < pc.size(); ++i) {
-            const double s_computed = Opm::EQUIL::satFromSumOfPcs<FluidSystem, MaterialLaw, MaterialLawManager>(*simulator->problem().materialLawManager(), water, gas, cell, pc[i]);
+            const double s_computed = Ewoms::EQUIL::satFromSumOfPcs<FluidSystem, MaterialLaw, MaterialLawManager>(*simulator->problem().materialLawManager(), water, gas, cell, pc[i]);
             CHECK_CLOSE(s_computed, s[i], reltol);
         }
     }
@@ -460,10 +460,10 @@ void test_DeckWithCapillary()
     typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_capillary.DATA");
     auto& eclipseState = simulator->vanguard().eclState();
-    Opm::GridManager gm(eclipseState.getInputGrid());
+    Ewoms::GridManager gm(eclipseState.getInputGrid());
     const UnstructuredGrid& grid = *(gm.c_grid());
 
-    Opm::EQUIL::DeckDependent::InitialStateComputer<TypeTag> comp(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 10.0);
+    Ewoms::EQUIL::DeckDependent::InitialStateComputer<TypeTag> comp(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 10.0);
 
     const auto& pressures = comp.press();
     REQUIRE(pressures.size() == 3);
@@ -499,10 +499,10 @@ void test_DeckWithCapillaryOverlap()
     typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_capillary_overlap.DATA");
     const auto& eclipseState = simulator->vanguard().eclState();
-    Opm::GridManager gm(eclipseState.getInputGrid());
+    Ewoms::GridManager gm(eclipseState.getInputGrid());
     const UnstructuredGrid& grid = *(gm.c_grid());
 
-    Opm::EQUIL::DeckDependent::InitialStateComputer<TypeTag> comp(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 9.80665);
+    Ewoms::EQUIL::DeckDependent::InitialStateComputer<TypeTag> comp(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 9.80665);
     const auto& pressures = comp.press();
     REQUIRE(pressures.size() == 3);
     REQUIRE(int(pressures[0].size()) == grid.number_of_cells);
@@ -519,7 +519,7 @@ void test_DeckWithCapillaryOverlap()
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][first], 1.49224e+07, reltol_ecl);
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][last],  1.54901e+07, reltol_ecl);
 
-    CHECK_CLOSE(pressures[FluidSystem::waterPhaseIdx][first] , 14832467.14, reltol); // opm
+    CHECK_CLOSE(pressures[FluidSystem::waterPhaseIdx][first] , 14832467.14, reltol);
     CHECK_CLOSE(pressures[FluidSystem::waterPhaseIdx][last ] , 15479883.47, reltol);
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][last ] , 15489883.47, reltol);
 
@@ -537,16 +537,16 @@ void test_DeckWithCapillaryOverlap()
     s_ecl[FluidSystem::oilPhaseIdx] =   { 0,   0,   0,   0,   0,   0,   0,   0,          0,          0.20039,     0.08458,    0, 0, 0, 0, 0, 0, 0, 0, 0 };
     s_ecl[FluidSystem::gasPhaseIdx] =   { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.77125955, 0.46602005, 0.015063271, 0,          0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-    std::vector<double> s_opm[3]; // opm
-    s_opm[FluidSystem::waterPhaseIdx] = { 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.22892931226886132,  0.53406457830052489, 0.78457075254244724, 0.91539712466977541, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-    s_opm[FluidSystem::oilPhaseIdx] = { 0,   0,   0,   0,   0,   0,   0,   0,                   0,                   0.20023624994125844,   0.084602875330224592, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    s_opm[FluidSystem::gasPhaseIdx] = { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.77107068773113863, 0.46593542169947511, 0.015192997516294321, 0,      0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    std::vector<double> s_ewoms[3];
+    s_ewoms[FluidSystem::waterPhaseIdx] = { 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.22892931226886132,  0.53406457830052489, 0.78457075254244724, 0.91539712466977541, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+    s_ewoms[FluidSystem::oilPhaseIdx] = { 0,   0,   0,   0,   0,   0,   0,   0,                   0,                   0.20023624994125844,   0.084602875330224592, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    s_ewoms[FluidSystem::gasPhaseIdx] = { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.77107068773113863, 0.46593542169947511, 0.015192997516294321, 0,      0, 0, 0, 0, 0, 0, 0, 0, 0 };
     for (int phase = 0; phase < 3; ++phase) {
-        REQUIRE(sats[phase].size() == s_opm[phase].size());
-        for (size_t i = 0; i < s_opm[phase].size(); ++i) {
+        REQUIRE(sats[phase].size() == s_ewoms[phase].size());
+        for (size_t i = 0; i < s_ewoms[phase].size(); ++i) {
             //std::cout << std::setprecision(10) << sats[phase][i] << '\n';
             CHECK_CLOSE(sats[phase][i], s_ecl[phase][i], reltol_ecl);
-            CHECK_CLOSE(sats[phase][i], s_opm[phase][i], reltol);
+            CHECK_CLOSE(sats[phase][i], s_ewoms[phase][i], reltol);
         }
     }
 }
@@ -558,11 +558,11 @@ void test_DeckWithLiveOil()
     typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_liveoil.DATA");
     const auto& eclipseState = simulator->vanguard().eclState();
-    Opm::GridManager gm(eclipseState.getInputGrid());
+    Ewoms::GridManager gm(eclipseState.getInputGrid());
     const UnstructuredGrid& grid = *(gm.c_grid());
 
     // Initialize the fluid system
-    Opm::EQUIL::DeckDependent::InitialStateComputer<TypeTag> comp(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 9.80665);
+    Ewoms::EQUIL::DeckDependent::InitialStateComputer<TypeTag> comp(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 9.80665);
     const auto& pressures = comp.press();
     REQUIRE(pressures.size() == 3);
     REQUIRE(int(pressures[0].size()) == grid.number_of_cells);
@@ -579,7 +579,7 @@ void test_DeckWithLiveOil()
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][first], 1.49224e+07, reltol_ecl);
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][last],  1.54901e+07, reltol_ecl);
 
-    CHECK_CLOSE(pressures[FluidSystem::waterPhaseIdx][first], 1.483246714e7, reltol);  // opm
+    CHECK_CLOSE(pressures[FluidSystem::waterPhaseIdx][first], 1.483246714e7, reltol); 
     CHECK_CLOSE(pressures[FluidSystem::waterPhaseIdx][last],  1.547991652e7, reltol);
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][first], 1.492246714e7, reltol);
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][last],  1.548991652e7, reltol);
@@ -596,22 +596,22 @@ void test_DeckWithLiveOil()
     s_ecl[FluidSystem::waterPhaseIdx] = { 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.22898, 0.53422, 0.78470, 0.91531, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
     s_ecl[FluidSystem::oilPhaseIdx] =   { 0,   0,   0,   0,   0,   0,   0,   0,       0,       0.20073, 0.08469, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     s_ecl[FluidSystem::gasPhaseIdx] =   { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.77102, 0.46578, 0.01458, 0,       0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    std::vector<double> s_opm[3]; // opm
-    s_opm[FluidSystem::waterPhaseIdx] = { 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.22916963446461344, 0.53430490523774521, 0.78471886612242092, 0.91528324362210933, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-    s_opm[FluidSystem::oilPhaseIdx] = { 0,   0,   0,   0,   0,   0,   0,   0,            0,            0.20057438297017782,   0.084716756377890667, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    s_opm[FluidSystem::gasPhaseIdx] = { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.77083036553538653, 0.46569509476225479, 0.014706750907401245,  0,       0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    std::vector<double> s_ewoms[3];
+    s_ewoms[FluidSystem::waterPhaseIdx] = { 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.22916963446461344, 0.53430490523774521, 0.78471886612242092, 0.91528324362210933, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+    s_ewoms[FluidSystem::oilPhaseIdx] = { 0,   0,   0,   0,   0,   0,   0,   0,            0,            0.20057438297017782,   0.084716756377890667, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    s_ewoms[FluidSystem::gasPhaseIdx] = { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.77083036553538653, 0.46569509476225479, 0.014706750907401245,  0,       0, 0, 0, 0, 0, 0, 0, 0, 0 };
     for (int phase = 0; phase < 3; ++phase) {
-        REQUIRE(sats[phase].size() == s_opm[phase].size());
-        for (size_t i = 0; i < s_opm[phase].size(); ++i) {
+        REQUIRE(sats[phase].size() == s_ewoms[phase].size());
+        for (size_t i = 0; i < s_ewoms[phase].size(); ++i) {
             //std::cout << std::setprecision(10) << sats[phase][i] << '\n';
-            CHECK_CLOSE(sats[phase][i], s_opm[phase][i], reltol);
+            CHECK_CLOSE(sats[phase][i], s_ewoms[phase][i], reltol);
             CHECK_CLOSE(sats[phase][i], s_ecl[phase][i], reltol_ecl);
         }
         std::cout << std::endl;
     }
 
     const auto& rs = comp.rs();
-    const std::vector<double> rs_opm {74.61233568, 74.64905212, 74.68578656, 74.72253902, // opm
+    const std::vector<double> rs_ewoms {74.61233568, 74.64905212, 74.68578656, 74.72253902,
                                       74.75930951, 74.79609803, 74.83290459, 74.87519876,
                                       74.96925416, 75.09067512, 75.0,        75.0,
                                       75.0,        75.0,        75.0,        75.0,
@@ -621,9 +621,9 @@ void test_DeckWithLiveOil()
                                       74.969231, 75.090706, 75.000000, 75.000000,
                                       75.000000, 75.000000, 75.000000, 75.000000,
                                       75.000000, 75.000000, 75.000000, 75.000000};
-    for (size_t i = 0; i < rs_opm.size(); ++i) {
+    for (size_t i = 0; i < rs_ewoms.size(); ++i) {
         //std::cout << std::setprecision(10) << rs[i] << '\n';
-        CHECK_CLOSE(rs[i], rs_opm[i], reltol);
+        CHECK_CLOSE(rs[i], rs_ewoms[i], reltol);
         CHECK_CLOSE(rs[i], rs_ecl[i], reltol_ecl);
     }
 }
@@ -635,10 +635,10 @@ void test_DeckWithLiveGas()
     typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_livegas.DATA");
     const auto& eclipseState = simulator->vanguard().eclState();
-    Opm::GridManager gm(eclipseState.getInputGrid());
+    Ewoms::GridManager gm(eclipseState.getInputGrid());
     const UnstructuredGrid& grid = *(gm.c_grid());
 
-    Opm::EQUIL::DeckDependent::InitialStateComputer<TypeTag> comp(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 9.80665);
+    Ewoms::EQUIL::DeckDependent::InitialStateComputer<TypeTag> comp(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 9.80665);
     const auto& pressures = comp.press();
     REQUIRE(pressures.size() == 3);
     REQUIRE(int(pressures[0].size()) == grid.number_of_cells);
@@ -655,7 +655,7 @@ void test_DeckWithLiveGas()
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][first], 1.49115e+07, reltol_ecl);
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][last],  1.54901e+07, reltol_ecl);
 
-    CHECK_CLOSE(pressures[FluidSystem::waterPhaseIdx][first], 1.482150311e7, reltol);  // opm
+    CHECK_CLOSE(pressures[FluidSystem::waterPhaseIdx][first], 1.482150311e7, reltol); 
     CHECK_CLOSE(pressures[FluidSystem::waterPhaseIdx][last],  1.547988347e7, reltol);
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][first], 1.491150311e7, reltol);
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][last],  1.548988347e7, reltol);
@@ -672,22 +672,22 @@ void test_DeckWithLiveGas()
     s_ecl[FluidSystem::waterPhaseIdx] = { 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.24285614, 0.53869015, 0.78454906,  0.91542006, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
     s_ecl[FluidSystem::oilPhaseIdx] =   { 0,   0,   0,   0,   0,   0,   0,   0,          0,          0.18311,     0.08458,    0, 0, 0, 0, 0, 0, 0, 0, 0 };
     s_ecl[FluidSystem::gasPhaseIdx] =   { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.75714386, 0.46130988, 0.032345835, 0,          0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    std::vector<double> s_opm[3]; // opm
-    s_opm[FluidSystem::waterPhaseIdx] = { 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.24310545, 0.5388, 0.78458,    0.91540, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-    s_opm[FluidSystem::oilPhaseIdx] =   { 0,   0,   0,   0,   0,   0,   0,   0,          0,      0.18288667, 0.0846,  0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    s_opm[FluidSystem::gasPhaseIdx] =   { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.75689455, 0.4612, 0.03253333, 0,       0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    std::vector<double> s_ewoms[3];
+    s_ewoms[FluidSystem::waterPhaseIdx] = { 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.24310545, 0.5388, 0.78458,    0.91540, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+    s_ewoms[FluidSystem::oilPhaseIdx] =   { 0,   0,   0,   0,   0,   0,   0,   0,          0,      0.18288667, 0.0846,  0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    s_ewoms[FluidSystem::gasPhaseIdx] =   { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.75689455, 0.4612, 0.03253333, 0,       0, 0, 0, 0, 0, 0, 0, 0, 0 };
     for (int phase = 0; phase < 3; ++phase) {
-        REQUIRE(sats[phase].size() == s_opm[phase].size());
-        for (size_t i = 0; i < s_opm[phase].size(); ++i) {
+        REQUIRE(sats[phase].size() == s_ewoms[phase].size());
+        for (size_t i = 0; i < s_ewoms[phase].size(); ++i) {
             //std::cout << std::setprecision(10) << sats[phase][i] << '\n';
-            CHECK_CLOSE(sats[phase][i], s_opm[phase][i], 100.*reltol);
+            CHECK_CLOSE(sats[phase][i], s_ewoms[phase][i], 100.*reltol);
             CHECK_CLOSE(sats[phase][i], s_ecl[phase][i], reltol_ecl);
         }
         std::cout << std::endl;
     }
 
     const auto& rv = comp.rv();
-    const std::vector<double> rv_opm { // opm
+    const std::vector<double> rv_ewoms {
         2.4884509e-4, 2.4910378e-4, 2.4936267e-4, 2.4962174e-4,
         2.4988100e-4, 2.5014044e-4, 2.5040008e-4, 2.5065990e-4,
         2.5091992e-4, 2.5118012e-4, 2.5223082e-4, 2.5105e-4,
@@ -701,8 +701,8 @@ void test_DeckWithLiveGas()
         0.25104999E-03,   0.25104999E-03,   0.25104999E-03,   0.25104999E-03,
         0.25104999E-03,   0.25104999E-03,   0.25104999E-03,   0.25104999E-03};
 
-    for (size_t i = 0; i < rv_opm.size(); ++i) {
-        CHECK_CLOSE(rv[i], rv_opm[i], reltol);
+    for (size_t i = 0; i < rv_ewoms.size(); ++i) {
+        CHECK_CLOSE(rv[i], rv_ewoms[i], reltol);
         CHECK_CLOSE(rv[i], rv_ecl[i], reltol_ecl);
     }
 }
@@ -714,10 +714,10 @@ void test_DeckWithRSVDAndRVVD()
     typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_rsvd_and_rvvd.DATA");
     const auto& eclipseState = simulator->vanguard().eclState();
-    Opm::GridManager gm(eclipseState.getInputGrid());
+    Ewoms::GridManager gm(eclipseState.getInputGrid());
     const UnstructuredGrid& grid = *(gm.c_grid());
 
-    Opm::EQUIL::DeckDependent::InitialStateComputer<TypeTag> comp(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 9.80665);
+    Ewoms::EQUIL::DeckDependent::InitialStateComputer<TypeTag> comp(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 9.80665);
     const auto& pressures = comp.press();
     REQUIRE(pressures.size() == 3);
     REQUIRE(int(pressures[0].size()) == grid.number_of_cells);
@@ -734,7 +734,7 @@ void test_DeckWithRSVDAndRVVD()
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][first], 1.49250e+07, reltol_ecl);
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][last],  1.54894e+07, reltol_ecl);
 
-    CHECK_CLOSE(pressures[FluidSystem::waterPhaseIdx][first], 1.483499660e7, reltol);  // opm
+    CHECK_CLOSE(pressures[FluidSystem::waterPhaseIdx][first], 1.483499660e7, reltol); 
     CHECK_CLOSE(pressures[FluidSystem::waterPhaseIdx][last],  1.547924516e7, reltol);
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][first], 1.492499660e7, reltol);
     CHECK_CLOSE(pressures[FluidSystem::oilPhaseIdx][last],  1.548924516e7, reltol);
@@ -752,23 +752,23 @@ void test_DeckWithRSVDAndRVVD()
     s_ecl[FluidSystem::oilPhaseIdx] =   { 0,   0,   0,   0,   0,   0,   0,   0,          0,          0.19656529,  0.081805572, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     s_ecl[FluidSystem::gasPhaseIdx] =   { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.77793652, 0.47128031, 0.021931054, 0,           0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-    std::vector<double> s_opm[3]; // opm
-    s_opm[FluidSystem::waterPhaseIdx] = { 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2223045711692897, 0.52882298575945874, 0.78152142505479982, 0.91816512259416283, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-    s_opm[FluidSystem::oilPhaseIdx]   = { 0,   0,   0,   0,   0,   0,   0,   0,          0, 0.19637607881498206, 0.08183487740583717, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    s_opm[FluidSystem::gasPhaseIdx]   = { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.7776954288307103, 0.47117701424054126, 0.02210249613021811,    0,          0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    std::vector<double> s_ewoms[3];
+    s_ewoms[FluidSystem::waterPhaseIdx] = { 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2223045711692897, 0.52882298575945874, 0.78152142505479982, 0.91816512259416283, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+    s_ewoms[FluidSystem::oilPhaseIdx]   = { 0,   0,   0,   0,   0,   0,   0,   0,          0, 0.19637607881498206, 0.08183487740583717, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    s_ewoms[FluidSystem::gasPhaseIdx]   = { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.7776954288307103, 0.47117701424054126, 0.02210249613021811,    0,          0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
     for (int phase = 0; phase < 3; ++phase) {
-        REQUIRE(sats[phase].size() == s_opm[phase].size());
-        for (size_t i = 0; i < s_opm[phase].size(); ++i) {
+        REQUIRE(sats[phase].size() == s_ewoms[phase].size());
+        for (size_t i = 0; i < s_ewoms[phase].size(); ++i) {
             //std::cout << std::setprecision(10) << sats[phase][i] << '\n';
-            CHECK_CLOSE(sats[phase][i], s_opm[phase][i], reltol);
+            CHECK_CLOSE(sats[phase][i], s_ewoms[phase][i], reltol);
             CHECK_CLOSE(sats[phase][i], s_ecl[phase][i], reltol_ecl);
         }
         std::cout << std::endl;
     }
 
     const auto& rs = comp.rs();
-    const std::vector<double> rs_opm { // opm
+    const std::vector<double> rs_ewoms {
         74.62498302, 74.65959041, 74.69438035, 74.72935336,
         74.76450995, 74.79985061, 74.83537588, 74.87527065,
         74.96863769, 75.08891765, 52.5,        57.5,
@@ -783,7 +783,7 @@ void test_DeckWithRSVDAndRVVD()
         76.349953, 76.531532, 76.713142, 76.894775,};
 
     const auto& rv = comp.rv();
-    const std::vector<double> rv_opm { // opm
+    const std::vector<double> rv_ewoms {
         2.50e-6, 7.50e-6,       1.25e-5,       1.75e-5,
         2.25e-5, 2.75e-5,       3.25e-5,       3.75e-5,
         4.25e-5, 2.51158386e-4, 2.52203372e-4, 5.75e-5,
@@ -797,15 +797,14 @@ void test_DeckWithRSVDAndRVVD()
         0.62500003E-04, 0.67499997E-04, 0.72499999E-04, 0.77500001E-04,
         0.82500002E-04, 0.87499997E-04, 0.92499999E-04, 0.97500000E-04};
 
-    for (size_t i = 0; i < rv_opm.size(); ++i) {
+    for (size_t i = 0; i < rv_ewoms.size(); ++i) {
         //std::cout << std::setprecision(10) << rs[i] << '\n';
-        CHECK_CLOSE(rs[i], rs_opm[i], reltol);
+        CHECK_CLOSE(rs[i], rs_ewoms[i], reltol);
         CHECK_CLOSE(rs[i], rs_ecl[i], reltol_ecl);
-        CHECK_CLOSE(rv[i], rv_opm[i], reltol);
+        CHECK_CLOSE(rv[i], rv_ewoms[i], reltol);
         CHECK_CLOSE(rv[i], rv_ecl[i], reltol_ecl);
     }
 }
-
 
 void test_DeckWithPBVDAndPDVD();
 void test_DeckWithPBVDAndPDVD()
@@ -814,10 +813,10 @@ void test_DeckWithPBVDAndPDVD()
     typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_pbvd_and_pdvd.DATA");
     const auto& eclipseState = simulator->vanguard().eclState();
-    Opm::GridManager gm(eclipseState.getInputGrid());
+    Ewoms::GridManager gm(eclipseState.getInputGrid());
     const UnstructuredGrid& grid = *(gm.c_grid());
 
-    Opm::EQUIL::DeckDependent::InitialStateComputer<TypeTag> comp(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 9.80665);
+    Ewoms::EQUIL::DeckDependent::InitialStateComputer<TypeTag> comp(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 9.80665);
     const auto& pressures = comp.press();
     REQUIRE(pressures.size() == 3);
     REQUIRE(int(pressures[0].size()) == grid.number_of_cells);
@@ -842,21 +841,21 @@ void test_DeckWithPBVDAndPDVD()
     //     std::cout << std::endl;
     // }
 
-    std::vector<double> s_opm[3]; // opm
-    s_opm[FluidSystem::waterPhaseIdx] = { 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.24257337312592703, 0.53834824764362788, 0.7844998821510003, 0.9152832369551807, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-    s_opm[FluidSystem::oilPhaseIdx] =   { 0,   0,   0,   0,   0,   0,   0,   0,          0, 0.18185970596719522, 0.084716763044819343, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    s_opm[FluidSystem::gasPhaseIdx] =   { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.75742662687407303, 0.46165175235637212, 0.033640411881804465,    0,          0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    std::vector<double> s_ewoms[3];
+    s_ewoms[FluidSystem::waterPhaseIdx] = { 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.24257337312592703, 0.53834824764362788, 0.7844998821510003, 0.9152832369551807, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+    s_ewoms[FluidSystem::oilPhaseIdx] =   { 0,   0,   0,   0,   0,   0,   0,   0,          0, 0.18185970596719522, 0.084716763044819343, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    s_ewoms[FluidSystem::gasPhaseIdx] =   { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.75742662687407303, 0.46165175235637212, 0.033640411881804465,    0,          0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
     for (int phase = 0; phase < 3; ++phase) {
-        REQUIRE(sats[phase].size() == s_opm[phase].size());
-        for (size_t i = 0; i < s_opm[phase].size(); ++i) {
+        REQUIRE(sats[phase].size() == s_ewoms[phase].size());
+        for (size_t i = 0; i < s_ewoms[phase].size(); ++i) {
             //std::cout << std::setprecision(10) << sats[phase][i] << '\n';
-            CHECK_CLOSE(sats[phase][i], s_opm[phase][i], reltol);
+            CHECK_CLOSE(sats[phase][i], s_ewoms[phase][i], reltol);
         }
     }
 
     const auto& rs = comp.rs();
-    const std::vector<double> rs_opm { // opm
+    const std::vector<double> rs_ewoms {
         74.55776480956456,
         74.6008507125663,
         74.6439680789467,
@@ -870,7 +869,7 @@ void test_DeckWithPBVDAndPDVD()
         75, 75, 75,75,75, 75, 75, 75, 75, 75 };
 
     const auto& rv = comp.rv();
-    const std::vector<double> rv_opm {
+    const std::vector<double> rv_ewoms {
         0.0002488465888573874,
         0.0002491051042753978,
         0.0002493638084736803,
@@ -892,9 +891,9 @@ void test_DeckWithPBVDAndPDVD()
         0.0001225,
         0.0001075};
 
-    for (size_t i = 0; i < rv_opm.size(); ++i) {
-        CHECK_CLOSE(rs[i], rs_opm[i], reltol);
-        CHECK_CLOSE(rv[i], rv_opm[i], reltol);
+    for (size_t i = 0; i < rv_ewoms.size(); ++i) {
+        CHECK_CLOSE(rs[i], rs_ewoms[i], reltol);
+        CHECK_CLOSE(rv[i], rv_ewoms[i], reltol);
     }
 }
 
@@ -905,12 +904,12 @@ void test_DeckWithSwatinit()
     typedef typename TTAG(TestEquilTypeTag) TypeTag;
     auto simulator = initSimulator<TypeTag>("equil_capillary_swatinit.DATA");
     const auto& eclipseState = simulator->vanguard().eclState();
-    Opm::GridManager gm(eclipseState.getInputGrid());
+    Ewoms::GridManager gm(eclipseState.getInputGrid());
     const UnstructuredGrid& grid = *(gm.c_grid());
 
     // Create material law manager.
     std::vector<int> compressedToCartesianIdx
-        = Opm::compressedToCartesian(grid.number_of_cells, grid.global_cell);
+        = Ewoms::compressedToCartesian(grid.number_of_cells, grid.global_cell);
     MaterialLawManager materialLawManager = MaterialLawManager();
     materialLawManager.initFromDeck(deck, eclipseState, compressedToCartesianIdx);
 
@@ -932,7 +931,7 @@ void test_DeckWithSwatinit()
     };
 
     // Adjust oil pressure according to gas saturation and cap pressure
-    typedef Opm::SimpleModularFluidState<double,
+    typedef Ewoms::SimpleModularFluidState<double,
                                          /*numPhases=*/3,
                                          /*numComponents=*/3,
                                          FluidSystem,
@@ -952,7 +951,7 @@ void test_DeckWithSwatinit()
     FluidSystem::initFromDeck(deck, eclipseState);
 
     // reference pcs
-    const int numCells = Opm::UgGridHelpers::numCells(grid);
+    const int numCells = Ewoms::UgGridHelpers::numCells(grid);
     std::vector<double> pc_original(numCells * FluidSystem::numPhases);
     for (int c = 0; c < numCells; ++c) {
         std::vector<double> pc = {0,0,0};
@@ -988,9 +987,9 @@ void test_DeckWithSwatinit()
 
     // compute the initial state
     // apply swatinit
-    Opm::EQUIL::DeckDependent::InitialStateComputer<TypeTag> compScaled(materialLawManagerScaled, eclipseState, simulator->vanguard().grid(), 9.81, true);
+    Ewoms::EQUIL::DeckDependent::InitialStateComputer<TypeTag> compScaled(materialLawManagerScaled, eclipseState, simulator->vanguard().grid(), 9.81, true);
     // don't apply swatinit
-    Opm::EQUIL::DeckDependent::InitialStateComputer<TypeTag> compUnscaled(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 9.81, false);
+    Ewoms::EQUIL::DeckDependent::InitialStateComputer<TypeTag> compUnscaled(*simulator->problem().materialLawManager(), eclipseState, simulator->vanguard().grid(), 9.81, false);
 
     // compute pc
     std::vector<double> pc_scaled(numCells * FluidSystem::numPhases);
@@ -1054,7 +1053,7 @@ int main(int argc, char** argv)
 #endif
 
     typedef TTAG(TestEquilTypeTag) TypeTag;
-    Opm::registerAllParameters_<TypeTag>();
+    Ewoms::registerAllParameters_<TypeTag>();
 
     test_PhasePressure();
     test_CellSubset();

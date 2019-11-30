@@ -16,7 +16,7 @@ FIELD
 
 GRID
 
--- tests for the PVT functions need a grid because the OPM-API for the
+-- tests for the PVT functions need a grid because the eWoms-API for the
 -- PVT functions assumes the presence of compressed grid cells,
 -- i.e. we need to be able to map from compressed to logical cartesian
 -- cell indices to find out the PVT region of a cell

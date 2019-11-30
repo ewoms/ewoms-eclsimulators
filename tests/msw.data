@@ -1,22 +1,19 @@
 
---  Copyright 2015 SINTEF ICT, Applied Mathematics.
---  Copyright 2016 Statoil ASA.
 
---  This file is part of the Open Porous Media project (OPM).
+--  This file is part of the eWoms project.
 
---  OPM is free software: you can redistribute it and/or modify
+--  eWoms is free software: you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
 --  the Free Software Foundation, either version 3 of the License, or
 --  (at your option) any later version.
 
---  OPM is distributed in the hope that it will be useful,
+--  eWoms is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 --  GNU General Public License for more details.
 
 --  You should have received a copy of the GNU General Public License
---  along with OPM.  If not, see <http://www.gnu.org/licenses/>.
-
+--  along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 
 -- geophysics and fluid properties are copied from Norne
 
@@ -40,7 +37,6 @@ VAPOIL
 
 METRIC
 
-
 START
  06  'NOV' 2011 /
 
@@ -51,7 +47,6 @@ WELLDIMS
 --    MAX     CONN              WELLS IN
 --   WELLS   PR WELL   GROUPS     GROUP
       10       10         10          20 /
-
 
 TABDIMS
 --ntsfun ntpvt nssfun nppvt ntfip nrpvt ntendp
@@ -554,7 +549,6 @@ PROPS
 --    Input of fluid properties and relative permeability
 --
 ---------------------------------------------------------
-
 
 SWOF
 --     	Sw	        Krw	        Kro	     Pc
@@ -1070,11 +1064,8 @@ PVTO
 /
 NOECHO
 
-
 ---------------------------------------------------------------------------------
 SOLUTION
-
-
 
 EQUIL
 -- Datum    P     woc     Pc   goc    Pc  Rsvd  Rvvd
@@ -1087,11 +1078,8 @@ BASIC=2 KRO KRW KRG SWAT PRES SGAS SOIL /
 RPTSOL
 FIP=3  SWAT /
 
-
 SUMMARY
 ALL
-
-
 
 SCHEDULE
 
@@ -1102,8 +1090,6 @@ WELSPECS
      'INJE01' 'I'    1  1 1* 'WATER'     /
      'PROD01' 'P'    20  1  1*  'OIL'   7*  /
 /
-
-
 
 COMPDAT
     'INJE01' 1  1  4  5   'OPEN'  1* 200. 0.5 /
@@ -1133,7 +1119,6 @@ COMPSEGS
     18    1     2     2   2837.5   3037.5 /
     17    1     2     2   3037.5   3237.5 /
 /
-
 
 WCONINJE
      'INJE01' 'WATER' 'OPEN' 'RATE' 1500.00  1* 450 /

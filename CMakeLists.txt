@@ -1,284 +1,151 @@
-###########################################################################
-#                                                                         #
-# Note: The bulk of the build system is located in the cmake/ directory.  #
-#       This file only contains the specializations for this particular   #
-#       project. Most likely you are interested in editing one of these   #
-#       files instead:                                                    #
-#                                                                         #
-#       dune.module                              Name and version number  #
-#       CMakeLists_files.cmake                   Path of source files     #
-#       cmake/Modules/${project}-prereqs.cmake   Dependencies             #
-#                                                                         #
-###########################################################################
+# -*- mode: cmake; tab-width: 2; indent-tabs-mode: t; truncate-lines: t
+# vim: set filetype=cmake autoindent tabstop=2 shiftwidth=2 noexpandtab softtabstop=2 nowrap:
 
-# Mandatory call to project
-project(opm-simulators C CXX)
+cmake_minimum_required(VERSION 3.10)
 
-cmake_minimum_required (VERSION 2.8)
+# set up project and specify the minimum cmake version
+project("ewoms-eclsimulators" C CXX)
 
-option(SIBLING_SEARCH "Search for other modules in sibling directories?" ON)
-set( USE_OPENMP_DEFAULT OFF ) # Use of OpenMP is considered experimental
-option(BUILD_FLOW "Build the production oriented flow simulator?" ON)
-option(BUILD_FLOW_VARIANTS "Build the variants for flow by default?" OFF)
-option(BUILD_EBOS "Build the research oriented ebos simulator?" ON)
-option(BUILD_EBOS_EXTENSIONS "Build the variants for various extensions of ebos by default?" OFF)
-option(BUILD_EBOS_DEBUG_EXTENSIONS "Build the ebos variants which are purely for debugging by default?" OFF)
+option(BUILD_EFLOW "Build the production oriented eflow simulator?" OFF)
+option(BUILD_EEBOS "Build the research-oriented eebos simulator?" ON)
+option(BUILD_EEBOS_EXTENSIONS "Build the variants for various extensions of eebos by default?" ON)
+option(BUILD_EEBOS_DEBUG_EXTENSIONS "Build the debugging variants of eebos by default?" OFF)
 
-if(SIBLING_SEARCH AND NOT opm-common_DIR)
-  # guess the sibling dir
-  get_filename_component(_leaf_dir_name ${PROJECT_BINARY_DIR} NAME)
-  get_filename_component(_parent_full_dir ${PROJECT_BINARY_DIR} DIRECTORY)
-  get_filename_component(_parent_dir_name ${_parent_full_dir} NAME)
-  #Try if <module-name>/<build-dir> is used
-  get_filename_component(_modules_dir ${_parent_full_dir} DIRECTORY)
-  if(IS_DIRECTORY ${_modules_dir}/opm-common/${_leaf_dir_name})
-    set(opm-common_DIR ${_modules_dir}/opm-common/${_leaf_dir_name})
-  else()
-    string(REPLACE ${PROJECT_NAME} opm-common _opm_common_leaf ${_leaf_dir_name})
-    if(NOT _leaf_dir_name STREQUAL _opm_common_leaf
-        AND IS_DIRECTORY ${_parent_full_dir}/${_opm_common_leaf})
-      # We are using build directories named <prefix><module-name><postfix>
-      set(opm-common_DIR ${_parent_full_dir}/${_opm_common_leaf})
-    elseif(IS_DIRECTORY ${_parent_full_dir}/opm-common)
-      # All modules are in a common build dir
-      set(opm-common_DIR "${_parent_full_dir}/opm-common")
-    endif()
-  endif()
-endif()
-if(opm-common_DIR AND NOT IS_DIRECTORY ${opm-common_DIR})
-  message(WARNING "Value ${opm-common_DIR} passed to variable"
-    " opm-common_DIR is not a directory")
-endif()
+# find the build system (i.e., ewoms-common) and set cmake's module path
+find_package(ewoms-common REQUIRED)
+list(APPEND CMAKE_MODULE_PATH ${ewoms-common_MODULE_PATH})
 
-find_package(opm-common REQUIRED)
+# include the eWoms cmake macros
+include(EwomsMacros)
 
-include(OpmInit)
+# do most of the book-keeping required
+ewoms_project()
 
+# find the packages needed to compile the unit tests
+find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 
-# not the same location as most of the other projects? this hook overrides
-macro (dir_hook)
-endmacro (dir_hook)
+# we want all features detected by the build system to be enabled,
+# thank you!
+dune_enable_all_packages()
 
-# project information is in dune.module. Read this file and set variables.
-# we cannot generate dune.module since it is read by dunecontrol before
-# the build starts, so it makes sense to keep the data there then.
-include (OpmInit)
+ewoms_recursive_add_library("ewomseclsimulators" "ewoms" "eebos/nncsorter.cc")
 
-# Look for the opm-tests repository; if found the variable
-# HAVE_OPM_TESTS will be set to true.
-include(Findopm-tests)
+# recursively mark all header files beneath the "ewoms" directory for
+# installation.
+ewoms_recusive_export_all_headers("ewoms")
 
-# list of prerequisites for this particular project; this is in a
-# separate file (in cmake/Modules sub-directory) because it is shared
-# with the find module
-include ("${project}-prereqs")
+######
+# eebos and its variants
+######
+# blackoil eebos
+ewoms_add_application(eebos
+                    DEFAULT_ENABLE_IF ${BUILD_EEBOS}
+                    SOURCES eebos/eebos_main.cc $<TARGET_OBJECTS:eebos_libblackoil>)
 
-# read the list of components from this file (in the project directory);
-# it should set various lists with the names of the files to include
-include (CMakeLists_files.cmake)
-
-macro (config_hook)
-  opm_need_version_of ("dune-common")
-  opm_need_version_of ("dune-istl")
-  if(dune-fem_FOUND)
-      opm_need_version_of ("dune-fem")
-  endif()
-  opm_need_version_of ("opm-models")
-endmacro (config_hook)
-
-macro (prereqs_hook)
-endmacro (prereqs_hook)
-
-macro (sources_hook)
-endmacro (sources_hook)
-
-macro (fortran_hook)
-endmacro (fortran_hook)
-
-macro (files_hook)
-endmacro (files_hook)
-
-macro (tests_hook)
-endmacro (tests_hook)
-
-# all setup common to the OPM library modules is done here
-include (OpmLibMain)
-
-if (HAVE_OPM_TESTS)
-    include (${CMAKE_CURRENT_SOURCE_DIR}/compareECLFiles.cmake)
-endif()
-
-opm_set_test_driver(${CMAKE_CURRENT_SOURCE_DIR}/tests/run-parallel-unitTest.sh "")
-
-opm_add_test(test_gatherconvergencereport
-  DEPENDS "opmsimulators"
-  LIBRARIES opmsimulators ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
-  SOURCES
-    tests/test_gatherconvergencereport.cpp
-  CONDITION
-    MPI_FOUND
-  DRIVER_ARGS
-    5 ${CMAKE_BINARY_DIR}
-)
-
-opm_add_test(test_gatherdeferredlogger
-  DEPENDS "opmsimulators"
-  LIBRARIES opmsimulators ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
-  SOURCES
-    tests/test_gatherdeferredlogger.cpp
-  CONDITION
-    MPI_FOUND
-  DRIVER_ARGS
-    5 ${CMAKE_BINARY_DIR}
-)
-
-include(OpmBashCompletion)
-
-if (NOT BUILD_FLOW)
-  set(FLOW_DEFAULT_ENABLE_IF "FALSE")
-else()
-  set(FLOW_DEFAULT_ENABLE_IF "TRUE")
-endif()
-
-# the production oriented general-purpose ECL simulator
-opm_add_test(flow
-  ONLY_COMPILE
-  ALWAYS_ENABLE
-  DEFAULT_ENABLE_IF ${FLOW_DEFAULT_ENABLE_IF}
-  DEPENDS "opmsimulators"
-  LIBRARIES "opmsimulators"
-  SOURCES
-  flow/flow.cpp
-  flow/flow_ebos_blackoil.cpp
-  flow/flow_ebos_gasoil.cpp
-  flow/flow_ebos_oilwater.cpp
-  flow/flow_ebos_polymer.cpp
-  flow/flow_ebos_foam.cpp
-  flow/flow_ebos_solvent.cpp
-  flow/flow_ebos_energy.cpp
-  flow/flow_ebos_oilwater_polymer.cpp
-  flow/flow_ebos_oilwater_polymer_injectivity.cpp)
-
-if (NOT BUILD_FLOW_VARIANTS)
-  set(FLOW_VARIANTS_DEFAULT_ENABLE_IF "FALSE")
-else()
-  set(FLOW_VARIANTS_DEFAULT_ENABLE_IF "TRUE")
-endif()
-
-# Variant versions of Flow.
-opm_add_test(flow_blackoil_dunecpr
-  ONLY_COMPILE
-  DEFAULT_ENABLE_IF ${FLOW_VARIANTS_DEFAULT_ENABLE_IF}
-  SOURCES flow/flow_blackoil_dunecpr.cpp
-  EXE_NAME flow_blackoil_dunecpr
-  DEPENDS "opmsimulators"
-  LIBRARIES "opmsimulators")
-
-opm_add_test(flow_onephase
-  ONLY_COMPILE
-  DEFAULT_ENABLE_IF ${FLOW_VARIANTS_DEFAULT_ENABLE_IF}
-  SOURCES flow/flow_onephase.cpp
-  EXE_NAME flow_onephase
-  DEPENDS "opmsimulators"
-  LIBRARIES "opmsimulators")
-
-opm_add_test(flow_onephase_energy
-  ONLY_COMPILE
-  DEFAULT_ENABLE_IF ${FLOW_VARIANTS_DEFAULT_ENABLE_IF}
-  SOURCES flow/flow_onephase_energy.cpp
-  EXE_NAME flow_onephase_energy
-  DEPENDS "opmsimulators"
-  LIBRARIES "opmsimulators")
-
-if (BUILD_FLOW)
-  install(TARGETS flow DESTINATION bin)
-  opm_add_bash_completion(flow)
-
-  add_test(NAME flow__version
-    COMMAND flow --version)
-  set_tests_properties(flow__version PROPERTIES
-    PASS_REGULAR_EXPRESSION "${${project}_LABEL}")
-endif()
-
-if (NOT BUILD_EBOS)
-  set(EBOS_DEFAULT_ENABLE_IF "FALSE")
-else()
-  set(EBOS_DEFAULT_ENABLE_IF "TRUE")
-endif()
-
-# the research oriented general-purpose ECL simulator ("ebos" == &ecl
-# &black-&oil &simulator)
-set(MEBOS_TARGETS "")
-foreach(OBJ blackoil solvent polymer foam gasoil oilwater thermal)
-  add_library(ebos_lib${OBJ} OBJECT EXCLUDE_FROM_ALL ebos/ebos_${OBJ}.cc)
-  list(APPEND MEBOS_TARGETS $<TARGET_OBJECTS:ebos_lib${OBJ}>)
+# eebos variants
+set(MEEBOS_TARGETS "")
+foreach(EXT blackoil solvent polymer foam gasoil oilwater thermal)
+  add_library(eebos_lib${EXT} OBJECT EXCLUDE_FROM_ALL eebos/eebos_${EXT}.cc)
+  target_include_directories(eebos_lib${EXT} PRIVATE ${ecl_INCLUDE_DIRS})
+  list(APPEND MEEBOS_TARGETS $<TARGET_OBJECTS:eebos_lib${EXT}>)
 endforeach()
 
-opm_add_test(ebos
-  ONLY_COMPILE
-  DEFAULT_ENABLE_IF ${EBOS_DEFAULT_ENABLE_IF}
-  ALWAYS_ENABLE
-  EXE_NAME ebos
-  LIBRARIES opmsimulators
-  SOURCES ebos/ebos_main.cc $<TARGET_OBJECTS:ebos_libblackoil>)
-
-if (BUILD_EBOS)
-  install(TARGETS ebos DESTINATION bin)
-  opm_add_bash_completion(ebos)
-endif()
-
-if (NOT BUILD_EBOS_EXTENSIONS)
-  set(EBOS_EXTENSIONS_DEFAULT_ENABLE_IF "FALSE")
-else()
-  set(EBOS_EXTENSIONS_DEFAULT_ENABLE_IF "TRUE")
-endif()
-
-foreach(OBJ solvent polymer foam gasoil oilwater thermal)
-  opm_add_test(ebos_${OBJ}
-    ONLY_COMPILE
-    DEFAULT_ENABLE_IF ${EBOS_EXTENSIONS_DEFAULT_ENABLE_IF}
-    SOURCES ebos/ebos_${OBJ}_main.cc $<TARGET_OBJECTS:ebos_lib${OBJ}>
-    EXE_NAME ebos_${OBJ}
-    LIBRARIES opmsimulators)
+# add specialized eebos simulators with some black-oil extension
+foreach(EXT solvent polymer foam gasoil oilwater thermal)
+  ewoms_add_application(eebos_${EXT}
+    DEFAULT_ENABLE_IF ${BUILD_EEBOS_EXTENSIONS}
+    SOURCES eebos/eebos_${EXT}_main.cc $<TARGET_OBJECTS:eebos_lib${EXT}>)
 endforeach()
 
-opm_add_test(mebos
-  ONLY_COMPILE
-  DEFAULT_ENABLE_IF ${EBOS_EXTENSIONS_DEFAULT_ENABLE_IF}
-  SOURCES ebos/mebos_main.cc
-          ${MEBOS_TARGETS}
-  EXE_NAME mebos
-  LIBRARIES opmsimulators)
+######
+# meebos: multiplexed eebos with most of the above model extensions
+######
+ewoms_add_application(meebos
+                    DEFAULT_ENABLE_IF ${BUILD_EEBOS_EXTENSIONS}
+                    SOURCES eebos/meebos_main.cc ${MEEBOS_TARGETS})
 
-if (NOT BUILD_EBOS_DEBUG_EXTENSIONS)
-  set(EBOS_DEBUG_EXTENSIONS_DEFAULT_ENABLE_IF "FALSE")
-else()
-  set(EBOS_DEBUG_EXTENSIONS_DEFAULT_ENABLE_IF "TRUE")
+######
+# eebos variants only for debugging
+######
+
+# variant that uses the default ewoms linear solver and the toy ECL well model
+ewoms_add_application(eebos_plain
+                    DEFAULT_ENABLE_IF ${BUILD_EEBOS_DEBUG_EXTENSIONS}
+                    SOURCES eebos/eebos_plain.cc
+                    EXE_NAME eebos_plain)
+
+# variant that uses different phase and component indices than the others
+ewoms_add_application(eebos_altidx
+                    DEFAULT_ENABLE_IF ${BUILD_EEBOS_DEBUG_EXTENSIONS}
+                    SOURCES eebos/eebos_altidx.cc
+                    EXE_NAME eebos_altidx)
+
+# target to seletively build meebos, eebos, and all eebos variants
+add_custom_target(all_eebos)
+add_dependencies(all_eebos "eebos")
+add_dependencies(all_eebos "meebos")
+add_dependencies(all_eebos "eebos_solvent")
+add_dependencies(all_eebos "eebos_polymer")
+add_dependencies(all_eebos "eebos_foam")
+add_dependencies(all_eebos "eebos_thermal")
+add_dependencies(all_eebos "eebos_oilwater")
+add_dependencies(all_eebos "eebos_gasoil")
+
+######
+# eflow (mainly for easier comparison with OPM's 'flow')
+######
+
+ewoms_add_application(eflow
+  DEFAULT_ENABLE_IF ${BUILD_EFLOW}
+  SOURCES
+   eflow/eflow.cc
+   eflow/eflow_blackoil.cc
+   eflow/eflow_gasoil.cc
+   eflow/eflow_oilwater.cc
+   eflow/eflow_foam.cc
+   eflow/eflow_polymer.cc
+   eflow/eflow_solvent.cc
+   eflow/eflow_energy.cc
+   eflow/eflow_oilwater_polymer.cc
+   eflow/eflow_oilwater_polymer_injectivity.cc)
+
+ewoms_add_application(eflow_blackoil_dunecpr
+  DEFAULT_ENABLE_IF ${BUILD_EFLOW}
+  SOURCES
+  eflow/eflow_blackoil_dunecpr.cc
+  )
+
+if(TARGET eflow)
+  add_dependencies(all_tests "eflow")
+  add_dependencies(test-suite "eflow")
+  add_dependencies(build_tests "eflow")
 endif()
 
-opm_add_test(ebos_altidx
-  ONLY_COMPILE
-  DEFAULT_ENABLE_IF ${EBOS_DEBUG_EXTENSIONS_DEFAULT_ENABLE_IF}
-  SOURCES ebos/ebos_altidx.cc
-  EXE_NAME ebos_altidx
-  DEPENDS opmsimulators
-  LIBRARIES opmsimulators)
+ewoms_recusive_copy_testdata_to_builddir("tests/*.data" "tests/*.DATA" "tests/VFP*")
 
-opm_add_test(ebos_plain
-  ONLY_COMPILE
-  DEFAULT_ENABLE_IF ${EBOS_DEBUG_EXTENSIONS_DEFAULT_ENABLE_IF}
-  SOURCES ebos/ebos_plain.cc
-  EXE_NAME ebos_plain
-  DEPENDS opmsimulators
-  LIBRARIES opmsimulators)
+ewoms_add_test(test_equil LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_ecl_output LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_blackoil_amg LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_convergencereport LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_flexiblesolver LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_preconditionerfactory LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_graphcoloring LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_vfpproperties LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_milu LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_multmatrixtransposed LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_nncsorter LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_wellmodel LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_deferredlogger LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_timer LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_invert LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_stoppedwells LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_relpermdiagnostics LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_norne_pvt LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_wellstatefullyimplicitblackoil LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_parallelistlinformation CONDITION MPI_FOUND LIBRARIES "${Boost_LIBRARIES}")
 
-if (BUILD_EBOS_EXTENSIONS)
-  foreach(TGT ebos_solvent ebos_polymer ebos_foam ebos_gasoil ebos_oilwater ebos_thermal mebos)
-    install(TARGETS ${TGT} DESTINATION bin)
-    opm_add_bash_completion(${TGT})
-  endforeach()
-endif()
+# deal with the data required by the unit tests
+ewoms_recusive_copy_testdata_to_builddir("tests/*.txt" "tests/VFPPROD2" "tests/*.json" "tests/*.data" "tests/*.DATA")
 
-if (OPM_ENABLE_PYTHON)
-  add_subdirectory(python)
-endif()
+# finalize the project, e.g. generate the config.h etc.
+finalize_ewoms_project()
