@@ -224,11 +224,17 @@ struct ScalarType<Dune::SeqScalarProduct<X> >
     }
 
 ComposeScalarTypeForSeqPrecond(Dune::SeqJac);
+#if ! DUNE_VERSION_NEWER(DUNE_ISTL, 2,7)
 ComposeScalarTypeForSeqPrecond(Dune::SeqSOR);
+#endif
 ComposeScalarTypeForSeqPrecond(Dune::SeqSSOR);
 ComposeScalarTypeForSeqPrecond(Dune::SeqGS);
+#if DUNE_VERSION_NEWER(DUNE_ISTL, 2,7)
+ComposeScalarTypeForSeqPrecond(Dune::SeqILU);
+#else
 ComposeScalarTypeForSeqPrecond(Dune::SeqILU0);
 ComposeScalarTypeForSeqPrecond(Dune::SeqILUn);
+#endif
 
 #undef ComposeScalarTypeForSeqPrecond
 
