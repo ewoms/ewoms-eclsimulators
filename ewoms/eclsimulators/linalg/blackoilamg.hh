@@ -18,7 +18,6 @@
 #ifndef EWOMS_AMG_HH
 #define EWOMS_AMG_HH
 
-#include <ewoms/numerics/linear/matrixblock.hh>
 #include <ewoms/eclsimulators/linalg/paralleloverlappingilu0.hh>
 #include <ewoms/eclsimulators/linalg/eflowlinearsolverparameters.hh>
 #include <ewoms/eclsimulators/linalg/cprpreconditioner.hh>
@@ -63,14 +62,6 @@ namespace Ewoms
         };
     } // namespace Amg
 } // namespace Ewoms
-
-namespace Dune
-{
-
-template <class Scalar, int n, int m>
-class MatrixBlock;
-
-}
 
 namespace Ewoms
 {
@@ -177,18 +168,6 @@ template<typename FieldType, int ROWS, int COLS>
 struct ScalarType<Dune::FieldMatrix<FieldType, ROWS, COLS> >
 {
     typedef Dune::FieldMatrix<FieldType, 1, 1> value;
-};
-
-template<typename FieldType, int ROWS, int COLS>
-struct ScalarType<Dune::MatrixBlock<FieldType, ROWS, COLS> >
-{
-    typedef Dune::MatrixBlock<FieldType, 1, 1> value;
-};
-
-template<typename FieldType, int ROWS, int COLS>
-struct ScalarType<Ewoms::MatrixBlock<FieldType, ROWS, COLS> >
-{
-    typedef Ewoms::MatrixBlock<FieldType, 1, 1> value;
 };
 
 template<typename BlockType, typename Allocator>

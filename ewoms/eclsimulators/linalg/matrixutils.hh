@@ -16,15 +16,13 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EWOMS_ECLSIM_MATRIX_BLOCK_HH
-#define EWOMS_ECLSIM_MATRIX_BLOCK_HH
+#ifndef EWOMS_MATRIX_UTILS_HH
+#define EWOMS_MATRIX_UTILS_HH
 
 #include <dune/common/fmatrix.hh>
 #include <dune/common/fvector.hh>
 #include <dune/common/version.hh>
 #include <dune/istl/matrixutils.hh>
-#include <dune/istl/umfpack.hh>
-#include <dune/istl/superlu.hh>
 
 namespace Dune
 {
@@ -362,89 +360,6 @@ static inline void invertMatrix(Dune::DynamicMatrix<K>& matrix)
 }
 
 } // end ISTLUtility
-
-template <class Scalar, int n, int m>
-class MatrixBlock : public Dune::FieldMatrix<Scalar, n, m>
-{
-public:
-    typedef Dune::FieldMatrix<Scalar, n, m>  BaseType;
-
-    using BaseType :: operator= ;
-    using BaseType :: rows;
-    using BaseType :: cols;
-    explicit MatrixBlock( const Scalar scalar = 0 ) : BaseType( scalar ) {}
-    void invert()
-    {
-        ISTLUtility::invertMatrix( *this );
-    }
-    const BaseType& asBase() const { return static_cast< const BaseType& > (*this); }
-    BaseType& asBase() { return static_cast< BaseType& > (*this); }
-};
-
-template<class K, int n, int m>
-void
-print_row(std::ostream& s, const MatrixBlock<K,n,m>& A,
-          typename FieldMatrix<K,n,m>::size_type I,
-          typename FieldMatrix<K,n,m>::size_type J,
-          typename FieldMatrix<K,n,m>::size_type therow, int width,
-          int precision)
-{
-    print_row(s, A.asBase(), I, J, therow, width, precision);
-}
-
-template<class K, int n, int m>
-K& firstmatrixelement(MatrixBlock<K,n,m>& A)
-{
-   return firstmatrixelement( A.asBase() );
-}
-
-template<typename Scalar, int n, int m>
-struct MatrixDimension< MatrixBlock< Scalar, n, m > >
-: public MatrixDimension< typename MatrixBlock< Scalar, n, m >::BaseType >
-{
-};
-
-#if HAVE_UMFPACK
-
-/// \brief UMFPack specialization for MatrixBlock to make AMG happy
-///
-/// Without this the empty default implementation would be used.
-template<typename T, typename A, int n, int m>
-class UMFPack<BCRSMatrix<MatrixBlock<T,n,m>, A> >
-    : public UMFPack<BCRSMatrix<FieldMatrix<T,n,m>, A> >
-{
-    typedef UMFPack<BCRSMatrix<FieldMatrix<T,n,m>, A> > Base;
-    typedef BCRSMatrix<FieldMatrix<T,n,m>, A> Matrix;
-
-public:
-    typedef BCRSMatrix<MatrixBlock<T,n,m>, A> RealMatrix;
-
-    UMFPack(const RealMatrix& matrix, int verbose, bool)
-        : Base(reinterpret_cast<const Matrix&>(matrix), verbose)
-    {}
-};
-#endif
-
-#if HAVE_SUPERLU
-
-/// \brief SuperLU specialization for MatrixBlock to make AMG happy
-///
-/// Without this the empty default implementation would be used.
-template<typename T, typename A, int n, int m>
-class SuperLU<BCRSMatrix<MatrixBlock<T,n,m>, A> >
-    : public SuperLU<BCRSMatrix<FieldMatrix<T,n,m>, A> >
-{
-    typedef SuperLU<BCRSMatrix<FieldMatrix<T,n,m>, A> > Base;
-    typedef BCRSMatrix<FieldMatrix<T,n,m>, A> Matrix;
-
-public:
-    typedef BCRSMatrix<MatrixBlock<T,n,m>, A> RealMatrix;
-
-    SuperLU(const RealMatrix& matrix, int verbose, bool reuse=true)
-        : Base(reinterpret_cast<const Matrix&>(matrix), verbose, reuse)
-    {}
-};
-#endif
 
 } // end namespace Dune
 

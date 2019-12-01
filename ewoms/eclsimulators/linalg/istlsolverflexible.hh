@@ -19,7 +19,6 @@
 #ifndef EWOMS_ISTLSOLVEREBOSFLEXIBLE_HH
 #define EWOMS_ISTLSOLVEREBOSFLEXIBLE_HH
 
-#include <ewoms/numerics/linear/matrixblock.hh>
 #include <ewoms/eclsimulators/linalg/findoverlaprowsandcolumns.hh>
 #include <ewoms/eclsimulators/linalg/flexiblesolver.hh>
 #include <ewoms/eclsimulators/linalg/setuppropertytree.hh>
