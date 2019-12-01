@@ -264,6 +264,15 @@ namespace Ewoms
         // the upwinding segment for each segment based on the flow direction
         std::vector<int> upwinding_segments_;
 
+        mutable int debug_cost_counter_ = 0;
+
+        // TODO: this is the old implementation, it is possible the new value does not need it anymore
+        std::vector<EvalWell> segment_reservoir_volume_rates_;
+
+        std::vector<std::vector<EvalWell>> segment_phase_fractions_;
+
+        std::vector<std::vector<EvalWell>> segment_phase_viscosities_;
+
         void initMatrixAndVectors(const int num_cells) const;
 
         // protected functions
@@ -339,13 +348,29 @@ namespace Ewoms
                          const int perf,
                          std::vector<EvalWell>& mob) const;
 
-        void computeWellRatesWithBhpPotential(const Simulator& ebosSimulator,
-                                              const std::vector<Scalar>& B_avg,
-                                              const double& bhp,
-                                              std::vector<double>& well_flux,
-                                              Ewoms::DeferredLogger& deferred_logger);
+        void computeWellRatesAtBhpLimit(const Simulator& ebosSimulator,
+                                        const std::vector<Scalar>& B_avg,
+                                        std::vector<double>& well_flux,
+                                        Ewoms::DeferredLogger& deferred_logger) const;
 
-        void assembleControlEq(const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState, Ewoms::DeferredLogger& deferred_logger);
+        void computeWellRatesWithBhp(const Simulator& ebosSimulator,
+                                     const std::vector<Scalar>& B_avg,
+                                     const Scalar bhp,
+                                     std::vector<double>& well_flux,
+                                     Ewoms::DeferredLogger& deferred_logger) const;
+
+        std::vector<double>
+        computeWellPotentialWithTHP(const Simulator& ebos_simulator,
+                                    const std::vector<Scalar>& B_avg,
+                                    Ewoms::DeferredLogger& deferred_logger) const;
+
+        void assembleControlEq(const WellState& well_state,
+                               const Ewoms::Schedule& schedule,
+                               const SummaryState& summaryState,
+                               const Well::InjectionControls& inj_controls,
+                               const Well::ProductionControls& prod_controls,
+                               Ewoms::DeferredLogger& deferred_logger);
+
         void assembleGroupProductionControl(const Group& group, const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState, EvalWell& control_eq, double efficincyFactor, Ewoms::DeferredLogger& deferred_logger);
         void assembleGroupInjectionControl(const Group& group, const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState,  const Well::InjectorType& injectorType, EvalWell& control_eq, double efficincyFactor, Ewoms::DeferredLogger& deferred_logger);
 
@@ -378,11 +403,15 @@ namespace Ewoms
         void iterateWellEquations(const Simulator& ebosSimulator,
                                   const std::vector<Scalar>& B_avg,
                                   const double dt,
+                                  const Well::InjectionControls& inj_controls,
+                                  const Well::ProductionControls& prod_controls,
                                   WellState& well_state,
                                   Ewoms::DeferredLogger& deferred_logger);
 
         void assembleWellEqWithoutIteration(const Simulator& ebosSimulator,
                                             const double dt,
+                                            const Well::InjectionControls& inj_controls,
+                                            const Well::ProductionControls& prod_controls,
                                             WellState& well_state,
                                             Ewoms::DeferredLogger& deferred_logger);
 
@@ -421,6 +450,25 @@ namespace Ewoms
         // for a well, when all drawdown are in the wrong direction, then this well will not
         // be able to produce/inject .
         bool allDrawDownWrongDirection(const Simulator& ebos_simulator) const;
+
+        boost::optional<double> computeBhpAtThpLimitProd(const Simulator& ebos_simulator,
+                                                         const std::vector<Scalar>& B_avg,
+                                                         const SummaryState& summary_state,
+                                                         DeferredLogger& deferred_logger) const;
+
+        boost::optional<double> computeBhpAtThpLimitInj(const Simulator& ebos_simulator,
+                                                        const std::vector<Scalar>& B_avg,
+                                                        const SummaryState& summary_state,
+                                                        DeferredLogger& deferred_logger) const;
+
+        double maxPerfPress(const Simulator& ebos_simulator) const;
+
+        void assembleSICDPressureEq(const int seg) const;
+
+        // TODO: when more ICD devices join, we should have a better interface to do this
+        void calculateSICDEFlowScalingFactors();
+
+        EvalWell pressureDropSpiralICD(const int seg) const;
 
     };
 

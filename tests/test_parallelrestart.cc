@@ -28,6 +28,7 @@
 
 namespace {
 
+#if HAVE_MPI
 Ewoms::data::Solution getSolution()
 {
     Ewoms::data::Solution sol1;
@@ -95,6 +96,7 @@ Ewoms::data::Well getWell()
     well1.segments.insert({0, getSegment()});
     return well1;
 }
+#endif
 
 }
 
@@ -110,7 +112,7 @@ std::tuple<T,int,int> PackUnpack(const T& in)
     T out;
     Ewoms::Mpi::unpack(out, buffer, pos2, comm);
 
-    return {out, pos1, pos2};
+    return std::make_tuple(out, pos1, pos2);
 }
 
 BOOST_AUTO_TEST_CASE(Solution)

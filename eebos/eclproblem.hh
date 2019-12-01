@@ -939,7 +939,7 @@ public:
         }
 #endif // NDEBUG
 
-        const auto& simulator = this->simulator();
+        auto& simulator = this->simulator();
         wellModel_.endTimeStep();
         if (enableAquifers_)
             aquiferModel_.endTimeStep();
@@ -957,6 +957,16 @@ public:
                     drift_[globalDofIdx] *= this->model().dofTotalVolume(globalDofIdx);
             }
         }
+
+        bool isSubStep = !EWOMS_GET_PARAM(TypeTag, bool, EnableWriteAllSolutions) && !this->simulator().episodeWillBeOver();
+        eclWriter_->evalSummaryState(isSubStep);
+
+        auto& schedule = simulator.vanguard().schedule();
+        int episodeIdx = simulator.episodeIndex();
+        this->applyActions(episodeIdx,
+                           simulator.time() + simulator.timeStepSize(),
+                           schedule,
+                           simulator.vanguard().summaryState());
     }
 
     /*!
@@ -969,9 +979,6 @@ public:
         const auto& timeMap = schedule.getTimeMap();
 
         int episodeIdx = simulator.episodeIndex();
-        this->applyActions(episodeIdx + 1,
-                           schedule,
-                           simulator.vanguard().summaryState());
 
         // check if we're finished ...
         if (episodeIdx + 1 >= static_cast<int>(timeMap.numTimesteps())) {
@@ -1009,13 +1016,12 @@ public:
         ParentType::writeOutput(verbose);
 
         bool isSubStep = !EWOMS_GET_PARAM(TypeTag, bool, EnableWriteAllSolutions) && !this->simulator().episodeWillBeOver();
-
-        eclWriter_->evalSummaryState(isSubStep);
         if (enableEclOutput_)
             eclWriter_->writeOutput(isSubStep);
     }
 
     void applyActions(int reportStep,
+                      double sim_time,
                       Ewoms::Schedule& schedule,
                       const Ewoms::SummaryState& summaryState) {
         const auto& actions = schedule.actions(reportStep);
@@ -1023,6 +1029,16 @@ public:
             return;
 
         Ewoms::Action::Context context( summaryState );
+        auto now = Ewoms::TimeStampUTC( schedule.getStartTime() ) + std::chrono::duration<double>(sim_time);
+        std::string ts;
+        {
+            std::ostringstream os;
+            os << std::setw(4) <<                      std::to_string(now.year())  << '/'
+               << std::setw(2) << std::setfill('0') << std::to_string(now.month()) << '/'
+               << std::setw(2) << std::setfill('0') << std::to_string(now.day()) << "  report:" << std::to_string(reportStep);
+
+            ts = os.str();
+        }
 
         auto simTime = schedule.simTime(reportStep);
         for (const auto& action : actions.pending(simTime)) {
@@ -1035,11 +1051,11 @@ public:
                         wells_string += matching_wells[iw] + ", ";
                     wells_string += matching_wells.back();
                 }
-                std::string msg = "The action: " + action->name() + " evaluated to true at report step: " + std::to_string(reportStep) + " wells: " + wells_string;
+                std::string msg = "The action: " + action->name() + " evaluated to true at " + ts + " wells: " + wells_string;
                 Ewoms::OpmLog::info(msg);
                 schedule.applyAction(reportStep, *action, actionResult);
             } else {
-                std::string msg = "The action: " + action->name() + " evaluated to false at report step: " + std::to_string(reportStep);
+                std::string msg = "The action: " + action->name() + " evaluated to false at " + ts;
                 Ewoms::OpmLog::info(msg);
             }
         }
@@ -1701,6 +1717,9 @@ public:
 
     EclWellModel& wellModel()
     { return wellModel_; }
+
+    EclAquiferModel& mutableAquiferModel()
+    { return aquiferModel_; }
 
     // temporary solution to facilitate output of initial state from eflow
     const InitialFluidState& initialFluidState(unsigned globalDofIdx) const

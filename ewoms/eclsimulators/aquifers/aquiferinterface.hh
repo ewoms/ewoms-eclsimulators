@@ -24,6 +24,8 @@
 #include <ewoms/eclio/parser/eclipsestate/aquancon.hh>
 #include <ewoms/eclio/utility/numeric/linearinterpolation.hh>
 
+#include <ewoms/eclio/output/data/aquifer.hh>
+
 #include <ewoms/common/mathtoolbox.hh>
 #include <ewoms/common/densead/math.hh>
 #include <ewoms/common/densead/evaluation.hh>
@@ -70,6 +72,26 @@ namespace Ewoms
 
     // Deconstructor
     virtual ~AquiferInterface() {}
+
+    void initFromRestart(const std::vector<data::AquiferData>& aquiferSoln)
+    {
+      auto xaqPos = std::find_if(aquiferSoln.begin(), aquiferSoln.end(),
+        [this](const data::AquiferData& xaq) -> bool
+      {
+        return xaq.aquiferID == this->connection_.aquiferID;
+      });
+
+      if (xaqPos == aquiferSoln.end()) {
+        // No restart value applies to this aquifer.  Nothing to do.
+        return;
+      }
+
+      this->assignRestartData(*xaqPos);
+
+      this->W_flux_ = xaqPos->volume;
+      this->pa0_    = xaqPos->initPressure;
+      this->solution_set_from_restart_ = true;
+    }
 
     void initialSolutionApplied()
     {
@@ -126,7 +148,10 @@ namespace Ewoms
     inline void initQuantities(const Aquancon::AquanconOutput& connection)
     {
       // We reset the cumulative flux at the start of any simulation, so, W_flux = 0
-      W_flux_ = 0.;
+      if (!this->solution_set_from_restart_)
+      {
+        W_flux_ = 0.;
+      }
 
       // We next get our connections to the aquifer and initialize these quantities using the initialize_connections function
       initializeConnections(connection);
@@ -204,7 +229,11 @@ namespace Ewoms
 
     Eval W_flux_;
 
+    bool solution_set_from_restart_{false};
+
     virtual void initializeConnections(const Aquancon::AquanconOutput& connection) =0;
+
+    virtual void assignRestartData(const data::AquiferData& xaq) = 0;
 
     virtual void calculateInflowRate(int idx, const Simulator& simulator) = 0;
 

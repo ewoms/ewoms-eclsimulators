@@ -26,10 +26,15 @@
 #include <ewoms/eclio/parser/eclipsestate/aquiferct.hh>
 #include <ewoms/eclio/parser/eclipsestate/aquifetp.hh>
 #include <ewoms/eclio/parser/eclipsestate/aquancon.hh>
-#include <ewoms/eclsimulators/timestepping/simulatortimer.hh>
+
+#include <ewoms/eclio/output/data/aquifer.hh>
+
 #include <ewoms/eclsimulators/aquifers/aquifercartertracy.hh>
 #include <ewoms/eclsimulators/aquifers/aquiferfetkovich.hh>
+
 #include <ewoms/common/densead/math.hh>
+
+#include <vector>
 
 namespace Ewoms {
 
@@ -44,6 +49,8 @@ namespace Ewoms {
             explicit BlackoilAquiferModel(Simulator& simulator);
 
             void initialSolutionApplied();
+            void initFromRestart(const std::vector<data::AquiferData>& aquiferSoln);
+
             void beginEpisode();
             void beginTimeStep();
             void beginIteration();
