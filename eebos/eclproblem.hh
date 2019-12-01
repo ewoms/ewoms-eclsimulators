@@ -28,29 +28,9 @@
 #ifndef EWOMS_ECL_PROBLEM_HH
 #define EWOMS_ECL_PROBLEM_HH
 
-//#define DISABLE_ALUGRID_SFC_ORDERING 1
-//#define EBOS_USE_ALUGRID 1
-
-// make sure that the EBOS_USE_ALUGRID macro. using the preprocessor for this is slightly
-// hacky...
-#if EBOS_USE_ALUGRID
-//#define DISABLE_ALUGRID_SFC_ORDERING 1
-#if !HAVE_DUNE_ALUGRID
-#warning "ALUGrid was indicated to be used for the ECL black oil simulator, but this "
-#warning "requires the presence of dune-alugrid >= 2.4. Falling back to Dune::CpGrid"
-#undef EBOS_USE_ALUGRID
-#define EBOS_USE_ALUGRID 0
-#endif
-#else
-#define EBOS_USE_ALUGRID 0
-#endif
-
-#if EBOS_USE_ALUGRID
-#include "eclalugridvanguard.hh"
-#else
 //#include "eclpolyhedralgridvanguard.hh"
 #include "eclcpgridvanguard.hh"
-#endif
+
 #include "eclwellmanager.hh"
 #include "eclequilinitializer.hh"
 #include "eclwriter.hh"
@@ -116,12 +96,8 @@ class EclProblem;
 
 BEGIN_PROPERTIES
 
-#if EBOS_USE_ALUGRID
-NEW_TYPE_TAG(EclBaseProblem, INHERITS_FROM(EclAluGridVanguard, EclOutputBlackOil, VtkEclTracer));
-#else
 NEW_TYPE_TAG(EclBaseProblem, INHERITS_FROM(EclCpGridVanguard, EclOutputBlackOil, VtkEclTracer));
 //NEW_TYPE_TAG(EclBaseProblem, INHERITS_FROM(EclPolyhedralGridVanguard, EclOutputBlackOil, VtkEclTracer));
-#endif
 
 // The class which deals with ECL wells
 NEW_PROP_TAG(EclWellModel);

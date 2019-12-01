@@ -29,6 +29,12 @@
 #include <ewoms/eclio/parser/eclipsestate/tables/ssfntable.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/misctable.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/msfntable.hh>
+#include <ewoms/eclio/parser/eclipsestate/tables/swoftable.hh>
+#include <ewoms/eclio/parser/eclipsestate/tables/sgoftable.hh>
+#include <ewoms/eclio/parser/eclipsestate/tables/slgoftable.hh>
+#include <ewoms/eclio/parser/eclipsestate/tables/swfntable.hh>
+#include <ewoms/eclio/parser/eclipsestate/tables/sgfntable.hh>
+#include <ewoms/eclio/parser/eclipsestate/tables/sof3table.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/sgcwmistable.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/sorwmistable.hh>
 #include <ewoms/material/fluidmatrixinteractions/eclepsscalingpoints.hh>

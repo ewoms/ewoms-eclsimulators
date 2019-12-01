@@ -16,6 +16,8 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
+
 #include <ewoms/eclsimulators/deprecated/props/satfunc/relpermdiagnostics.hh>
 #include <ewoms/eclsimulators/deprecated/props/phaseusagefromdeck.hh>
 #include <ewoms/material/fluidmatrixinteractions/eclepsscalingpoints.hh>
