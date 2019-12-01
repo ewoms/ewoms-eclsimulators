@@ -28,7 +28,7 @@ find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 # thank you!
 dune_enable_all_packages()
 
-ewoms_recursive_add_library("ewomseclsimulators" "ewoms" "eebos/nncsorter.cc")
+ewoms_recursive_add_library("ewomseclsimulators" "ewoms")
 
 # recursively mark all header files beneath the "ewoms" directory for
 # installation.

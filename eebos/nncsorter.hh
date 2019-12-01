@@ -35,7 +35,68 @@ namespace Ewoms
 /// \param editnncData The EDITNNC data as provided by the deck.
 /// \return A lexicographically sorted vector of the scaled NNC data.
 ///         For each entry entry.cell1<entry.cell2 will hold for convenience.
-std::vector<Ewoms::NNCdata> sortNncAndApplyEditnnc(const std::vector<Ewoms::NNCdata>& nncData, std::vector<Ewoms::NNCdata> editnncData,
-                                                 bool log = true);
+inline std::vector<Ewoms::NNCdata> sortNncAndApplyEditnnc(const std::vector<Ewoms::NNCdata>& nncDataIn,
+                                                        std::vector<Ewoms::NNCdata> editnncData,
+                                                        bool log = true)
+{
+    auto nncLess =
+        [](const Ewoms::NNCdata& d1, const Ewoms::NNCdata& d2) {
+            return
+                (d1.cell1 < d2.cell1)
+                || (d1.cell1 == d2.cell1 && d1.cell2 < d2.cell2);
+        };
+
+    auto makeCell1LessCell2 =
+        [](const Ewoms::NNCdata& entry) {
+            if ( entry.cell2 < entry.cell1)
+                return Ewoms::NNCdata(entry.cell2, entry.cell1, entry.trans);
+            else
+                return entry;
+        };
+
+    // We need to make sure that for each entry cell1<=cell2 holds. Otherwise sorting
+    // will not make the search more accurate if the engineer chooses to define NNCs
+    // differently.
+    std::vector<Ewoms::NNCdata> nncData(nncDataIn);
+    std::transform(nncData.begin(), nncData.end(), nncData.begin(), makeCell1LessCell2);
+    std::transform(editnncData.begin(), editnncData.end(), editnncData.begin(), makeCell1LessCell2);
+    std::sort(nncData.begin(), nncData.end(), nncLess);
+    auto candidate = nncData.begin();
+
+    for (const auto& edit: editnncData) {
+        auto printNncWarning =
+            [](int c1, int c2) {
+                std::ostringstream sstr;
+                sstr << "Cannot edit NNC from " << c1 << " to " << c2
+                     << " as it does not exist";
+                Ewoms::OpmLog::warning(sstr.str());
+            };
+        if (candidate == nncData.end() && log) {
+            // no more NNCs left
+            printNncWarning(edit.cell1, edit.cell2);
+            continue;
+        }
+        if (candidate->cell1 != edit.cell1 || candidate->cell2 != edit.cell2) {
+            candidate = std::lower_bound(nncData.begin(), nncData.end(), Ewoms::NNCdata(edit.cell1, edit.cell2, 0), nncLess);
+            if (candidate == nncData.end() && log) {
+                // no more NNCs left
+                printNncWarning(edit.cell1, edit.cell2);
+                continue;
+            }
+        }
+        auto firstCandidate = candidate;
+        while (candidate != nncData.end()
+               && candidate->cell1 == edit.cell1
+               && candidate->cell2 == edit.cell2)
+        {
+            candidate->trans *= edit.trans;
+            ++candidate;
+        }
+        // start with first match in next iteration to catch case where next
+        // EDITNNC is for same pair.
+        candidate = firstCandidate;
+    }
+    return nncData;
+}
 }
 #endif
