@@ -28,7 +28,8 @@
 #include "config.h"
 
 #include "eebos.hh"
-#include "starteebos.hh"
+
+#include <ewoms/numerics/utils/start.hh>
 
 BEGIN_PROPERTIES
 
@@ -58,7 +59,7 @@ void ebosFoamSetDeck(Ewoms::Deck* deck,
 int ebosFoamMain(int argc, char **argv)
 {
     typedef TTAG(EebosFoamTypeTag) ProblemTypeTag;
-    return Ewoms::startEebos<ProblemTypeTag>(argc, argv);
+    return Ewoms::start<ProblemTypeTag>(argc, argv);
 }
 
 }

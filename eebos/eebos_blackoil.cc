@@ -28,7 +28,8 @@
 #include "config.h"
 
 #include "eebos.hh"
-#include "starteebos.hh"
+
+#include <ewoms/numerics/utils/start.hh>
 
 namespace Ewoms {
 
@@ -106,7 +107,7 @@ void ebosBlackOilSetDeck(Ewoms::Deck* deck,
 int ebosBlackOilMain(int argc, char **argv)
 {
     typedef TTAG(EebosTypeTag) ProblemTypeTag;
-    return Ewoms::startEebos<ProblemTypeTag>(argc, argv);
+    return Ewoms::start<ProblemTypeTag>(argc, argv);
 }
 
 }

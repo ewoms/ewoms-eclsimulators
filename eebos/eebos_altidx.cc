@@ -32,7 +32,8 @@
 #include "config.h"
 
 #include "eebos.hh"
-#include "starteebos.hh"
+
+#include <ewoms/numerics/utils/start.hh>
 
 namespace Ewoms {
 class EclAlternativeBlackOilIndexTraits
@@ -68,5 +69,5 @@ END_PROPERTIES
 int main(int argc, char **argv)
 {
     typedef TTAG(EebosAltIdxTypeTag) ProblemTypeTag;
-    return Ewoms::startEebos<ProblemTypeTag>(argc, argv);
+    return Ewoms::start<ProblemTypeTag>(argc, argv);
 }

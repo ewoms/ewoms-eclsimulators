@@ -46,6 +46,12 @@
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/summarystate.hh>
 
+#include <ewoms/eclio/opmlog/opmlog.hh>
+#include <ewoms/eclio/opmlog/eclipseprtlog.hh>
+#include <ewoms/eclio/opmlog/logutil.hh>
+
+#include <boost/filesystem.hpp>
+
 #if HAVE_MPI
 #include <mpi.h>
 #endif // HAVE_MPI
@@ -70,6 +76,7 @@ NEW_PROP_TAG(EquilGrid);
 NEW_PROP_TAG(Scalar);
 NEW_PROP_TAG(EclDeckFileName);
 NEW_PROP_TAG(OutputDir);
+NEW_PROP_TAG(OutputMode);
 NEW_PROP_TAG(EnableEwomsRstFile);
 NEW_PROP_TAG(EclStrictParsing);
 NEW_PROP_TAG(EclOutputInterval);
@@ -110,7 +117,122 @@ public:
 protected:
     static const int dimension = Grid::dimension;
 
+    static void ensureOutputDirExists_(const std::string& outputDir)
+    {
+        if (!boost::filesystem::is_directory(outputDir)) {
+            try {
+                boost::filesystem::create_directories(outputDir);
+            }
+            catch (const std::exception& e) {
+                throw std::runtime_error("Creation of output directory '" + outputDir + "' failed: " + e.what() + "\n");
+            }
+            catch (...) {
+                throw std::runtime_error("Creation of output directory '" + outputDir + "' failed for unknown reasons\n");
+            }
+        }
+    }
+
 public:
+    /*!
+     * \brief This method is called before the parameters are processed.
+     */
+    static void preDawn()
+    {}
+
+    /*!
+     * \brief This method is called after the parameters are processed, but before the
+     *        vanguard and simulator objects are instantiated.
+     *
+     * For ECL simulators, the logging infrastructure is set up here.
+     */
+    static void dawn()
+    {
+        int myRank = 0;
+#if HAVE_MPI
+        MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+#endif
+
+        // make sure that the directory specified via the --output-dir="..." parameter
+        // exists
+        const std::string& outputDir = EWOMS_GET_PARAM(TypeTag, std::string, OutputDir);
+        if (!outputDir.empty())
+            ensureOutputDirExists_(outputDir);
+
+        // find the base name of the case, i.e., the file name without the extension
+        namespace fs = boost::filesystem;
+        const std::string& deckFileNameParam = EWOMS_GET_PARAM(TypeTag, std::string, EclDeckFileName);
+        fs::path deckFileNamePath(deckFileNameParam);
+
+        // Strip extension "." or ".DATA"
+        std::string extension = boost::to_upper_copy(deckFileNamePath.extension().string());
+        std::string baseName;
+        if (extension == ".DATA" || extension == ".")
+            baseName = boost::to_upper_copy(deckFileNamePath.stem().string());
+        else
+            baseName = boost::to_upper_copy(deckFileNamePath.filename().string());
+
+        // Stitch together the names of the debug and PRT log files
+        std::string debugLogFileName = outputDir + "/" + baseName;
+        std::string prtLogFileName = outputDir + "/" + baseName;
+        if (myRank != 0) {
+            // Added rank to log file for non-zero ranks.
+            // This prevents message loss.
+            debugLogFileName += "." + std::to_string(myRank);
+            // If the following file appears then there is a bug.
+            prtLogFileName += "." + std::to_string(myRank);
+        }
+        prtLogFileName += ".PRT";
+        debugLogFileName += ".DBG";
+
+        // parse the --output-mode="..." command line parameter
+        enum class FileOutputMode {
+            // No output to files.
+            OutputNone = 0,
+            // Output only to log files, no eclipse output.
+            OutputLogOnly = 1,
+            // Output to all files.
+            OutputAll = 3
+        };
+        const std::string& outputModeParam = EWOMS_GET_PARAM(TypeTag, std::string, OutputMode);
+        FileOutputMode outputMode = FileOutputMode::OutputAll;
+        if (outputModeParam == "none" || outputModeParam == "false")
+            outputMode = FileOutputMode::OutputNone;
+        else if (outputModeParam == "log")
+            outputMode = FileOutputMode::OutputLogOnly;
+        else if (outputModeParam == "all" || outputModeParam == "true")
+            outputMode = FileOutputMode::OutputAll;
+        else
+            std::cerr << "Value '" << outputModeParam << "' is not a recognized output mode. Enabling all output.\n";
+
+        // add the actual logging backends
+        if (outputMode > FileOutputMode::OutputNone) {
+            std::shared_ptr<Ewoms::EclipsePRTLog> prtLog =
+                std::make_shared<Ewoms::EclipsePRTLog>(prtLogFileName,
+                                                     /*mask=*/Ewoms::Log::NoDebugMessageTypes,
+                                                     /*append=*/false,
+                                                     /*printSummary=*/true);
+            prtLog->setMessageLimiter(std::make_shared<Ewoms::MessageLimiter>());
+            prtLog->setMessageFormatter(std::make_shared<Ewoms::SimpleMessageFormatter>(/*useColorCoding=*/false));
+            Ewoms::OpmLog::addBackend("ECLIPSEPRTLOG", prtLog);
+        }
+
+        if (outputMode >= FileOutputMode::OutputLogOnly) {
+            std::shared_ptr<Ewoms::StreamLog> debugLog =
+                std::make_shared<Ewoms::EclipsePRTLog>(debugLogFileName,
+                                                     /*mask=*/Ewoms::Log::DefaultMessageTypes,
+                                                     /*append=*/false,
+                                                     /*printSummary=*/true);
+            Ewoms::OpmLog::addBackend("DEBUGLOG", debugLog);
+        }
+
+        // on the master rank, print something to stdout
+        if (myRank == 0) {
+            auto stdoutLog = std::make_shared<Ewoms::StreamLog>(std::cout, /*mask=*/Ewoms::Log::StdoutMessageTypes);
+            stdoutLog->setMessageFormatter(std::make_shared<Ewoms::SimpleMessageFormatter>(/*useColorCoding=*/true));
+            Ewoms::OpmLog::addBackend("STDOUT_LOGGER", stdoutLog);
+        }
+    }
+
     /*!
      * \brief Register the common run-time parameters for all ECL simulator vanguards.
      */

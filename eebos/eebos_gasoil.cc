@@ -28,7 +28,8 @@
 #include "config.h"
 
 #include "eebos.hh"
-#include "starteebos.hh"
+
+#include <ewoms/numerics/utils/start.hh>
 
 BEGIN_PROPERTIES
 
@@ -73,7 +74,7 @@ void ebosGasOilSetDeck(Ewoms::Deck* deck,
 int ebosGasOilMain(int argc, char **argv)
 {
     typedef TTAG(EebosGasOilTypeTag) ProblemTypeTag;
-    return Ewoms::startEebos<ProblemTypeTag>(argc, argv);
+    return Ewoms::start<ProblemTypeTag>(argc, argv);
 }
 
 }
