@@ -205,7 +205,6 @@ protected:
         typedef typename SparseMatrixAdapter::MatrixBlock MatrixBlockType;
         typedef typename Vector::block_type BlockVector;
         typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
-        typedef typename GET_PROP_TYPE(TypeTag, ThreadManager) ThreadManager;
         typedef typename GridView::template Codim<0>::Entity Element;
         typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
         // Due to miscibility oil <-> gas the water eqn is the one we can replace with a pressure equation.
@@ -674,7 +673,7 @@ protected:
                 elemCtx.updatePrimaryStencil(elem);
                 elemCtx.updatePrimaryIntensiveQuantities(/*timeIdx=*/0);
                 Dune::FieldVector<Evaluation, numEq> storage;
-                unsigned threadId = ThreadManager::threadId();
+                unsigned threadId = std::max(0, simulator_.taskletRunner().workerThreadIndex());
                 simulator_.model().localLinearizer(threadId).localResidual().computeStorage(storage,elemCtx,/*spaceIdx=*/0, /*timeIdx=*/0);
                 Scalar extrusionFactor = elemCtx.intensiveQuantities(0, /*timeIdx=*/0).extrusionFactor();
                 Scalar scvVolume = elemCtx.stencil(/*timeIdx=*/0).subControlVolume(0).volume() * extrusionFactor;

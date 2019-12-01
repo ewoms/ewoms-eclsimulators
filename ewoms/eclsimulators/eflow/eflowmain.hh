@@ -246,7 +246,6 @@ namespace Ewoms
                 if (status)
                     return status;
 
-                setupParallelism();
                 setupEebosSimulator(output_cout);
                 runDiagnostics(output_cout);
                 createSimulator();
@@ -323,29 +322,6 @@ namespace Ewoms
         }
 
     protected:
-        void setupParallelism()
-        {
-            // determine the rank of the current process and the number of processes
-            // involved in the simulation. MPI must have already been initialized
-            // here. (yes, the name of this method is misleading.)
-#if HAVE_MPI
-            MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank_);
-            MPI_Comm_size(MPI_COMM_WORLD, &mpi_size_);
-#else
-            mpi_rank_ = 0;
-            mpi_size_ = 1;
-#endif
-
-#if _OPENMP
-            // if openMP is available, default to 2 threads per process.
-            if (!getenv("OMP_NUM_THREADS"))
-                omp_set_num_threads(std::min(2, omp_get_num_procs()));
-#endif
-
-            typedef typename GET_PROP_TYPE(TypeTag, ThreadManager) ThreadManager;
-            ThreadManager::init();
-        }
-
         void mergeParallelLogFiles(bool output_to_files)
         {
             // force closing of all log files.
