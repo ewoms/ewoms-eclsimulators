@@ -22,10 +22,6 @@
 #include <vector>
 #include <utility>
 
-#if HAVE_CONFIG_H
-#include "config.h"
-#endif // HAVE_CONFIG_H
-
 #include <ewoms/eclio/utility/numeric/linearinterpolation.hh>
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
 #include <ewoms/eclio/parser/deck/deck.hh>

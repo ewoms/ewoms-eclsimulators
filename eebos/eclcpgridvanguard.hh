@@ -29,7 +29,6 @@
 
 #include "eclbasevanguard.hh"
 #include "ecltransmissibility.hh"
-#include "femcpgridcompat.hh"
 
 #include <ewoms/eclgrids/cpgrid.hh>
 #include <ewoms/eclgrids/cpgrid/gridhelpers.hh>
