@@ -28,7 +28,6 @@
 #ifndef EWOMS_ECL_PROBLEM_HH
 #define EWOMS_ECL_PROBLEM_HH
 
-//#include "eclpolyhedralgridvanguard.hh"
 #include "eclcpgridvanguard.hh"
 
 #include "eclwellmanager.hh"
@@ -97,7 +96,6 @@ class EclProblem;
 BEGIN_PROPERTIES
 
 NEW_TYPE_TAG(EclBaseProblem, INHERITS_FROM(EclCpGridVanguard, EclOutputBlackOil, VtkEclTracer));
-//NEW_TYPE_TAG(EclBaseProblem, INHERITS_FROM(EclPolyhedralGridVanguard, EclOutputBlackOil, VtkEclTracer));
 
 // The class which deals with ECL wells
 NEW_PROP_TAG(EclWellModel);
