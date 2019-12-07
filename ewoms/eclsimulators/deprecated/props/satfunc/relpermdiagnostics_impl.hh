@@ -57,7 +57,7 @@ namespace Ewoms {
         EclEpsGridProperties epsGridProperties(eclState, false, compressedToCartesianIdx);
         const std::string tag = "Scaled endpoints";
         for (int c = 0; c < nc; ++c) {
-            const std::string satnumIdx = std::to_string(epsGridProperties.satRegion(c));
+            const std::string satnumIdx = std::to_string(epsGridProperties.compressedSatnum[c]);
             std::string cellIdx;
             {
                 std::array<int, 3> ijk;
