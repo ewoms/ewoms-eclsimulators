@@ -850,7 +850,7 @@ public:
             boost::posix_time::time_facet* facet = new boost::posix_time::time_facet("%d-%b-%Y");
             boost::posix_time::ptime date = boost::posix_time::from_time_t((this->simulator().startTime())) + boost::posix_time::milliseconds(static_cast<long long>(this->simulator().time() / Ewoms::prefix::milli));
             ss.imbue(std::locale(std::locale::classic(), facet));
-            ss <<"\nTime step " << this->simulator().timeStepIndex() << ", stepsize "
+            ss <<"Eebos: Begin time step " << this->simulator().timeStepIndex() << ", stepsize "
                << unit::convert::to(this->simulator().timeStepSize(), unit::day) << " days,"
                << " at day " << (double)unit::convert::to(this->simulator().time(), unit::day)
                << "/" << (double)unit::convert::to(this->simulator().endTime(), unit::day)
