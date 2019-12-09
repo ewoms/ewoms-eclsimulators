@@ -18,6 +18,13 @@
 #ifndef EFLOW_TAG_HH
 #define EFLOW_TAG_HH
 
+#if HAVE_DUNE_FEM
+#warning "eflow is not compatible with dune-fem. Disabling."
+#undef HAVE_DUNE_FEM
+#elif defined(HAVE_DUNE_FEM)
+#undef HAVE_DUNE_FEM
+#endif
+
 #include <ewoms/eclsimulators/eflow/eflowmain.hh>
 #include <ewoms/eclsimulators/eflow/missingfeatures.hh>
 #include <ewoms/eclsimulators/eflow/simulatorfullyimplicitblackoil.hh>
