@@ -33,6 +33,7 @@
 
 #include "eebos_blackoil.hh"
 #include "eebos_oilwater.hh"
+#include "eebos_oilwaterpolymer.hh"
 #include "eebos_gasoil.hh"
 // TODO (?): #include "eebos_watergas.hh"
 #include "eebos_thermal.hh"
@@ -117,6 +118,16 @@ int main(int argc, char **argv)
                                     << "combining twophase and solvent is not supported by the multiplexed simulator\n";
             std::cerr << notSupportedErrorStream.str() << std::endl;
             std::abort();
+        }
+
+        if (polymerActive && oilActive && waterActive) {
+            if (myRank == 0)
+                std::cout << "Using oil-water-polymer mode" << std::endl;
+            Ewoms::ebosOilWaterPolymerSetDeck(deck.get(),
+                                            parseContext.get(),
+                                            errorGuard.get(),
+                                            externalSetupTimer.elapsed());
+            return Ewoms::ebosOilWaterPolymerMain(argc, argv);
         }
 
         if (polymerActive) {

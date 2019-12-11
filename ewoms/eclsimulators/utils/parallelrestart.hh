@@ -31,6 +31,7 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+
 namespace Ewoms
 {
 namespace Mpi
@@ -73,24 +74,6 @@ std::size_t packSize(const std::map<T1,T2,C,A>& data, Dune::MPIHelper::MPICommun
 template<class T1, class T2, class H, class P, class A>
 std::size_t packSize(const std::unordered_map<T1,T2,H,P,A>& data, Dune::MPIHelper::MPICommunicator comm);
 
-std::size_t packSize(const data::Rates& data, Dune::MPIHelper::MPICommunicator comm);
-
-std::size_t packSize(const data::Connection& data, Dune::MPIHelper::MPICommunicator comm);
-
-std::size_t packSize(const data::Segment& data, Dune::MPIHelper::MPICommunicator comm);
-
-std::size_t packSize(const data::Well& data, Dune::MPIHelper::MPICommunicator comm);
-
-std::size_t packSize(const data::CellData& data, Dune::MPIHelper::MPICommunicator comm);
-
-std::size_t packSize(const RestartKey& data, Dune::MPIHelper::MPICommunicator comm);
-
-std::size_t packSize(const data::Solution& data, Dune::MPIHelper::MPICommunicator comm);
-
-std::size_t packSize(const data::WellRates& data, Dune::MPIHelper::MPICommunicator comm);
-
-std::size_t packSize(const RestartValue& data, Dune::MPIHelper::MPICommunicator comm);
-
 ////// pack routines
 
 template<class T>
@@ -125,12 +108,6 @@ template<class T, class A>
 void pack(const std::vector<T,A>& data, std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm);
 
-void pack(const char* str, std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-void pack(const std::string& str, std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
 template<class T1, class T2, class C, class A>
 void pack(const std::map<T1,T2,C,A>& data, std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm);
@@ -139,31 +116,7 @@ template<class T1, class T2, class H, class P, class A>
 void pack(const std::unordered_map<T1,T2,H,P,A>& data, std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm);
 
-void pack(const data::Rates& data, std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-void pack(const data::Connection& data, std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-void pack(const data::Segment& data,std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-void pack(const data::Well& data, std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-void pack(const RestartKey& data, std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-void pack(const data::CellData& data, std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-void pack(const data::Solution& data, std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-void pack(const data::WellRates& data, std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-void pack(const RestartValue& data, std::vector<char>& buffer, int& position,
+void pack(const char* str, std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm);
 
 /// unpack routines
@@ -201,12 +154,6 @@ template<class T, class A>
 void unpack(std::vector<T,A>& data, std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm);
 
-void unpack(char* str, std::size_t length, std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
-
-void unpack(std::string& str, std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
-
 template<class T1, class T2, class C, class A>
 void unpack(std::map<T1,T2,C,A>& data, std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm);
@@ -215,32 +162,28 @@ template<class T1, class T2, class H, class P, class A>
 void unpack(std::unordered_map<T1,T2,H,P,A>& data, std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm);
 
-void unpack(data::Rates& data, std::vector<char>& buffer, int& position,
+void unpack(char* str, std::size_t length, std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm);
 
-void unpack(data::Connection& data, std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
+/// prototypes for complex types
 
-void unpack(data::Segment& data,std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
+#define ADD_PACK_PROTOTYPES(T) \
+  std::size_t packSize(const T& data, Dune::MPIHelper::MPICommunicator comm); \
+  void pack(const T& data, std::vector<char>& buffer, int& position, \
+          Dune::MPIHelper::MPICommunicator comm); \
+  void unpack(T& data, std::vector<char>& buffer, int& position, \
+              Dune::MPIHelper::MPICommunicator comm);
 
-void unpack(data::Well& data, std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
-
-void unpack(RestartKey& data, std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
-
-void unpack(data::CellData& data, std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
-
-void unpack(data::Solution& data, std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
-
-void unpack(data::WellRates& data, std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
-
-void unpack(RestartValue& data, std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
+ADD_PACK_PROTOTYPES(data::CellData)
+ADD_PACK_PROTOTYPES(data::Connection)
+ADD_PACK_PROTOTYPES(data::Rates)
+ADD_PACK_PROTOTYPES(data::Segment)
+ADD_PACK_PROTOTYPES(data::Solution)
+ADD_PACK_PROTOTYPES(data::Well)
+ADD_PACK_PROTOTYPES(data::WellRates)
+ADD_PACK_PROTOTYPES(RestartKey)
+ADD_PACK_PROTOTYPES(RestartValue)
+ADD_PACK_PROTOTYPES(std::string)
 
 } // end namespace Mpi
 RestartValue loadParallelRestart(const EclipseIO* eclIO, SummaryState& summaryState,

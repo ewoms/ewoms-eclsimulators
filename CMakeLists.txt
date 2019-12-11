@@ -44,14 +44,14 @@ ewoms_add_application(eebos
 
 # eebos variants
 set(MEEBOS_TARGETS "")
-foreach(EXT blackoil solvent polymer foam gasoil oilwater thermal)
+foreach(EXT blackoil solvent polymer foam gasoil oilwater oilwaterpolymer thermal)
   add_library(eebos_lib${EXT} OBJECT EXCLUDE_FROM_ALL eebos/eebos_${EXT}.cc)
   target_include_directories(eebos_lib${EXT} PRIVATE ${ecl_INCLUDE_DIRS})
   list(APPEND MEEBOS_TARGETS $<TARGET_OBJECTS:eebos_lib${EXT}>)
 endforeach()
 
 # add specialized eebos simulators with some black-oil extension
-foreach(EXT solvent polymer foam gasoil oilwater thermal)
+foreach(EXT solvent polymer foam gasoil oilwater oilwaterpolymer thermal )
   ewoms_add_application(eebos_${EXT}
     DEFAULT_ENABLE_IF ${BUILD_EEBOS_EXTENSIONS}
     SOURCES eebos/eebos_${EXT}_main.cc $<TARGET_OBJECTS:eebos_lib${EXT}>)

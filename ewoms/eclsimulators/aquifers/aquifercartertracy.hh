@@ -55,7 +55,7 @@ namespace Ewoms
             , aquct_data_(aquct_data)
             {}
 
-            void endTimeStep()
+            void endTimeStep() override
             {
                 for (const auto& Qai: Base::Qai_) {
                     Base::W_flux_ += Qai*Base::ebos_simulator_.timeStepSize();
@@ -70,7 +70,7 @@ namespace Ewoms
             Scalar mu_w_; // water viscosity
 
             // This function is used to initialize and calculate the alpha_i for each grid connection to the aquifer
-            inline void initializeConnections(const Aquancon::AquanconOutput& connection)
+            inline void initializeConnections(const Aquancon::AquanconOutput& connection) override
             {
                 const auto& eclState = Base::ebos_simulator_.vanguard().eclState();
                 const auto& ugrid = Base::ebos_simulator_.vanguard().grid();
@@ -182,14 +182,14 @@ namespace Ewoms
             }
 
             // This function implements Eq 5.7 of the EclipseTechnicalDescription
-            inline void calculateInflowRate(int idx, const Simulator& simulator)
+            inline void calculateInflowRate(int idx, const Simulator& simulator) override
             {
                 Scalar a, b;
                 calculateEqnConstants(a,b,idx,simulator);
                 Base::Qai_.at(idx) = Base::alphai_.at(idx)*( a - b * ( Base::pressure_current_.at(idx) - Base::pressure_previous_.at(idx) ) );
             }
 
-            inline void calculateAquiferConstants()
+            inline void calculateAquiferConstants() override
             {
                 // We calculate the influx constant
                 beta_ = aquct_data_.c2 * aquct_data_.h
@@ -203,7 +203,7 @@ namespace Ewoms
                       / ( aquct_data_.k_a * aquct_data_.c1 );
             }
 
-            inline void calculateAquiferCondition()
+            inline void calculateAquiferCondition() override
             {
 
                 int pvttableIdx = aquct_data_.pvttableID - 1;
@@ -239,7 +239,7 @@ namespace Ewoms
 
             // This function is for calculating the aquifer properties from equilibrium state with the reservoir
             // TODO: this function can be moved to the Inteface class, since it is the same for both Aquifer models
-            inline Scalar calculateReservoirEquilibrium()
+            inline Scalar calculateReservoirEquilibrium() override
             {
                 // Since the global_indices are the reservoir index, we just need to extract the fluidstate at those indices
                 std::vector<Scalar> pw_aquifer;
