@@ -16,8 +16,8 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EWOMS_BLACKOILMODELPARAMETERS_EBOS_HH
-#define EWOMS_BLACKOILMODELPARAMETERS_EBOS_HH
+#ifndef EWOMS_BLACKOILMODELPARAMETERS_EEBOS_HH
+#define EWOMS_BLACKOILMODELPARAMETERS_EEBOS_HH
 
 #include <ewoms/common/propertysystem.hh>
 #include <ewoms/common/parametersystem.hh>
@@ -208,4 +208,4 @@ namespace Ewoms
     };
 } // namespace Ewoms
 
-#endif // EWOMS_BLACKOILMODELPARAMETERS_EBOS_HH
+#endif // EWOMS_BLACKOILMODELPARAMETERS_EEBOS_HH

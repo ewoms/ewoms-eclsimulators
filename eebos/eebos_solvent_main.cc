@@ -23,9 +23,9 @@
 /*!
  * \file
  *
- * \brief The main function for the stand alone solvent variant of ebos.
+ * \brief The main function for the stand alone solvent variant of eebos.
  *
- * This only calls the ebosSolventMain() function.
+ * This only calls the eebosSolventMain() function.
  */
 #include "config.h"
 
@@ -33,5 +33,5 @@
 
 int main(int argc, char** argv)
 {
-    return Ewoms::ebosSolventMain(argc, argv);
+    return Ewoms::eebosSolventMain(argc, argv);
 }

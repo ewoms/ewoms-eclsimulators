@@ -23,10 +23,10 @@
 /*!
  * \file
  *
- * \brief The function prototypes required to start the oil-water variant of ebos
+ * \brief The function prototypes required to start the oil-water variant of eebos
  */
-#ifndef EBOS_BLACK_OIL_HH
-#define EBOS_BLACK_OIL_HH
+#ifndef EEBOS_BLACK_OIL_HH
+#define EEBOS_BLACK_OIL_HH
 
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/parsecontext.hh>
@@ -36,16 +36,16 @@
 #include <string>
 
 namespace Ewoms {
-bool ebosBlackOilDeckFileNameIsSet(int argc, char** argv);
-std::string ebosBlackOilGetDeckFileName(int argc, char** argv);
-std::unique_ptr<Ewoms::ParseContext> ebosBlackOilCreateParseContext(int argc, char** argv);
+bool eebosBlackOilDeckFileNameIsSet(int argc, char** argv);
+std::string eebosBlackOilGetDeckFileName(int argc, char** argv);
+std::unique_ptr<Ewoms::ParseContext> eebosBlackOilCreateParseContext(int argc, char** argv);
 
-void ebosBlackOilSetDeck(Ewoms::Deck* deck,
+void eebosBlackOilSetDeck(Ewoms::Deck* deck,
                          Ewoms::ParseContext* parseContext,
                          Ewoms::ErrorGuard* errorGuard,
                          double externalSetupTime);
 
-int ebosBlackOilMain(int argc, char** argv);
+int eebosBlackOilMain(int argc, char** argv);
 }
 
 #endif

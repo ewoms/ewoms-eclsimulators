@@ -57,7 +57,7 @@ END_PROPERTIES
 
 namespace Ewoms {
 
-void ebosGasOilSetDeck(Ewoms::Deck* deck,
+void eebosGasOilSetDeck(Ewoms::Deck* deck,
                        Ewoms::ParseContext* parseContext,
                        Ewoms::ErrorGuard* errorGuard,
                        double externalSetupTime)
@@ -71,7 +71,7 @@ void ebosGasOilSetDeck(Ewoms::Deck* deck,
     Vanguard::setExternalDeck(deck);
 }
 
-int ebosGasOilMain(int argc, char **argv)
+int eebosGasOilMain(int argc, char **argv)
 {
     typedef TTAG(EebosGasOilTypeTag) ProblemTypeTag;
     return Ewoms::start<ProblemTypeTag>(argc, argv);

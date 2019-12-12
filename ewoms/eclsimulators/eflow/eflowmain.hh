@@ -15,8 +15,8 @@
   You should have received a copy of the GNU General Public License
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EWOMS_EFLOW_MAIN_EBOS_HH
-#define EWOMS_EFLOW_MAIN_EBOS_HH
+#ifndef EWOMS_EFLOW_MAIN_EEBOS_HH
+#define EWOMS_EFLOW_MAIN_EEBOS_HH
 
 #include <sys/utsname.h>
 
@@ -59,7 +59,7 @@ END_PROPERTIES
 
 namespace Ewoms
 {
-    // The EFlowMain class is the ebos based black-oil simulator.
+    // The EFlowMain class is the eebos based black-oil simulator.
     template <class TypeTag>
     class EFlowMain
     {
@@ -87,7 +87,7 @@ namespace Ewoms
 
             Simulator::registerParameters();
 
-            // register the parameters inherited from ebos
+            // register the parameters inherited from eebos
             Ewoms::registerAllParameters_<TypeTag>(/*finalizeRegistration=*/false);
 
             // hide the parameters unused by eflow. TODO: this is a pain to maintain
@@ -354,9 +354,9 @@ namespace Ewoms
 
         void setupEebosSimulator(bool output_cout)
         {
-            ebosSimulator_.reset(new EebosSimulator(/*verbose=*/false));
-            ebosSimulator_->executionTimer().start();
-            ebosSimulator_->model().applyInitialSolution();
+            eebosSimulator_.reset(new EebosSimulator(/*verbose=*/false));
+            eebosSimulator_->executionTimer().start();
+            eebosSimulator_->model().applyInitialSolution();
 
             try {
                 if (output_cout) {
@@ -390,19 +390,19 @@ namespace Ewoms
         }
 
         const Deck& deck() const
-        { return ebosSimulator_->vanguard().deck(); }
+        { return eebosSimulator_->vanguard().deck(); }
 
         Deck& deck()
-        { return ebosSimulator_->vanguard().deck(); }
+        { return eebosSimulator_->vanguard().deck(); }
 
         const EclipseState& eclState() const
-        { return ebosSimulator_->vanguard().eclState(); }
+        { return eebosSimulator_->vanguard().eclState(); }
 
         EclipseState& eclState()
-        { return ebosSimulator_->vanguard().eclState(); }
+        { return eebosSimulator_->vanguard().eclState(); }
 
         const Schedule& schedule() const
-        { return ebosSimulator_->vanguard().schedule(); }
+        { return eebosSimulator_->vanguard().schedule(); }
 
         // Run diagnostics.
         // Writes to:
@@ -482,7 +482,7 @@ namespace Ewoms
         void createSimulator()
         {
             // Create the simulator instance.
-            simulator_.reset(new Simulator(*ebosSimulator_));
+            simulator_.reset(new Simulator(*eebosSimulator_));
         }
 
         static unsigned long long getTotalSystemMemory()
@@ -493,10 +493,10 @@ namespace Ewoms
         }
 
         Grid& grid()
-        { return ebosSimulator_->vanguard().grid(); }
+        { return eebosSimulator_->vanguard().grid(); }
 
     private:
-        std::unique_ptr<EebosSimulator> ebosSimulator_;
+        std::unique_ptr<EebosSimulator> eebosSimulator_;
         int  mpi_rank_ = 0;
         int  mpi_size_ = 1;
         boost::any parallel_information_;
@@ -504,4 +504,4 @@ namespace Ewoms
     };
 } // namespace Ewoms
 
-#endif // EWOMS_EFLOW_MAIN_EBOS_HH
+#endif // EWOMS_EFLOW_MAIN_EEBOS_HH

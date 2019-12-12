@@ -16,8 +16,8 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EWOMS_ISTLSOLVEREBOSFLEXIBLE_HH
-#define EWOMS_ISTLSOLVEREBOSFLEXIBLE_HH
+#ifndef EWOMS_ISTLSOLVEREEBOSFLEXIBLE_HH
+#define EWOMS_ISTLSOLVEREEBOSFLEXIBLE_HH
 
 #include <ewoms/eclsimulators/linalg/findoverlaprowsandcolumns.hh>
 #include <ewoms/eclsimulators/linalg/flexiblesolver.hh>
@@ -210,4 +210,4 @@ protected:
 
 } // namespace Ewoms
 
-#endif // EWOMS_ISTLSOLVEREBOSFLEXIBLE_HH
+#endif // EWOMS_ISTLSOLVEREEBOSFLEXIBLE_HH

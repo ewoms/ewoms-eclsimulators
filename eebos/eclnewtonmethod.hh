@@ -47,7 +47,7 @@ END_PROPERTIES
 namespace Ewoms {
 
 /*!
- * \brief A newton solver which is ebos specific.
+ * \brief A newton solver which is eebos specific.
  */
 template <class TypeTag>
 class EclNewtonMethod : public BlackOilNewtonMethod<TypeTag>

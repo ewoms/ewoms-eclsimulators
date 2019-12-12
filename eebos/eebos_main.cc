@@ -23,9 +23,9 @@
 /*!
  * \file
  *
- * \brief The main function for the stand alone black-oil variant of ebos.
+ * \brief The main function for the stand alone black-oil variant of eebos.
  *
- * This only calls the ebosBlackOilMain() function.
+ * This only calls the eebosBlackOilMain() function.
  */
 #include "config.h"
 
@@ -33,5 +33,5 @@
 
 int main(int argc, char** argv)
 {
-    return Ewoms::ebosBlackOilMain(argc, argv);
+    return Ewoms::eebosBlackOilMain(argc, argv);
 }

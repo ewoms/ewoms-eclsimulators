@@ -16,8 +16,8 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EWOMS_ISTLSOLVERCPR_EBOS_HH
-#define EWOMS_ISTLSOLVERCPR_EBOS_HH
+#ifndef EWOMS_ISTLSOLVERCPR_EEBOS_HH
+#define EWOMS_ISTLSOLVERCPR_EEBOS_HH
 
 #include <ewoms/eclsimulators/linalg/istlsolver.hh>
 #include <ewoms/eclsimulators/linalg/blackoilamgcpr.hh>
@@ -122,7 +122,7 @@ namespace Ewoms
                 this->makeOverlapRowsInvalid(*(this->matrix_));
 
                 if (newton_iteration < 1 or not(this->parameters_.cpr_reuse_setup_)) {
-                    //Not sure what actual_mat_for_prec is, so put ebosJacIgnoreOverlap as both variables
+                    //Not sure what actual_mat_for_prec is, so put eebosJacIgnoreOverlap as both variables
                     //to be certain that correct matrix is used for preconditioning.
                     if( ! comm_ )
                     {

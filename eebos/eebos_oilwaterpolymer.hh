@@ -23,22 +23,22 @@
 /*!
  * \file
  *
- * \brief The function prototypes required to start the oil-water variant of ebos
+ * \brief The function prototypes required to start the oil-water variant of eebos
  */
-#ifndef EBOS_OIL_WATER_POLYMER_HH
-#define EBOS_OIL_WATER_POLYMER_HH
+#ifndef EEBOS_OIL_WATER_POLYMER_HH
+#define EEBOS_OIL_WATER_POLYMER_HH
 
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/parsecontext.hh>
 #include <ewoms/eclio/parser/errorguard.hh>
 
 namespace Ewoms {
-void ebosOilWaterPolymerSetDeck(Ewoms::Deck* deck,
+void eebosOilWaterPolymerSetDeck(Ewoms::Deck* deck,
                                 Ewoms::ParseContext* parseContext,
                                 Ewoms::ErrorGuard* errorGuard,
                                 double externalSetupTime);
 
-int ebosOilWaterPolymerMain(int argc, char** argv);
+int eebosOilWaterPolymerMain(int argc, char** argv);
 }
 
 #endif

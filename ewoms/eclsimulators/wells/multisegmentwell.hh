@@ -110,14 +110,14 @@ namespace Ewoms
 
         virtual void initPrimaryVariablesEvaluation() const override;
 
-        virtual void assembleWellEq(const Simulator& ebosSimulator,
+        virtual void assembleWellEq(const Simulator& eebosSimulator,
                                     const std::vector<Scalar>& B_avg,
                                     const double dt,
                                     WellState& well_state,
                                     Ewoms::DeferredLogger& deferred_logger) override;
 
         /// updating the well state based the current control mode
-        virtual void updateWellStateWithTarget(const Simulator& ebos_simulator,
+        virtual void updateWellStateWithTarget(const Simulator& eebos_simulator,
                                                WellState& well_state,
                                                Ewoms::DeferredLogger& deferred_logger) const override;
 
@@ -136,7 +136,7 @@ namespace Ewoms
                                                            Ewoms::DeferredLogger& deferred_logger) const override;
 
         /// computing the well potentials for group control
-        virtual void computeWellPotentials(const Simulator& ebosSimulator,
+        virtual void computeWellPotentials(const Simulator& eebosSimulator,
                                            const std::vector<Scalar>& B_avg,
                                            const WellState& well_state,
                                            std::vector<double>& well_potentials,
@@ -146,7 +146,7 @@ namespace Ewoms
 
         virtual void solveEqAndUpdateWellState(WellState& well_state, Ewoms::DeferredLogger& deferred_logger) override; // const?
 
-        virtual void calculateExplicitQuantities(const Simulator& ebosSimulator,
+        virtual void calculateExplicitQuantities(const Simulator& eebosSimulator,
                                                  const WellState& well_state,
                                                  Ewoms::DeferredLogger& deferred_logger) override; // should be const?
 
@@ -279,7 +279,7 @@ namespace Ewoms
         // EvalWell getBhp(); this one should be something similar to getSegmentPressure();
         // EvalWell getQs(); this one should be something similar to getSegmentRates()
         // EValWell wellVolumeFractionScaled, wellVolumeFraction, wellSurfaceVolumeFraction ... these should have different names, and probably will be needed.
-        // bool crossFlowAllowed(const Simulator& ebosSimulator) const; probably will be needed
+        // bool crossFlowAllowed(const Simulator& eebosSimulator) const; probably will be needed
         // xw = inv(D)*(rw - C*x)
         void recoverSolutionWell(const BVector& x, BVectorWell& xw) const;
 
@@ -295,10 +295,10 @@ namespace Ewoms
         void initSegmentRatesWithWellRates(WellState& well_state) const;
 
         // computing the accumulation term for later use in well mass equations
-        void computeInitialSegmentFluids(const Simulator& ebos_simulator);
+        void computeInitialSegmentFluids(const Simulator& eebos_simulator);
 
         // compute the pressure difference between the perforation and cell center
-        void computePerfCellPressDiffs(const Simulator& ebosSimulator);
+        void computePerfCellPressDiffs(const Simulator& eebosSimulator);
 
         // fraction value of the primary variables
         // should we just use member variables to store them instead of calculating them again and again
@@ -333,7 +333,7 @@ namespace Ewoms
 
         // compute the fluid properties, such as densities, viscosities, and so on, in the segments
         // They will be treated implicitly, so they need to be of Evaluation type
-        void computeSegmentFluidProperties(const Simulator& ebosSimulator);
+        void computeSegmentFluidProperties(const Simulator& eebosSimulator);
 
         EvalWell getSegmentPressure(const int seg) const;
 
@@ -344,23 +344,23 @@ namespace Ewoms
         EvalWell getSegmentGTotal(const int seg) const;
 
         // get the mobility for specific perforation
-        void getMobility(const Simulator& ebosSimulator,
+        void getMobility(const Simulator& eebosSimulator,
                          const int perf,
                          std::vector<EvalWell>& mob) const;
 
-        void computeWellRatesAtBhpLimit(const Simulator& ebosSimulator,
+        void computeWellRatesAtBhpLimit(const Simulator& eebosSimulator,
                                         const std::vector<Scalar>& B_avg,
                                         std::vector<double>& well_flux,
                                         Ewoms::DeferredLogger& deferred_logger) const;
 
-        void computeWellRatesWithBhp(const Simulator& ebosSimulator,
+        void computeWellRatesWithBhp(const Simulator& eebosSimulator,
                                      const std::vector<Scalar>& B_avg,
                                      const Scalar bhp,
                                      std::vector<double>& well_flux,
                                      Ewoms::DeferredLogger& deferred_logger) const;
 
         std::vector<double>
-        computeWellPotentialWithTHP(const Simulator& ebos_simulator,
+        computeWellPotentialWithTHP(const Simulator& eebos_simulator,
                                     const std::vector<Scalar>& B_avg,
                                     Ewoms::DeferredLogger& deferred_logger) const;
 
@@ -389,7 +389,7 @@ namespace Ewoms
 
         // checking the operability of the well based on current reservoir condition
         // it is not implemented for multisegment well yet
-        virtual void checkWellOperability(const Simulator& ebos_simulator,
+        virtual void checkWellOperability(const Simulator& eebos_simulator,
                                           const WellState& well_state,
                                           Ewoms::DeferredLogger& deferred_logger) override;
 
@@ -399,8 +399,8 @@ namespace Ewoms
 
         bool accelerationalPressureLossConsidered() const;
 
-        // TODO: try to make ebosSimulator const, as it should be
-        void iterateWellEquations(const Simulator& ebosSimulator,
+        // TODO: try to make eebosSimulator const, as it should be
+        void iterateWellEquations(const Simulator& eebosSimulator,
                                   const std::vector<Scalar>& B_avg,
                                   const double dt,
                                   const Well::InjectionControls& inj_controls,
@@ -408,7 +408,7 @@ namespace Ewoms
                                   WellState& well_state,
                                   Ewoms::DeferredLogger& deferred_logger);
 
-        void assembleWellEqWithoutIteration(const Simulator& ebosSimulator,
+        void assembleWellEqWithoutIteration(const Simulator& eebosSimulator,
                                             const double dt,
                                             const Well::InjectionControls& inj_controls,
                                             const Well::ProductionControls& prod_controls,
@@ -421,7 +421,7 @@ namespace Ewoms
 
         virtual void updateWaterThroughput(const double dt, WellState& well_state) const override;
 
-        EvalWell getSegmentSurfaceVolume(const Simulator& ebos_simulator, const int seg_idx) const;
+        EvalWell getSegmentSurfaceVolume(const Simulator& eebos_simulator, const int seg_idx) const;
 
         std::vector<Scalar> getWellResiduals(const std::vector<Scalar>& B_avg) const;
 
@@ -445,23 +445,23 @@ namespace Ewoms
         // we turn on crossflow to avoid singular well equations. It can result in wrong-signed
         // well rates, it can cause problem for THP calculation
         // TODO: looking for better alternative to avoid wrong-signed well rates
-        bool openCrossFlowAvoidSingularity(const Simulator& ebos_simulator) const;
+        bool openCrossFlowAvoidSingularity(const Simulator& eebos_simulator) const;
 
         // for a well, when all drawdown are in the wrong direction, then this well will not
         // be able to produce/inject .
-        bool allDrawDownWrongDirection(const Simulator& ebos_simulator) const;
+        bool allDrawDownWrongDirection(const Simulator& eebos_simulator) const;
 
-        boost::optional<double> computeBhpAtThpLimitProd(const Simulator& ebos_simulator,
+        boost::optional<double> computeBhpAtThpLimitProd(const Simulator& eebos_simulator,
                                                          const std::vector<Scalar>& B_avg,
                                                          const SummaryState& summary_state,
                                                          DeferredLogger& deferred_logger) const;
 
-        boost::optional<double> computeBhpAtThpLimitInj(const Simulator& ebos_simulator,
+        boost::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
                                                         const std::vector<Scalar>& B_avg,
                                                         const SummaryState& summary_state,
                                                         DeferredLogger& deferred_logger) const;
 
-        double maxPerfPress(const Simulator& ebos_simulator) const;
+        double maxPerfPress(const Simulator& eebos_simulator) const;
 
         void assembleSICDPressureEq(const int seg) const;
 

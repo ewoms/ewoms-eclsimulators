@@ -100,7 +100,7 @@ namespace Ewoms {
             using RateConverterType = RateConverter::
                 SurfaceToReservoirVoidage<FluidSystem, std::vector<int> >;
 
-            BlackoilWellModel(Simulator& ebosSimulator);
+            BlackoilWellModel(Simulator& eebosSimulator);
 
             void init();
 
@@ -145,15 +145,15 @@ namespace Ewoms {
 
             void beginEpisode()
             {
-                beginReportStep(ebosSimulator_.episodeIndex());
+                beginReportStep(eebosSimulator_.episodeIndex());
             }
 
             void beginTimeStep();
 
             void beginIteration()
             {
-                assemble(ebosSimulator_.model().newtonMethod().numIterations(),
-                         ebosSimulator_.timeStepSize());
+                assemble(eebosSimulator_.model().newtonMethod().numIterations(),
+                         eebosSimulator_.timeStepSize());
             }
 
             void endIteration()
@@ -161,7 +161,7 @@ namespace Ewoms {
 
             void endTimeStep()
             {
-                timeStepSucceeded(ebosSimulator_.time(), ebosSimulator_.timeStepSize());
+                timeStepSucceeded(eebosSimulator_.time(), eebosSimulator_.timeStepSize());
             }
 
             void endEpisode()
@@ -222,7 +222,7 @@ namespace Ewoms {
             bool forceShutWellByNameIfPredictionMode(const std::string& wellname, const double simulation_time);
 
         protected:
-            Simulator& ebosSimulator_;
+            Simulator& eebosSimulator_;
 
             std::vector< Well > wells_ecl_;
             std::vector< std::vector<PerforationData> > well_perf_data_;
@@ -273,13 +273,13 @@ namespace Ewoms {
             mutable BVector scaleAddRes_;
 
             const Grid& grid() const
-            { return ebosSimulator_.vanguard().grid(); }
+            { return eebosSimulator_.vanguard().grid(); }
 
             const EclipseState& eclState() const
-            { return ebosSimulator_.vanguard().eclState(); }
+            { return eebosSimulator_.vanguard().eclState(); }
 
             const Schedule& schedule() const
-            { return ebosSimulator_.vanguard().schedule(); }
+            { return eebosSimulator_.vanguard().schedule(); }
 
             // compute the well fluxes and assemble them in to the reservoir equations as source terms
             // and in the well equations.

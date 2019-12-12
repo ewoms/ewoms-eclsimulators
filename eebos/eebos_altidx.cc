@@ -23,7 +23,7 @@
 /*!
  * \file
  *
- * \brief This is an ebos variant which uses alternative phase and component indices than
+ * \brief This is an eebos variant which uses alternative phase and component indices than
  *        the default variant.
  *
  * It is purely for testing purposes and is supposed to produce bitwise identical

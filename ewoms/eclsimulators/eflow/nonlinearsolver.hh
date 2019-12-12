@@ -16,8 +16,8 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EWOMS_NON_LINEAR_SOLVER_EBOS_HH
-#define EWOMS_NON_LINEAR_SOLVER_EBOS_HH
+#ifndef EWOMS_NON_LINEAR_SOLVER_EEBOS_HH
+#define EWOMS_NON_LINEAR_SOLVER_EEBOS_HH
 
 #include <ewoms/eclsimulators/timestepping/simulatorreport.hh>
 #include <ewoms/eclio/utility/parameters/parametergroup.hh>
@@ -361,4 +361,4 @@ namespace Ewoms {
     };
 } // namespace Ewoms
 
-#endif // EWOMS_NON_LINEAR_SOLVER_EBOS_HH
+#endif // EWOMS_NON_LINEAR_SOLVER_EEBOS_HH

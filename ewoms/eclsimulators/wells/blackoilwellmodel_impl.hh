@@ -23,27 +23,27 @@
 namespace Ewoms {
     template<typename TypeTag>
     BlackoilWellModel<TypeTag>::
-    BlackoilWellModel(Simulator& ebosSimulator)
-        : ebosSimulator_(ebosSimulator)
+    BlackoilWellModel(Simulator& eebosSimulator)
+        : eebosSimulator_(eebosSimulator)
         , has_solvent_(GET_PROP_VALUE(TypeTag, EnableSolvent))
         , has_polymer_(GET_PROP_VALUE(TypeTag, EnablePolymer))
     {
         terminal_output_ = false;
-        if (ebosSimulator.gridView().comm().rank() == 0)
+        if (eebosSimulator.gridView().comm().rank() == 0)
             terminal_output_ = EWOMS_GET_PARAM(TypeTag, bool, EnableTerminalOutput);
 
         // Create the guide rate container.
-        guideRate_.reset(new GuideRate (ebosSimulator_.vanguard().schedule()));
+        guideRate_.reset(new GuideRate (eebosSimulator_.vanguard().schedule()));
 
         // calculate the number of elements of the compressed sequential grid. this needs
         // to be done in two steps because the dune communicator expects a reference as
         // argument for sum()
-        const auto& gridView = ebosSimulator_.gridView();
+        const auto& gridView = eebosSimulator_.gridView();
         number_of_cells_ = gridView.size(/*codim=*/0);
         global_nc_ = gridView.comm().sum(number_of_cells_);
 
         // Set up cartesian mapping.
-        const auto& grid = ebosSimulator_.vanguard().grid();
+        const auto& grid = eebosSimulator_.vanguard().grid();
         const auto& cartDims = Ewoms::UgGridHelpers::cartDims(grid);
         setupCartesianToCompressed_(Ewoms::UgGridHelpers::globalCell(grid),
                                     cartDims[0]*cartDims[1]*cartDims[2]);
@@ -54,19 +54,19 @@ namespace Ewoms {
     BlackoilWellModel<TypeTag>::
     init()
     {
-        const Ewoms::EclipseState& eclState = ebosSimulator_.vanguard().eclState();
+        const Ewoms::EclipseState& eclState = eebosSimulator_.vanguard().eclState();
 
         extractLegacyCellPvtRegionIndex_();
         extractLegacyDepth_();
 
         phase_usage_ = phaseUsageFromDeck(eclState);
 
-        gravity_ = ebosSimulator_.problem().gravity()[2];
+        gravity_ = eebosSimulator_.problem().gravity()[2];
 
         initial_step_ = true;
 
         // add the eWoms auxiliary module for the wells to the list
-        ebosSimulator_.model().addAuxiliaryModule(this);
+        eebosSimulator_.model().addAuxiliaryModule(this);
 
         is_cell_perforated_.resize(number_of_cells_, false);
     }
@@ -147,7 +147,7 @@ namespace Ewoms {
     hasTHPConstraints() const
     {
         int local_result = false;
-        const auto& summaryState = ebosSimulator_.vanguard().summaryState();
+        const auto& summaryState = eebosSimulator_.vanguard().summaryState();
         for (const auto& well : well_container_) {
             if (well->wellHasTHPConstraints(summaryState)) {
                 local_result=true;
@@ -177,7 +177,7 @@ namespace Ewoms {
         }
 
         // Communicate across processes if a well was shut.
-        well_was_shut = ebosSimulator_.vanguard().grid().comm().max(well_was_shut);
+        well_was_shut = eebosSimulator_.vanguard().grid().comm().max(well_was_shut);
 
         // Only log a message on the output rank.
         if (terminal_output_ && well_was_shut) {
@@ -196,11 +196,11 @@ namespace Ewoms {
     {
         Ewoms::DeferredLogger local_deferredLogger;
 
-        const Grid& grid = ebosSimulator_.vanguard().grid();
-        const auto& summaryState = ebosSimulator_.vanguard().summaryState();
+        const Grid& grid = eebosSimulator_.vanguard().grid();
+        const auto& summaryState = eebosSimulator_.vanguard().summaryState();
         // Make wells_ecl_ contain only this partition's non-shut wells.
         {
-            const auto& defunct_well_names = ebosSimulator_.vanguard().defunctWellNames();
+            const auto& defunct_well_names = eebosSimulator_.vanguard().defunctWellNames();
             auto is_shut_or_defunct = [&defunct_well_names](const Well& well) {
                 return (well.getStatus() == Well::Status::SHUT) || (defunct_well_names.find(well.name()) != defunct_well_names.end());
             };
@@ -219,8 +219,8 @@ namespace Ewoms {
         // We must therefore provide it with updated cell pressures
         size_t nc = number_of_cells_;
         std::vector<double> cellPressures(nc, 0.0);
-        ElementContext elemCtx(ebosSimulator_);
-        const auto& gridView = ebosSimulator_.vanguard().gridView();
+        ElementContext elemCtx(eebosSimulator_);
+        const auto& gridView = eebosSimulator_.vanguard().gridView();
         const auto& elemEndIt = gridView.template end</*codim=*/0>();
         for (auto elemIt = gridView.template begin</*codim=*/0>();
              elemIt != elemEndIt;
@@ -283,7 +283,7 @@ namespace Ewoms {
         // Compute reservoir volumes for RESV controls.
         rateConverter_.reset(new RateConverterType (phase_usage_,
                                                     std::vector<int>(number_of_cells_, 0)));
-        rateConverter_->template defineState<ElementContext>(ebosSimulator_);
+        rateConverter_->template defineState<ElementContext>(eebosSimulator_);
 
         // update VFP properties
         vfp_properties_.reset (new VFPProperties<VFPInjProperties,VFPProdProperties> (
@@ -305,8 +305,8 @@ namespace Ewoms {
 
         well_state_ = previous_well_state_;
 
-        const int reportStepIdx = ebosSimulator_.episodeIndex();
-        const double simulationTime = ebosSimulator_.time();
+        const int reportStepIdx = eebosSimulator_.episodeIndex();
+        const double simulationTime = eebosSimulator_.time();
 
         int exception_thrown = 0;
         try {
@@ -334,7 +334,7 @@ namespace Ewoms {
 
             if (has_polymer_)
             {
-                const Grid& grid = ebosSimulator_.vanguard().grid();
+                const Grid& grid = eebosSimulator_.vanguard().grid();
                 if (PolymerModule::hasPlyshlog() || GET_PROP_VALUE(TypeTag, EnablePolymerMW) ) {
                         computeRepRadiusPerfLength(grid, local_deferredLogger);
                 }
@@ -416,7 +416,7 @@ namespace Ewoms {
 
                 const WellTestConfig::Reason testing_reason = testWell.second;
 
-                well->wellTesting(ebosSimulator_, B_avg, simulationTime, timeStepIdx,
+                well->wellTesting(eebosSimulator_, B_avg, simulationTime, timeStepIdx,
                                   testing_reason, well_state_, wellTestState_, deferred_logger);
             }
         }
@@ -450,12 +450,12 @@ namespace Ewoms {
         updateWellTestState(simulationTime, wellTestState_);
 
         // update the rate converter with current averages pressures etc in
-        rateConverter_->template defineState<ElementContext>(ebosSimulator_);
+        rateConverter_->template defineState<ElementContext>(eebosSimulator_);
 
         // calculate the well potentials
         try {
             std::vector<double> well_potentials;
-            const int reportStepIdx = ebosSimulator_.episodeIndex();
+            const int reportStepIdx = eebosSimulator_.episodeIndex();
             computeWellPotentials(well_potentials, reportStepIdx, local_deferredLogger);
         } catch ( std::runtime_error& e ) {
             const std::string msg = "A zero well potential is returned for output purposes. ";
@@ -513,11 +513,11 @@ namespace Ewoms {
         // will not be present in a restart file. Use the previous time step to retrieve
         // wells that have information written to the restart file.
         const int report_step = std::max(eclState().getInitConfig().getRestartStep() - 1, 0);
-        const auto& summaryState = ebosSimulator_.vanguard().summaryState();
+        const auto& summaryState = eebosSimulator_.vanguard().summaryState();
 
         // Make wells_ecl_ contain only this partition's non-shut wells.
         {
-            const auto& defunct_well_names = ebosSimulator_.vanguard().defunctWellNames();
+            const auto& defunct_well_names = eebosSimulator_.vanguard().defunctWellNames();
             auto is_shut_or_defunct = [&defunct_well_names](const Well& well) {
                 return (well.getStatus() == Well::Status::SHUT) || (defunct_well_names.find(well.name()) != defunct_well_names.end());
             };
@@ -565,7 +565,7 @@ namespace Ewoms {
     BlackoilWellModel<TypeTag>::
     initializeWellPerfData()
     {
-        const auto& grid = ebosSimulator_.vanguard().grid();
+        const auto& grid = eebosSimulator_.vanguard().grid();
         const auto& cartDims = Ewoms::UgGridHelpers::cartDims(grid);
         well_perf_data_.resize(wells_ecl_.size());
         first_perf_index_.clear();
@@ -625,7 +625,7 @@ namespace Ewoms {
                     // TODO: more checking here, to make sure this standard more specific and complete
                     // maybe there is some WCON keywords will not open the well
                     if (well_state_.effectiveEventsOccurred(w)) {
-                        if (wellTestState_.lastTestTime(well_name) == ebosSimulator_.time()) {
+                        if (wellTestState_.lastTestTime(well_name) == eebosSimulator_.time()) {
                             // The well was shut this timestep, we are most likely retrying
                             // a timestep without the well in question, after it caused
                             // repeated timestep cuts. It should therefore not be opened,
@@ -777,13 +777,13 @@ namespace Ewoms {
             updateWellControls(local_deferredLogger, /*allow for switching to group controls*/true);
 
             // only update REIN and VREP rates if iterationIdx is smaller than nupcol
-            const int reportStepIdx = ebosSimulator_.episodeIndex();
+            const int reportStepIdx = eebosSimulator_.episodeIndex();
             const int nupcol = schedule().getNupcol(reportStepIdx);
             if (iterationIdx < nupcol) {
                 if( localWellsActive() ) {
                     const Group& fieldGroup = schedule().getGroup("FIELD", reportStepIdx);
                     std::vector<double> rein(numPhases(), 0.0);
-                    const auto& summaryState = ebosSimulator_.vanguard().summaryState();
+                    const auto& summaryState = eebosSimulator_.vanguard().summaryState();
                     wellGroupHelpers::updateREINForGroups(fieldGroup, schedule(), reportStepIdx, phase_usage_, summaryState, well_state_, rein);
                     double resv = 0.0;
                     wellGroupHelpers::updateVREPForGroups(fieldGroup, schedule(), reportStepIdx, well_state_, resv);
@@ -828,7 +828,7 @@ namespace Ewoms {
     assembleWellEq(const std::vector<Scalar>& B_avg, const double dt, Ewoms::DeferredLogger& deferred_logger)
     {
         for (auto& well : well_container_) {
-            well->assembleWellEq(ebosSimulator_, B_avg, dt, well_state_, deferred_logger);
+            well->assembleWellEq(eebosSimulator_, B_avg, dt, well_state_, deferred_logger);
         }
     }
 
@@ -1055,7 +1055,7 @@ namespace Ewoms {
     {
         // TODO: checking isOperable() ?
         for (auto& well : well_container_) {
-            well->calculateExplicitQuantities(ebosSimulator_, well_state_, deferred_logger);
+            well->calculateExplicitQuantities(eebosSimulator_, well_state_, deferred_logger);
         }
     }
 
@@ -1069,7 +1069,7 @@ namespace Ewoms {
         // For no well active globally we simply return.
         if( !wellsActive() ) return ;
 
-        const int reportStepIdx = ebosSimulator_.episodeIndex();
+        const int reportStepIdx = eebosSimulator_.episodeIndex();
         const Group& fieldGroup = schedule().getGroup("FIELD", reportStepIdx);
 
         // update group controls
@@ -1078,7 +1078,7 @@ namespace Ewoms {
         }
 
         for (const auto& well : well_container_) {
-            well->updateWellControl(ebosSimulator_, well_state_, deferred_logger);
+            well->updateWellControl(eebosSimulator_, well_state_, deferred_logger);
         }
 
         // the group target reduction rates needs to be update since wells may have swicthed to/from GRUP control
@@ -1124,8 +1124,8 @@ namespace Ewoms {
         std::vector< Scalar > B_avg(numComponents(), Scalar() );
         computeAverageFormationFactor(B_avg);
 
-        const Ewoms::SummaryConfig& summaryConfig = ebosSimulator_.vanguard().summaryConfig();
-        const bool write_restart_file = ebosSimulator_.vanguard().eclState().getRestartConfig().getWriteRestartFile(reportStepIdx);
+        const Ewoms::SummaryConfig& summaryConfig = eebosSimulator_.vanguard().summaryConfig();
+        const bool write_restart_file = eebosSimulator_.vanguard().eclState().getRestartConfig().getWriteRestartFile(reportStepIdx);
         int exception_thrown = 0;
         try {
             for (const auto& well : well_container_) {
@@ -1141,7 +1141,7 @@ namespace Ewoms {
                 if (write_restart_file || needed_for_summary || needPotentialsForGuideRate)
                 {
                     std::vector<double> potentials;
-                    well->computeWellPotentials(ebosSimulator_, B_avg, well_state_copy, potentials, deferred_logger);
+                    well->computeWellPotentials(eebosSimulator_, B_avg, well_state_copy, potentials, deferred_logger);
                     // putting the sucessfully calculated potentials to the well_potentials
                     for (int p = 0; p < np; ++p) {
                         well_potentials[well->indexOfWell() * np + p] = std::abs(potentials[p]);
@@ -1167,7 +1167,7 @@ namespace Ewoms {
         int exception_thrown = 0;
         try {
             for (const auto& well : well_container_) {
-                well->checkWellOperability(ebosSimulator_, well_state_, deferred_logger);
+                well->checkWellOperability(eebosSimulator_, well_state_, deferred_logger);
             }
             // since the controls are all updated, we should update well_state accordingly
             for (const auto& well : well_container_) {
@@ -1175,7 +1175,7 @@ namespace Ewoms {
                 if (!well->isOperable() ) continue;
 
                 if (well_state_.effectiveEventsOccurred(w) ) {
-                    well->updateWellStateWithTarget(ebosSimulator_, well_state_, deferred_logger);
+                    well->updateWellStateWithTarget(eebosSimulator_, well_state_, deferred_logger);
                 }
 
                 // there is no new well control change input within a report step,
@@ -1256,9 +1256,9 @@ namespace Ewoms {
     BlackoilWellModel<TypeTag>::
     computeAverageFormationFactor(std::vector<Scalar>& B_avg) const
     {
-        const auto& grid = ebosSimulator_.vanguard().grid();
+        const auto& grid = eebosSimulator_.vanguard().grid();
         const auto& gridView = grid.leafGridView();
-        ElementContext elemCtx(ebosSimulator_);
+        ElementContext elemCtx(eebosSimulator_);
         const auto& elemEndIt = gridView.template end</*codim=*/0, Dune::Interior_Partition>();
 
         for (auto elemIt = gridView.template begin</*codim=*/0, Dune::Interior_Partition>();
@@ -1309,8 +1309,8 @@ namespace Ewoms {
     void
     BlackoilWellModel<TypeTag>::extractLegacyCellPvtRegionIndex_()
     {
-        const auto& grid = ebosSimulator_.vanguard().grid();
-        const auto& eclProblem = ebosSimulator_.problem();
+        const auto& grid = eebosSimulator_.vanguard().grid();
+        const auto& eclProblem = eebosSimulator_.problem();
         const unsigned numCells = grid.size(/*codim=*/0);
 
         pvt_region_idx_.resize(numCells);
@@ -1354,7 +1354,7 @@ namespace Ewoms {
     void
     BlackoilWellModel<TypeTag>::extractLegacyDepth_()
     {
-        const auto& grid = ebosSimulator_.vanguard().grid();
+        const auto& grid = eebosSimulator_.vanguard().grid();
         const unsigned numCells = grid.size(/*codim=*/0);
 
         depth_.resize(numCells);
@@ -1368,8 +1368,8 @@ namespace Ewoms {
     void
     BlackoilWellModel<TypeTag>::
     updatePerforationIntensiveQuantities() {
-        ElementContext elemCtx(ebosSimulator_);
-        const auto& gridView = ebosSimulator_.gridView();
+        ElementContext elemCtx(eebosSimulator_);
+        const auto& gridView = eebosSimulator_.gridView();
         const auto& elemEndIt = gridView.template end</*codim=*/0, Dune::Interior_Partition>();
         for (auto elemIt = gridView.template begin</*codim=*/0, Dune::Interior_Partition>();
              elemIt != elemEndIt;
@@ -1534,12 +1534,12 @@ namespace Ewoms {
     checkGroupConstraints(const Group& group, Ewoms::DeferredLogger& deferred_logger) {
 
         // call recursively
-        const int reportStepIdx = ebosSimulator_.episodeIndex();
+        const int reportStepIdx = eebosSimulator_.episodeIndex();
         for (const std::string& groupName : group.groups()) {
             checkGroupConstraints( schedule().getGroup(groupName, reportStepIdx), deferred_logger);
         }
 
-        const auto& summaryState = ebosSimulator_.vanguard().summaryState();
+        const auto& summaryState = eebosSimulator_.vanguard().summaryState();
         auto& well_state = well_state_;
 
         if (group.isInjectionGroup())

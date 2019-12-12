@@ -183,7 +183,7 @@ namespace Ewoms
             dtEstimateIter = dt / (1.0 + off_target_fraction);
         } else {
             double off_target_fraction = double(target_iterations_ - iterations) / target_iterations_;
-            // Be a bit more careful when increasing. The 1.2 factor is from ebos.
+            // Be a bit more careful when increasing. The 1.2 factor is from eebos.
             dtEstimateIter = dt * (1.0 + off_target_fraction / 1.2);
         }
 

@@ -339,7 +339,7 @@ protected:
             }
 
             // this is slightly hacky because in the automatic differentiation case, it
-            // only works for the element centered finite volume method. for ebos this
+            // only works for the element centered finite volume method. for eebos this
             // does not matter, though.
             unsigned upstreamIdx = upstreamIndex_(phaseIdx);
             const auto& up = elemCtx.intensiveQuantities(upstreamIdx, timeIdx);
@@ -430,7 +430,7 @@ protected:
             }
 
             // this is slightly hacky because in the automatic differentiation case, it
-            // only works for the element centered finite volume method. for ebos this
+            // only works for the element centered finite volume method. for eebos this
             // does not matter, though.
             unsigned upstreamIdx = upstreamIndex_(phaseIdx);
             const auto& up = elemCtx.intensiveQuantities(upstreamIdx, timeIdx);

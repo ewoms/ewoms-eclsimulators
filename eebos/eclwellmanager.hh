@@ -540,17 +540,17 @@ public:
 
         using rt = Ewoms::data::Rates::opt;
         for (unsigned wellIdx = 0; wellIdx < numWells(); ++wellIdx) {
-            const auto& ebosWell = well(wellIdx);
-            auto& wellOut = wellDat[ebosWell->name()];
+            const auto& eebosWell = well(wellIdx);
+            auto& wellOut = wellDat[eebosWell->name()];
 
-            wellOut.bhp = ebosWell->bottomHolePressure();
-            wellOut.thp = ebosWell->tubingHeadPressure();
+            wellOut.bhp = eebosWell->bottomHolePressure();
+            wellOut.thp = eebosWell->tubingHeadPressure();
             wellOut.temperature = 0;
-            wellOut.rates.set( rt::wat, ebosWell->surfaceRate(waterPhaseIdx) );
-            wellOut.rates.set( rt::oil, ebosWell->surfaceRate(oilPhaseIdx) );
-            wellOut.rates.set( rt::gas, ebosWell->surfaceRate(gasPhaseIdx) );
+            wellOut.rates.set( rt::wat, eebosWell->surfaceRate(waterPhaseIdx) );
+            wellOut.rates.set( rt::oil, eebosWell->surfaceRate(oilPhaseIdx) );
+            wellOut.rates.set( rt::gas, eebosWell->surfaceRate(gasPhaseIdx) );
 
-            const int numConnections = ebosWell->numConnections();
+            const int numConnections = eebosWell->numConnections();
             wellOut.connections.resize(numConnections);
 
             for( int i = 0; i < numConnections; ++i ) {

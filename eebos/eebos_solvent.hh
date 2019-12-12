@@ -23,22 +23,22 @@
 /*!
  * \file
  *
- * \brief The function prototypes required to start the solvent variant of ebos
+ * \brief The function prototypes required to start the solvent variant of eebos
  */
-#ifndef EBOS_SOLVENT_HH
-#define EBOS_SOLVENT_HH
+#ifndef EEBOS_SOLVENT_HH
+#define EEBOS_SOLVENT_HH
 
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/parsecontext.hh>
 #include <ewoms/eclio/parser/errorguard.hh>
 
 namespace Ewoms {
-void ebosSolventSetDeck(Ewoms::Deck* deck,
+void eebosSolventSetDeck(Ewoms::Deck* deck,
                         Ewoms::ParseContext* parseContext,
                         Ewoms::ErrorGuard* errorGuard,
                         double externalSetupTime);
 
-int ebosSolventMain(int argc, char** argv);
+int eebosSolventMain(int argc, char** argv);
 }
 
 #endif

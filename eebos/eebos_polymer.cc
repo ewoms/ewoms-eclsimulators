@@ -42,7 +42,7 @@ END_PROPERTIES
 
 namespace Ewoms {
 
-void ebosPolymerSetDeck(Ewoms::Deck* deck,
+void eebosPolymerSetDeck(Ewoms::Deck* deck,
                         Ewoms::ParseContext* parseContext,
                         Ewoms::ErrorGuard* errorGuard,
                         double externalSetupTime)
@@ -56,7 +56,7 @@ void ebosPolymerSetDeck(Ewoms::Deck* deck,
     Vanguard::setExternalDeck(deck);
 }
 
-int ebosPolymerMain(int argc, char **argv)
+int eebosPolymerMain(int argc, char **argv)
 {
     typedef TTAG(EebosPolymerTypeTag) ProblemTypeTag;
     return Ewoms::start<ProblemTypeTag>(argc, argv);

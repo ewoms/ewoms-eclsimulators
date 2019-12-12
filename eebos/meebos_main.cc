@@ -23,7 +23,7 @@
 /*!
  * \file
  *
- * \brief The main file of mebos, an multiplexed-version of ebos, the general-purpose
+ * \brief The main file of meebos, an multiplexed-version of eebos, the general-purpose
  *        black-oil simulator for ECL decks for research purposes.
  *
  * Just like 'eflow', it does not require to select the simulator binary to run a deck
@@ -59,16 +59,16 @@ int main(int argc, char **argv)
     Dune::Timer externalSetupTimer;
     externalSetupTimer.start();
 
-    if (!Ewoms::ebosBlackOilDeckFileNameIsSet(argc, argv))
+    if (!Ewoms::eebosBlackOilDeckFileNameIsSet(argc, argv))
         // no deck was specified, e.g., --help. use the black oil variant to figure out
         // what exactly should be done
-        return Ewoms::ebosBlackOilMain(argc, argv);
+        return Ewoms::eebosBlackOilMain(argc, argv);
 
     std::string deckFileName =
-        Ewoms::ebosBlackOilGetDeckFileName(argc, argv);
+        Ewoms::eebosBlackOilGetDeckFileName(argc, argv);
 
     std::unique_ptr<Ewoms::ParseContext> parseContext
-        = Ewoms::ebosBlackOilCreateParseContext(argc, argv);
+        = Ewoms::eebosBlackOilCreateParseContext(argc, argv);
     std::unique_ptr<Ewoms::ErrorGuard> errorGuard(new Ewoms::ErrorGuard);
 
     // deal with parallel runs
@@ -90,7 +90,7 @@ int main(int argc, char **argv)
     bool thermalActive = deck->hasKeyword("THERMAL") || deck->hasKeyword("TEMP");
 
     std::stringstream notSupportedErrorStream;
-    notSupportedErrorStream << "deck not supported by mebos, you might want to use a specialized binary. Active options:\n"
+    notSupportedErrorStream << "deck not supported by meebos, you might want to use a specialized binary. Active options:\n"
                             << "   water: " << waterActive << "\n"
                             << "   gas: " << gasActive << "\n"
                             << "   oil: " << oilActive << "\n"
@@ -123,11 +123,11 @@ int main(int argc, char **argv)
         if (polymerActive && oilActive && waterActive) {
             if (myRank == 0)
                 std::cout << "Using oil-water-polymer mode" << std::endl;
-            Ewoms::ebosOilWaterPolymerSetDeck(deck.get(),
+            Ewoms::eebosOilWaterPolymerSetDeck(deck.get(),
                                             parseContext.get(),
                                             errorGuard.get(),
                                             externalSetupTimer.elapsed());
-            return Ewoms::ebosOilWaterPolymerMain(argc, argv);
+            return Ewoms::eebosOilWaterPolymerMain(argc, argv);
         }
 
         if (polymerActive) {
@@ -154,21 +154,21 @@ int main(int argc, char **argv)
         if (oilActive && waterActive) {
             if (myRank == 0)
                 std::cout << "Using oil-water mode" << std::endl;
-            Ewoms::ebosOilWaterSetDeck(deck.get(),
+            Ewoms::eebosOilWaterSetDeck(deck.get(),
                                      parseContext.get(),
                                      errorGuard.get(),
                                      externalSetupTimer.elapsed());
-            return Ewoms::ebosOilWaterMain(argc, argv);
+            return Ewoms::eebosOilWaterMain(argc, argv);
         }
         else if (oilActive && gasActive) {
-            // run ebos_gasoil
+            // run eebos_gasoil
             if (myRank == 0)
                 std::cout << "Using gas-oil mode" << std::endl;
-            Ewoms::ebosGasOilSetDeck(deck.get(),
+            Ewoms::eebosGasOilSetDeck(deck.get(),
                                    parseContext.get(),
                                    errorGuard.get(),
                                    externalSetupTimer.elapsed());
-            return Ewoms::ebosGasOilMain(argc, argv);
+            return Ewoms::eebosGasOilMain(argc, argv);
         }
         else if (waterActive && gasActive) {
             notSupportedErrorStream << "\n"
@@ -199,14 +199,14 @@ int main(int argc, char **argv)
             std::abort();
         }
 
-        // run ebos_foam
+        // run eebos_foam
         if (myRank == 0)
             std::cout << "Using foam mode" << std::endl;
-        Ewoms::ebosFoamSetDeck(deck.get(),
+        Ewoms::eebosFoamSetDeck(deck.get(),
                              parseContext.get(),
                              errorGuard.get(),
                              externalSetupTimer.elapsed());
-        return Ewoms::ebosFoamMain(argc, argv);
+        return Ewoms::eebosFoamMain(argc, argv);
     }
     else if (polymerActive) {
         if (solventActive) {
@@ -230,14 +230,14 @@ int main(int argc, char **argv)
             std::abort();
         }
 
-        // run ebos_polymer
+        // run eebos_polymer
         if (myRank == 0)
             std::cout << "Using polymer mode" << std::endl;
-        Ewoms::ebosPolymerSetDeck(deck.get(),
+        Ewoms::eebosPolymerSetDeck(deck.get(),
                                 parseContext.get(),
                                 errorGuard.get(),
                                 externalSetupTimer.elapsed());
-        return Ewoms::ebosPolymerMain(argc, argv);
+        return Ewoms::eebosPolymerMain(argc, argv);
     }
     else if (solventActive) {
         if (polymerActive) {
@@ -261,14 +261,14 @@ int main(int argc, char **argv)
             std::abort();
         }
 
-        // run ebos_solvent
+        // run eebos_solvent
         if (myRank == 0)
             std::cout << "Using solvent mode" << std::endl;
-        Ewoms::ebosSolventSetDeck(deck.get(),
+        Ewoms::eebosSolventSetDeck(deck.get(),
                                 parseContext.get(),
                                 errorGuard.get(),
                                 externalSetupTimer.elapsed());
-        return Ewoms::ebosSolventMain(argc, argv);
+        return Ewoms::eebosSolventMain(argc, argv);
     }
     else if (thermalActive) {
         if (solventActive) {
@@ -292,23 +292,23 @@ int main(int argc, char **argv)
             std::abort();
         }
 
-        // run ebos_thermal
+        // run eebos_thermal
         if (myRank == 0)
             std::cout << "Using thermal mode" << std::endl;
-        Ewoms::ebosThermalSetDeck(deck.get(),
+        Ewoms::eebosThermalSetDeck(deck.get(),
                                 parseContext.get(),
                                 errorGuard.get(),
                                 externalSetupTimer.elapsed());
-        return Ewoms::ebosThermalMain(argc, argv);
+        return Ewoms::eebosThermalMain(argc, argv);
     }
     else {
         if (myRank == 0)
             std::cout << "Using blackoil mode" << std::endl;
-        Ewoms::ebosBlackOilSetDeck(deck.get(),
+        Ewoms::eebosBlackOilSetDeck(deck.get(),
                                  parseContext.get(),
                                  errorGuard.get(),
                                  externalSetupTimer.elapsed());
-        return Ewoms::ebosBlackOilMain(argc, argv);
+        return Ewoms::eebosBlackOilMain(argc, argv);
     }
 
     if (myRank == 0)

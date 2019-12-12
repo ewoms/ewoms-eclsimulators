@@ -23,22 +23,22 @@
 /*!
  * \file
  *
- * \brief The function prototypes required to start the polymer variant of ebos
+ * \brief The function prototypes required to start the polymer variant of eebos
  */
-#ifndef EBOS_POLYMER_HH
-#define EBOS_POLYMER_HH
+#ifndef EEBOS_POLYMER_HH
+#define EEBOS_POLYMER_HH
 
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/parsecontext.hh>
 #include <ewoms/eclio/parser/errorguard.hh>
 
 namespace Ewoms {
-void ebosPolymerSetDeck(Ewoms::Deck* deck,
+void eebosPolymerSetDeck(Ewoms::Deck* deck,
                         Ewoms::ParseContext* parseContext,
                         Ewoms::ErrorGuard* errorGuard,
                         double externalSetupTime);
 
-int ebosPolymerMain(int argc, char** argv);
+int eebosPolymerMain(int argc, char** argv);
 }
 
 #endif

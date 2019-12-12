@@ -96,6 +96,7 @@ class EclProblem;
 BEGIN_PROPERTIES
 
 NEW_TYPE_TAG(EclBaseProblem, INHERITS_FROM(EclCpGridVanguard, EclOutputBlackOil, VtkEclTracer));
+//NEW_TYPE_TAG(EclBaseProblem, INHERITS_FROM(EclPolyhedralGridVanguard, EclOutputBlackOil, VtkEclTracer));
 
 // The class which deals with ECL wells
 NEW_PROP_TAG(EclWellModel);
@@ -142,7 +143,7 @@ SET_TYPE_PROP(EclBaseProblem, Problem, Ewoms::EclProblem<TypeTag>);
 // Select the element centered finite volume method as spatial discretization
 SET_TAG_PROP(EclBaseProblem, SpatialDiscretizationSplice, EcfvDiscretization);
 
-//! for ebos, use automatic differentiation to linearize the system of PDEs
+//! for eebos, use automatic differentiation to linearize the system of PDEs
 SET_TAG_PROP(EclBaseProblem, LocalLinearizerSplice, AutoDiffLocalLinearizer);
 
 // Set the material law for fluid fluxes
@@ -189,7 +190,7 @@ public:
     typedef typename EclThermalLawManager::ThermalConductionLaw type;
 };
 
-// ebos can use a slightly faster stencil class because it does not need the normals and
+// eebos can use a slightly faster stencil class because it does not need the normals and
 // the integration points of intersections
 SET_PROP(EclBaseProblem, Stencil)
 {
@@ -272,7 +273,7 @@ SET_INT_PROP(EclBaseProblem, NewtonMaxIterations, 14);
 
 // also, reduce the target for the "optimum" number of Newton iterations to 6. Note that
 // this is only relevant if the time step is reduced from the report step size for some
-// reason. (because ebos first tries to do a report step using a single time step.)
+// reason. (because eebos first tries to do a report step using a single time step.)
 SET_INT_PROP(EclBaseProblem, NewtonTargetIterations, 6);
 
 // Disable the VTK output by default for this problem ...
@@ -303,7 +304,7 @@ SET_TYPE_PROP(EclBaseProblem, FluxModule, Ewoms::EclTransFluxModule<TypeTag>);
 // Use the dummy gradient calculator in order not to do unnecessary work.
 SET_TYPE_PROP(EclBaseProblem, GradientCalculator, Ewoms::EclDummyGradientCalculator<TypeTag>);
 
-// Use a custom Newton-Raphson method class for ebos in order to attain more
+// Use a custom Newton-Raphson method class for eebos in order to attain more
 // sophisticated update and error computation mechanisms
 SET_TYPE_PROP(EclBaseProblem, NewtonMethod, Ewoms::EclNewtonMethod<TypeTag>);
 
@@ -542,12 +543,12 @@ public:
     {
         if (briefDescription_.empty())
             return
-                "The Ecl-deck Black-Oil reservoir Simulator (ebos); a hydrocarbon "
+                "The Ecl-deck Black-Oil reservoir Simulator (eebos); a hydrocarbon "
                 "reservoir simulation program that processes ECL-formatted input "
                 "files that is part of the eWoms project "
                 "(https://ewoms.org).\n"
                 "\n"
-                "THE GOAL OF THE `ebos` SIMULATOR IS TO CATER FOR THE NEEDS OF "
+                "THE GOAL OF THE `eebos` SIMULATOR IS TO CATER FOR THE NEEDS OF "
                 "DEVELOPMENT AND RESEARCH. No guarantees are made for production use!";
         else
             return briefDescription_;
@@ -891,7 +892,7 @@ public:
      *        term for the solution of the previous time step.
      *
      * For quite technical reasons, the storage term cannot be recycled if either DRSDT
-     * or DRVDT are active in ebos. Nor if the porosity is changes between timesteps
+     * or DRVDT are active in eebos. Nor if the porosity is changes between timesteps
      * using a pore volume multiplier (i.e., poreVolumeMultiplier() != 1.0)
      */
     bool recycleFirstIterationStorage() const

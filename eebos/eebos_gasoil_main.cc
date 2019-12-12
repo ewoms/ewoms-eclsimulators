@@ -23,9 +23,9 @@
 /*!
  * \file
  *
- * \brief The main function for the stand alone gas-oil variant of ebos.
+ * \brief The main function for the stand alone gas-oil variant of eebos.
  *
- * This only calls the ebosGasOilMain() function.
+ * This only calls the eebosGasOilMain() function.
  */
 #include "config.h"
 
@@ -33,5 +33,5 @@
 
 int main(int argc, char** argv)
 {
-    return Ewoms::ebosGasOilMain(argc, argv);
+    return Ewoms::eebosGasOilMain(argc, argv);
 }

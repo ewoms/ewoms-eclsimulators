@@ -151,13 +151,13 @@ namespace Ewoms
 
         virtual void initPrimaryVariablesEvaluation() const override;
 
-        virtual void assembleWellEq(const Simulator& ebosSimulator,
+        virtual void assembleWellEq(const Simulator& eebosSimulator,
                                     const std::vector<Scalar>& B_avg,
                                     const double dt,
                                     WellState& well_state,
                                     Ewoms::DeferredLogger& deferred_logger) override;
 
-        virtual void updateWellStateWithTarget(const Simulator& ebos_simulator,
+        virtual void updateWellStateWithTarget(const Simulator& eebos_simulator,
                                                WellState& well_state,
                                                Ewoms::DeferredLogger& deferred_logger) const override;
 
@@ -178,7 +178,7 @@ namespace Ewoms
                                                            Ewoms::DeferredLogger& deferred_logger) const override;
 
         /// computing the well potentials for group control
-        virtual void computeWellPotentials(const Simulator& ebosSimulator,
+        virtual void computeWellPotentials(const Simulator& eebosSimulator,
                                            const std::vector<Scalar>& B_avg,
                                            const WellState& well_state,
                                            std::vector<double>& well_potentials,
@@ -188,7 +188,7 @@ namespace Ewoms
 
         virtual void solveEqAndUpdateWellState(WellState& well_state, Ewoms::DeferredLogger& deferred_logger) override;
 
-        virtual void calculateExplicitQuantities(const Simulator& ebosSimulator,
+        virtual void calculateExplicitQuantities(const Simulator& eebosSimulator,
                                                  const WellState& well_state,
                                                  Ewoms::DeferredLogger& deferred_logger) override; // should be const?
 
@@ -306,7 +306,7 @@ namespace Ewoms
 
         // calculate the properties for the well connections
         // to calulate the pressure difference between well connections.
-        void computePropertiesForWellConnectionPressures(const Simulator& ebosSimulator,
+        void computePropertiesForWellConnectionPressures(const Simulator& eebosSimulator,
                                                          const WellState& well_state,
                                                          std::vector<double>& b_perf,
                                                          std::vector<double>& rsmax_perf,
@@ -332,7 +332,7 @@ namespace Ewoms
         // computing the accumulation term for later use in well mass equations
         void computeAccumWell();
 
-        void computeWellConnectionPressures(const Simulator& ebosSimulator,
+        void computeWellConnectionPressures(const Simulator& eebosSimulator,
                                                     const WellState& well_state);
 
         void computePerfRate(const IntensiveQuantities& intQuants,
@@ -346,18 +346,18 @@ namespace Ewoms
                              double& perf_vap_oil_rate,
                              Ewoms::DeferredLogger& deferred_logger) const;
 
-        void computeWellRatesWithBhp(const Simulator& ebosSimulator,
+        void computeWellRatesWithBhp(const Simulator& eebosSimulator,
                                              const double& bhp,
                                              std::vector<double>& well_flux,
                                              Ewoms::DeferredLogger& deferred_logger) const;
 
-        void computeWellRatesWithBhpPotential(const Simulator& ebosSimulator,
+        void computeWellRatesWithBhpPotential(const Simulator& eebosSimulator,
                                               const std::vector<Scalar>& B_avg,
                                               const double& bhp,
                                               std::vector<double>& well_flux,
                                               Ewoms::DeferredLogger& deferred_logger);
 
-        std::vector<double> computeWellPotentialWithTHP(const Simulator& ebosSimulator,
+        std::vector<double> computeWellPotentialWithTHP(const Simulator& eebosSimulator,
                                                         Ewoms::DeferredLogger& deferred_logger) const;
 
         template <class ValueType>
@@ -366,12 +366,12 @@ namespace Ewoms
         double calculateThpFromBhp(const std::vector<double>& rates, const double bhp, Ewoms::DeferredLogger& deferred_logger) const;
 
         // get the mobility for specific perforation
-        void getMobility(const Simulator& ebosSimulator,
+        void getMobility(const Simulator& eebosSimulator,
                          const int perf,
                          std::vector<EvalWell>& mob,
                          Ewoms::DeferredLogger& deferred_logger) const;
 
-        void updateWaterMobilityWithPolymer(const Simulator& ebos_simulator,
+        void updateWaterMobilityWithPolymer(const Simulator& eebos_simulator,
                                             const int perf,
                                             std::vector<EvalWell>& mob_water,
                                             Ewoms::DeferredLogger& deferred_logger) const;
@@ -395,32 +395,32 @@ namespace Ewoms
         void processFractions() const;
 
         // updating the inflow based on the current reservoir condition
-        void updateIPR(const Simulator& ebos_simulator, Ewoms::DeferredLogger& deferred_logger) const;
+        void updateIPR(const Simulator& eebos_simulator, Ewoms::DeferredLogger& deferred_logger) const;
 
         // update the operability status of the well is operable under the current reservoir condition
         // mostly related to BHP limit and THP limit
-        virtual void checkWellOperability(const Simulator& ebos_simulator,
+        virtual void checkWellOperability(const Simulator& eebos_simulator,
                                           const WellState& well_state,
                                           Ewoms::DeferredLogger& deferred_logger) override;
 
         // check whether the well is operable under the current reservoir condition
         // mostly related to BHP limit and THP limit
-        void updateWellOperability(const Simulator& ebos_simulator,
+        void updateWellOperability(const Simulator& eebos_simulator,
                                    const WellState& well_state,
                                    Ewoms::DeferredLogger& deferred_logger);
 
         // check whether the well is operable under BHP limit with current reservoir condition
-        void checkOperabilityUnderBHPLimitProducer(const Simulator& ebos_simulator, Ewoms::DeferredLogger& deferred_logger);
+        void checkOperabilityUnderBHPLimitProducer(const Simulator& eebos_simulator, Ewoms::DeferredLogger& deferred_logger);
 
         // check whether the well is operable under THP limit with current reservoir condition
-        void checkOperabilityUnderTHPLimitProducer(const Simulator& ebos_simulator, Ewoms::DeferredLogger& deferred_logger);
+        void checkOperabilityUnderTHPLimitProducer(const Simulator& eebos_simulator, Ewoms::DeferredLogger& deferred_logger);
 
         // for a well, when all drawdown are in the wrong direction, then this well will not
         // be able to produce/inject .
-        bool allDrawDownWrongDirection(const Simulator& ebos_simulator) const;
+        bool allDrawDownWrongDirection(const Simulator& eebos_simulator) const;
 
         // whether the well can produce / inject based on the current well state (bhp)
-        bool canProduceInjectWithCurrentBhp(const Simulator& ebos_simulator,
+        bool canProduceInjectWithCurrentBhp(const Simulator& eebos_simulator,
                                             const WellState& well_state,
                                             Ewoms::DeferredLogger& deferred_logger);
 
@@ -429,7 +429,7 @@ namespace Ewoms
         // we turn on crossflow to avoid singular well equations. It can result in wrong-signed
         // well rates, it can cause problem for THP calculation
         // TODO: looking for better alternative to avoid wrong-signed well rates
-        bool openCrossFlowAvoidSingularity(const Simulator& ebos_simulator) const;
+        bool openCrossFlowAvoidSingularity(const Simulator& eebos_simulator) const;
 
         // relaxation factor considering only one fraction value
         static double relaxationFactorFraction(const double old_value,
@@ -493,11 +493,11 @@ namespace Ewoms
                                         const int perf,
                                         DeferredLogger& deferred_logger);
 
-        boost::optional<double> computeBhpAtThpLimitProd(const Simulator& ebos_simulator,
+        boost::optional<double> computeBhpAtThpLimitProd(const Simulator& eebos_simulator,
                                                          const SummaryState& summary_state,
                                                          DeferredLogger& deferred_logger) const;
 
-        boost::optional<double> computeBhpAtThpLimitInj(const Simulator& ebos_simulator,
+        boost::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
                                                         const SummaryState& summary_state,
                                                         DeferredLogger& deferred_logger) const;
 

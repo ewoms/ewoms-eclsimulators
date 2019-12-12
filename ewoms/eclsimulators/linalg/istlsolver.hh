@@ -16,8 +16,8 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EWOMS_ISTLSOLVER_EBOS_HH
-#define EWOMS_ISTLSOLVER_EBOS_HH
+#ifndef EWOMS_ISTLSOLVER_EEBOS_HH
+#define EWOMS_ISTLSOLVER_EEBOS_HH
 
 #include <ewoms/eclsimulators/linalg/matrixutils.hh>
 #include <ewoms/eclsimulators/linalg/blackoilamg.hh>
@@ -874,11 +874,11 @@ protected:
             }
         }
 
-        static void multBlocksInMatrix(Matrix& ebosJac, const MatrixBlockType& trans, const bool left = true)
+        static void multBlocksInMatrix(Matrix& eebosJac, const MatrixBlockType& trans, const bool left = true)
         {
-            const int n = ebosJac.N();
+            const int n = eebosJac.N();
             for (int row_index = 0; row_index < n; ++row_index) {
-                auto& row = ebosJac[row_index];
+                auto& row = eebosJac[row_index];
                 auto* dataptr = row.getptr();
                 for (int elem = 0; elem < row.N(); ++elem) {
                     auto& block = dataptr[elem];
@@ -891,9 +891,9 @@ protected:
             }
         }
 
-        static void multBlocksVector(Vector& ebosResid_cp, const MatrixBlockType& leftTrans)
+        static void multBlocksVector(Vector& eebosResid_cp, const MatrixBlockType& leftTrans)
         {
-            for (auto& bvec : ebosResid_cp) {
+            for (auto& bvec : eebosResid_cp) {
                 auto bvec_new = bvec;
                 leftTrans.mv(bvec, bvec_new);
                 bvec = bvec_new;

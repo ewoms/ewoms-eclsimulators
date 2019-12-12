@@ -634,7 +634,7 @@ public:
             // where it outputs rs and rv values calculated by the initialization. To be compatible we overwrite
             // rs and rv with the values computed in the initially.
             // Volume factors, densities and viscosities need to be recalculated with the updated rs and rv values.
-            // This can be removed when ebos has 100% controll over output
+            // This can be removed when eebos has 100% controll over output
             if (elemCtx.simulator().episodeIndex() < 0 && FluidSystem::phaseIsActive(oilPhaseIdx) && FluidSystem::phaseIsActive(gasPhaseIdx)) {
 
                 const auto& fsInitial = problem.initialFluidState(globalDofIdx);

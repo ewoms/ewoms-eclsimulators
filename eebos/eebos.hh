@@ -23,10 +23,10 @@
 /*!
  * \file
  *
- * \brief The common settings for all ebos variants.
+ * \brief The common settings for all eebos variants.
  */
-#ifndef EBOS_HH
-#define EBOS_HH
+#ifndef EEBOS_HH
+#define EEBOS_HH
 
 #if HAVE_DUNE_FEM
 #warning "eebos is not compatible with dune-fem. Disabling."
@@ -63,9 +63,9 @@ SET_BOOL_PROP(EebosTypeTag, EnableExperiments, true);
 // use eflow's well model for now
 SET_TYPE_PROP(EebosTypeTag, EclWellModel, Ewoms::BlackoilWellModel<TypeTag>);
 
-// currently, ebos uses the non-multisegment well model by default to avoid
+// currently, eebos uses the non-multisegment well model by default to avoid
 // regressions. the --use-multisegment-well=true|false command line parameter is still
-// available in ebos, but hidden from view.
+// available in eebos, but hidden from view.
 SET_BOOL_PROP(EebosTypeTag, UseMultisegmentWell, false);
 
 // set some properties that are only required by the well model
@@ -112,7 +112,7 @@ SET_INT_PROP(EebosTypeTag, NewtonMaxIterations, 8);
 SET_INT_PROP(EebosTypeTag, ThreadsPerProcess, 2);
 #endif
 
-// By default, ebos accepts the result of the time integration unconditionally if the
+// By default, eebos accepts the result of the time integration unconditionally if the
 // smallest time step size is reached.
 SET_BOOL_PROP(EebosTypeTag, ContinueOnConvergenceError, true);
 
@@ -159,4 +159,4 @@ public:
 };
 }
 
-#endif // EBOS_HH
+#endif // EEBOS_HH

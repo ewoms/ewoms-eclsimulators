@@ -33,7 +33,7 @@
 
 namespace Ewoms {
 
-bool ebosBlackOilDeckFileNameIsSet(int argc, char** argv)
+bool eebosBlackOilDeckFileNameIsSet(int argc, char** argv)
 {
     typedef TTAG(EebosTypeTag) ProblemTypeTag;
 
@@ -51,7 +51,7 @@ bool ebosBlackOilDeckFileNameIsSet(int argc, char** argv)
     return result;
 }
 
-std::string ebosBlackOilGetDeckFileName(int argc, char** argv)
+std::string eebosBlackOilGetDeckFileName(int argc, char** argv)
 {
     typedef TTAG(EebosTypeTag) ProblemTypeTag;
     typedef GET_PROP_TYPE(ProblemTypeTag, Vanguard) Vanguard;
@@ -71,7 +71,7 @@ std::string ebosBlackOilGetDeckFileName(int argc, char** argv)
     return result;
 }
 
-std::unique_ptr<Ewoms::ParseContext> ebosBlackOilCreateParseContext(int argc, char** argv)
+std::unique_ptr<Ewoms::ParseContext> eebosBlackOilCreateParseContext(int argc, char** argv)
 {
     typedef TTAG(EebosTypeTag) ProblemTypeTag;
     typedef GET_PROP_TYPE(ProblemTypeTag, Vanguard) Vanguard;
@@ -90,7 +90,7 @@ std::unique_ptr<Ewoms::ParseContext> ebosBlackOilCreateParseContext(int argc, ch
     return result;
 }
 
-void ebosBlackOilSetDeck(Ewoms::Deck* deck,
+void eebosBlackOilSetDeck(Ewoms::Deck* deck,
                          Ewoms::ParseContext* parseContext,
                          Ewoms::ErrorGuard* errorGuard,
                          double externalSetupTime)
@@ -104,7 +104,7 @@ void ebosBlackOilSetDeck(Ewoms::Deck* deck,
     Vanguard::setExternalDeck(deck);
 }
 
-int ebosBlackOilMain(int argc, char **argv)
+int eebosBlackOilMain(int argc, char **argv)
 {
     typedef TTAG(EebosTypeTag) ProblemTypeTag;
     return Ewoms::start<ProblemTypeTag>(argc, argv);

@@ -23,9 +23,9 @@
 /*!
  * \file
  *
- * \brief The main function for the stand alone polymer variant of ebos.
+ * \brief The main function for the stand alone polymer variant of eebos.
  *
- * This only calls the ebosPolymerMain() function.
+ * This only calls the eebosPolymerMain() function.
  */
 #include "config.h"
 
@@ -33,5 +33,5 @@
 
 int main(int argc, char** argv)
 {
-    return Ewoms::ebosPolymerMain(argc, argv);
+    return Ewoms::eebosPolymerMain(argc, argv);
 }

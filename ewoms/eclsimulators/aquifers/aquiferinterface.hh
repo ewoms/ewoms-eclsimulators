@@ -64,9 +64,9 @@ namespace Ewoms
     // Constructor
     AquiferInterface( const Aquancon::AquanconOutput& connection,
                       const std::unordered_map<int, int>& cartesian_to_compressed,
-                      const Simulator& ebosSimulator)
+                      const Simulator& eebosSimulator)
                     : connection_(connection)
-                    , ebos_simulator_(ebosSimulator)
+                    , eebos_simulator_(eebosSimulator)
                     , cartesian_to_compressed_(cartesian_to_compressed)
     {}
 
@@ -100,9 +100,9 @@ namespace Ewoms
 
     void beginTimeStep()
     {
-      ElementContext elemCtx(ebos_simulator_);
-      auto elemIt = ebos_simulator_.gridView().template begin<0>();
-      const auto& elemEndIt = ebos_simulator_.gridView().template end<0>();
+      ElementContext elemCtx(eebos_simulator_);
+      auto elemIt = eebos_simulator_.gridView().template begin<0>();
+      const auto& elemEndIt = eebos_simulator_.gridView().template end<0>();
       for (; elemIt != elemEndIt; ++elemIt) {
         const auto& elem = *elemIt;
 
@@ -142,7 +142,7 @@ namespace Ewoms
   protected:
     inline Scalar gravity_() const
     {
-      return ebos_simulator_.problem().gravity()[2];
+      return eebos_simulator_.problem().gravity()[2];
     }
 
     inline void initQuantities(const Aquancon::AquanconOutput& connection)
@@ -209,7 +209,7 @@ namespace Ewoms
     virtual void endTimeStep() = 0;
 
     const Aquancon::AquanconOutput connection_;
-    const Simulator& ebos_simulator_;
+    const Simulator& eebos_simulator_;
     const std::unordered_map<int, int> cartesian_to_compressed_;
 
     // Grid variables

@@ -23,9 +23,9 @@
 /*!
  * \file
  *
- * \brief The main function for the stand alone oil-water variant of ebos.
+ * \brief The main function for the stand alone oil-water variant of eebos.
  *
- * This only calls the ebosOilWaterMain() function.
+ * This only calls the eebosOilWaterMain() function.
  */
 #include "config.h"
 
@@ -33,5 +33,5 @@
 
 int main(int argc, char** argv)
 {
-    return Ewoms::ebosOilWaterMain(argc, argv);
+    return Ewoms::eebosOilWaterMain(argc, argv);
 }

@@ -23,22 +23,22 @@
 /*!
  * \file
  *
- * \brief The function prototypes required to start the thermal variant of ebos
+ * \brief The function prototypes required to start the thermal variant of eebos
  */
-#ifndef EBOS_THERMAL_HH
-#define EBOS_THERMAL_HH
+#ifndef EEBOS_THERMAL_HH
+#define EEBOS_THERMAL_HH
 
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/parsecontext.hh>
 #include <ewoms/eclio/parser/errorguard.hh>
 
 namespace Ewoms {
-void ebosThermalSetDeck(Ewoms::Deck* deck,
+void eebosThermalSetDeck(Ewoms::Deck* deck,
                         Ewoms::ParseContext* parseContext,
                         Ewoms::ErrorGuard* errorGuard,
                         double externalSetupTime);
 
-int ebosThermalMain(int argc, char** argv);
+int eebosThermalMain(int argc, char** argv);
 }
 
 #endif

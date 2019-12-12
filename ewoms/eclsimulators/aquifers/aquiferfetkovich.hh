@@ -51,16 +51,16 @@ namespace Ewoms
 
     AquiferFetkovich( const Aquancon::AquanconOutput& connection,
                       const std::unordered_map<int, int>& cartesian_to_compressed,
-                      const Simulator& ebosSimulator,
+                      const Simulator& eebosSimulator,
                       const Aquifetp::AQUFETP_data& aqufetp_data)
-    : Base(connection, cartesian_to_compressed, ebosSimulator)
+    : Base(connection, cartesian_to_compressed, eebosSimulator)
     , aqufetp_data_(aqufetp_data)
     {}
 
     void endTimeStep() override
     {
       for (const auto& Qai: Base::Qai_) {
-        Base::W_flux_ += Qai*Base::ebos_simulator_.timeStepSize();
+        Base::W_flux_ += Qai*Base::eebos_simulator_.timeStepSize();
         aquifer_pressure_ = aquiferPressure();
       }
     }
@@ -73,8 +73,8 @@ namespace Ewoms
 
     inline void initializeConnections(const Aquancon::AquanconOutput& connection) override
     {
-      const auto& eclState = Base::ebos_simulator_.vanguard().eclState();
-      const auto& ugrid = Base::ebos_simulator_.vanguard().grid();
+      const auto& eclState = Base::eebos_simulator_.vanguard().eclState();
+      const auto& ugrid = Base::eebos_simulator_.vanguard().grid();
       const auto& grid = eclState.getInputGrid();
 
       Base::cell_idx_ = connection.global_index;
@@ -98,7 +98,7 @@ namespace Ewoms
 
       // denom_face_areas is the sum of the areas connected to an aquifer
       Scalar denom_face_areas = 0.;
-      Base::cellToConnectionIdx_.resize(Base::ebos_simulator_.gridView().size(/*codim=*/0), -1);
+      Base::cellToConnectionIdx_.resize(Base::eebos_simulator_.gridView().size(/*codim=*/0), -1);
       for (size_t idx = 0; idx < Base::cell_idx_.size(); ++idx)
       {
         const int cell_index = Base::cartesian_to_compressed_.at(Base::cell_idx_[idx]);
@@ -214,8 +214,8 @@ namespace Ewoms
       std::vector<Scalar> pw_aquifer;
       Scalar water_pressure_reservoir;
 
-      ElementContext elemCtx(Base::ebos_simulator_);
-      const auto& gridView = Base::ebos_simulator_.gridView();
+      ElementContext elemCtx(Base::eebos_simulator_);
+      const auto& gridView = Base::eebos_simulator_.gridView();
       auto elemIt = gridView.template begin</*codim=*/0>();
       const auto& elemEndIt = gridView.template end</*codim=*/0>();
       for (; elemIt != elemEndIt; ++elemIt) {

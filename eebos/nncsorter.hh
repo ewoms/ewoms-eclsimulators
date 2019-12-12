@@ -21,8 +21,8 @@
   copyright holders.
 */
 
-#ifndef EWOMS_EBOS_NNCSORTER_HH
-#define EWOMS_EBOS_NNCSORTER_HH
+#ifndef EWOMS_EEBOS_NNCSORTER_HH
+#define EWOMS_EEBOS_NNCSORTER_HH
 
 #include <ewoms/eclio/parser/eclipsestate/grid/nnc.hh>
 

@@ -16,8 +16,8 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EWOMS_BLACKOILMODELEBOS_HH
-#define EWOMS_BLACKOILMODELEBOS_HH
+#ifndef EWOMS_BLACKOILMODELEEBOS_HH
+#define EWOMS_BLACKOILMODELEEBOS_HH
 
 #include <eebos/eclproblem.hh>
 #include <ewoms/numerics/utils/start.hh>
@@ -143,12 +143,12 @@ namespace Ewoms {
         /// \param[in] linsolver        linear solver
         /// \param[in] eclState         eclipse state
         /// \param[in] terminal_output  request output to cout/cerr
-        BlackoilModel(Simulator& ebosSimulator,
+        BlackoilModel(Simulator& eebosSimulator,
                           const ModelParameters& param,
                           BlackoilWellModel<TypeTag>& well_model,
                           const bool terminal_output)
-        : ebosSimulator_(ebosSimulator)
-        , grid_(ebosSimulator_.vanguard().grid())
+        : eebosSimulator_(eebosSimulator)
+        , grid_(eebosSimulator_.vanguard().grid())
         , phaseUsage_(phaseUsageFromDeck(eclState()))
         , has_disgas_(FluidSystem::enableDissolvedGas())
         , has_vapoil_(FluidSystem::enableVaporizedOil())
@@ -172,28 +172,28 @@ namespace Ewoms {
         { return  grid_.comm().size() > 1; }
 
         const EclipseState& eclState() const
-        { return ebosSimulator_.vanguard().eclState(); }
+        { return eebosSimulator_.vanguard().eclState(); }
 
         /// Called once before each time step.
         /// \param[in] timer                  simulation timer
         void prepareStep(const SimulatorTimerInterface& timer)
         {
-            // update the solution variables in ebos
+            // update the solution variables in eebos
             if ( timer.lastStepFailed() ) {
-                ebosSimulator_.model().updateFailed();
+                eebosSimulator_.model().updateFailed();
             } else {
-                ebosSimulator_.model().advanceTimeLevel();
+                eebosSimulator_.model().advanceTimeLevel();
             }
 
-            // set the timestep size and episode index for ebos explicitly. ebos needs to
+            // set the timestep size and episode index for eebos explicitly. eebos needs to
             // know the report step/episode index because of timing dependend data
             // despite the fact that eflow uses its own time stepper. (The length of the
             // episode does not matter, though.)
-            ebosSimulator_.setTime(timer.simulationTimeElapsed());
-            ebosSimulator_.setTimeStepSize(timer.currentStepLength());
-            ebosSimulator_.problem().beginTimeStep();
+            eebosSimulator_.setTime(timer.simulationTimeElapsed());
+            eebosSimulator_.setTimeStepSize(timer.currentStepLength());
+            eebosSimulator_.problem().beginTimeStep();
 
-            unsigned numDof = ebosSimulator_.model().numGridDof();
+            unsigned numDof = eebosSimulator_.model().numGridDof();
             wasSwitched_.resize(numDof);
             std::fill(wasSwitched_.begin(), wasSwitched_.end(), false);
 
@@ -278,8 +278,8 @@ namespace Ewoms {
 
                 // apply the Schur compliment of the well model to the reservoir linearized
                 // equations
-                wellModel().linearize(ebosSimulator().model().linearizer().jacobian(),
-                                      ebosSimulator().model().linearizer().residual());
+                wellModel().linearize(eebosSimulator().model().linearizer().jacobian(),
+                                      eebosSimulator().model().linearizer().residual());
 
                 // Solve the linear system.
                 linear_solve_setup_time_ = 0.0;
@@ -344,7 +344,7 @@ namespace Ewoms {
         /// \param[in] timer                  simulation timer
         void afterStep(const SimulatorTimerInterface& timer EWOMS_UNUSED)
         {
-            ebosSimulator_.problem().endTimeStep();
+            eebosSimulator_.problem().endTimeStep();
         }
 
         /// Assemble the residual and Jacobian of the nonlinear system.
@@ -355,10 +355,10 @@ namespace Ewoms {
                                           const int iterationIdx)
         {
             // -------- Mass balance equations --------
-            ebosSimulator_.model().newtonMethod().setIterationIndex(iterationIdx);
-            ebosSimulator_.problem().beginIteration();
-            ebosSimulator_.model().linearizer().linearizeDomain();
-            ebosSimulator_.problem().endIteration();
+            eebosSimulator_.model().newtonMethod().setIterationIndex(iterationIdx);
+            eebosSimulator_.problem().beginIteration();
+            eebosSimulator_.model().linearizer().linearizeDomain();
+            eebosSimulator_.problem().endIteration();
 
             return wellModel().lastReport();
         }
@@ -369,8 +369,8 @@ namespace Ewoms {
             Scalar resultDelta = 0.0;
             Scalar resultDenom = 0.0;
 
-            const auto& elemMapper = ebosSimulator_.model().elementMapper();
-            const auto& gridView = ebosSimulator_.gridView();
+            const auto& elemMapper = eebosSimulator_.model().elementMapper();
+            const auto& gridView = eebosSimulator_.gridView();
             auto elemIt = gridView.template begin</*codim=*/0>();
             const auto& elemEndIt = gridView.template end</*codim=*/0>();
             for (; elemIt != elemEndIt; ++elemIt) {
@@ -379,7 +379,7 @@ namespace Ewoms {
                     continue;
 
                 unsigned globalElemIdx = elemMapper.index(elem);
-                const auto& priVarsNew = ebosSimulator_.model().solution(/*timeIdx=*/0)[globalElemIdx];
+                const auto& priVarsNew = eebosSimulator_.model().solution(/*timeIdx=*/0)[globalElemIdx];
 
                 Scalar pressureNew;
                 pressureNew = priVarsNew[Indices::pressureSwitchIdx];
@@ -400,7 +400,7 @@ namespace Ewoms {
                     saturationsNew[FluidSystem::oilPhaseIdx] = oilSaturationNew;
                 }
 
-                const auto& priVarsOld = ebosSimulator_.model().solution(/*timeIdx=*/1)[globalElemIdx];
+                const auto& priVarsOld = eebosSimulator_.model().solution(/*timeIdx=*/1)[globalElemIdx];
 
                 Scalar pressureOld;
                 pressureOld = priVarsOld[Indices::pressureSwitchIdx];
@@ -450,7 +450,7 @@ namespace Ewoms {
         /// Number of linear iterations used in last call to solveJacobianSystem().
         int linearIterationsLastSolve() const
         {
-            return ebosSimulator_.model().newtonMethod().linearSolver().iterations ();
+            return eebosSimulator_.model().newtonMethod().linearSolver().iterations ();
         }
 
         /// Solve the Jacobian system Jx = r where J is the Jacobian and
@@ -458,33 +458,33 @@ namespace Ewoms {
         void solveJacobianSystem(BVector& x)
         {
 
-            auto& ebosJac = ebosSimulator_.model().linearizer().jacobian();
-            auto& ebosResid = ebosSimulator_.model().linearizer().residual();
+            auto& eebosJac = eebosSimulator_.model().linearizer().jacobian();
+            auto& eebosResid = eebosSimulator_.model().linearizer().residual();
 
             // set initial guess
             x = 0.0;
 
-            auto& ebosSolver = ebosSimulator_.model().newtonMethod().linearSolver();
+            auto& eebosSolver = eebosSimulator_.model().newtonMethod().linearSolver();
             Dune::Timer perfTimer;
             perfTimer.start();
-            ebosSolver.prepare(ebosJac, ebosResid);
+            eebosSolver.prepare(eebosJac, eebosResid);
             linear_solve_setup_time_ = perfTimer.stop();
-            ebosSolver.setResidual(ebosResid);
+            eebosSolver.setResidual(eebosResid);
             // actually, the error needs to be calculated after setResidual in order to
             // account for parallelization properly. since the residual of ECFV
             // discretizations does not need to be synchronized across processes to be
             // consistent, this is not relevant for eflow...
-            ebosSolver.setMatrix(ebosJac);
-            ebosSolver.solve(x);
+            eebosSolver.setMatrix(eebosJac);
+            eebosSolver.solve(x);
        }
 
         /// Apply an update to the primary variables.
         void updateSolution(const BVector& dx)
         {
-            auto& ebosNewtonMethod = ebosSimulator_.model().newtonMethod();
-            SolutionVector& solution = ebosSimulator_.model().solution(/*timeIdx=*/0);
+            auto& eebosNewtonMethod = eebosSimulator_.model().newtonMethod();
+            SolutionVector& solution = eebosSimulator_.model().solution(/*timeIdx=*/0);
 
-            ebosNewtonMethod.update_(/*nextSolution=*/solution,
+            eebosNewtonMethod.update_(/*nextSolution=*/solution,
                                      /*curSolution=*/solution,
                                      /*update=*/dx,
                                      /*resid=*/dx); // the update routines of the black
@@ -492,7 +492,7 @@ namespace Ewoms {
                                                     // residual
 
             // if the solution is updated, the intensive quantities need to be recalculated
-            ebosSimulator_.model().invalidateIntensiveQuantitiesCache(/*timeIdx=*/0);
+            eebosSimulator_.model().invalidateIntensiveQuantitiesCache(/*timeIdx=*/0);
         }
 
         /// Return true if output to cout is wanted.
@@ -563,13 +563,13 @@ namespace Ewoms {
                                     std::vector<Scalar>& B_avg)
         {
             double pvSumLocal = 0.0;
-            const auto& ebosModel = ebosSimulator_.model();
-            const auto& ebosProblem = ebosSimulator_.problem();
+            const auto& eebosModel = eebosSimulator_.model();
+            const auto& eebosProblem = eebosSimulator_.problem();
 
-            const auto& ebosResid = ebosSimulator_.model().linearizer().residual();
+            const auto& eebosResid = eebosSimulator_.model().linearizer().residual();
 
-            ElementContext elemCtx(ebosSimulator_);
-            const auto& gridView = ebosSimulator().gridView();
+            ElementContext elemCtx(eebosSimulator_);
+            const auto& gridView = eebosSimulator().gridView();
             const auto& elemEndIt = gridView.template end</*codim=*/0, Dune::Interior_Partition>();
 
             for (auto elemIt = gridView.template begin</*codim=*/0, Dune::Interior_Partition>();
@@ -583,7 +583,7 @@ namespace Ewoms {
                 const auto& intQuants = elemCtx.intensiveQuantities(/*spaceIdx=*/0, /*timeIdx=*/0);
                 const auto& fs = intQuants.fluidState();
 
-                const double pvValue = ebosProblem.referencePorosity(cell_idx, /*timeIdx=*/0) * ebosModel.dofTotalVolume( cell_idx );
+                const double pvValue = eebosProblem.referencePorosity(cell_idx, /*timeIdx=*/0) * eebosModel.dofTotalVolume( cell_idx );
                 pvSumLocal += pvValue;
 
                 for (unsigned phaseIdx = 0; phaseIdx < FluidSystem::numPhases; ++phaseIdx)
@@ -595,7 +595,7 @@ namespace Ewoms {
                     const unsigned compIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::solventComponentIndex(phaseIdx));
 
                     B_avg[ compIdx ] += 1.0 / fs.invB(phaseIdx).value();
-                    const auto R2 = ebosResid[cell_idx][compIdx];
+                    const auto R2 = eebosResid[cell_idx][compIdx];
 
                     R_sum[ compIdx ] += R2;
                     maxCoeff[ compIdx ] = std::max( maxCoeff[ compIdx ], std::abs( R2 ) / pvValue );
@@ -603,19 +603,19 @@ namespace Ewoms {
 
                 if ( has_solvent_ ) {
                     B_avg[ contiSolventEqIdx ] += 1.0 / intQuants.solventInverseFormationVolumeFactor().value();
-                    const auto R2 = ebosResid[cell_idx][contiSolventEqIdx];
+                    const auto R2 = eebosResid[cell_idx][contiSolventEqIdx];
                     R_sum[ contiSolventEqIdx ] += R2;
                     maxCoeff[ contiSolventEqIdx ] = std::max( maxCoeff[ contiSolventEqIdx ], std::abs( R2 ) / pvValue );
                 }
                 if (has_polymer_ ) {
                     B_avg[ contiPolymerEqIdx ] += 1.0 / fs.invB(FluidSystem::waterPhaseIdx).value();
-                    const auto R2 = ebosResid[cell_idx][contiPolymerEqIdx];
+                    const auto R2 = eebosResid[cell_idx][contiPolymerEqIdx];
                     R_sum[ contiPolymerEqIdx ] += R2;
                     maxCoeff[ contiPolymerEqIdx ] = std::max( maxCoeff[ contiPolymerEqIdx ], std::abs( R2 ) / pvValue );
                 }
                 if (has_foam_ ) {
                     B_avg[ contiFoamEqIdx ] += 1.0 / fs.invB(FluidSystem::gasPhaseIdx).value();
-                    const auto R2 = ebosResid[cell_idx][contiFoamEqIdx];
+                    const auto R2 = eebosResid[cell_idx][contiFoamEqIdx];
                     R_sum[ contiFoamEqIdx ] += R2;
                     maxCoeff[ contiFoamEqIdx ] = std::max( maxCoeff[ contiFoamEqIdx ], std::abs( R2 ) / pvValue );
                 }
@@ -627,14 +627,14 @@ namespace Ewoms {
                     // the residual of the polymer molecular equation is scaled down by a 100, since molecular weight
                     // can be much bigger than 1, and this equation shares the same tolerance with other mass balance equations
                     // TODO: there should be a more general way to determine the scaling-down coefficient
-                    const auto R2 = ebosResid[cell_idx][contiPolymerMWEqIdx] / 100.;
+                    const auto R2 = eebosResid[cell_idx][contiPolymerMWEqIdx] / 100.;
                     R_sum[contiPolymerMWEqIdx] += R2;
                     maxCoeff[contiPolymerMWEqIdx] = std::max( maxCoeff[contiPolymerMWEqIdx], std::abs( R2 ) / pvValue );
                 }
 
                 if (has_energy_ ) {
                     B_avg[ contiEnergyEqIdx ] += 1.0;
-                    const auto R2 = ebosResid[cell_idx][contiEnergyEqIdx];
+                    const auto R2 = eebosResid[cell_idx][contiEnergyEqIdx];
                     R_sum[ contiEnergyEqIdx ] += R2;
                     maxCoeff[ contiEnergyEqIdx ] = std::max( maxCoeff[ contiEnergyEqIdx ], std::abs( R2 ) / pvValue );
                 }
@@ -817,11 +817,11 @@ namespace Ewoms {
             return regionValues;
         }
 
-        const Simulator& ebosSimulator() const
-        { return ebosSimulator_; }
+        const Simulator& eebosSimulator() const
+        { return eebosSimulator_; }
 
-        Simulator& ebosSimulator()
-        { return ebosSimulator_; }
+        Simulator& eebosSimulator()
+        { return eebosSimulator_; }
 
         /// return the statistics if the nonlinearIteration() method failed
         const SimulatorReport& failureReport() const
@@ -848,7 +848,7 @@ namespace Ewoms {
 
         // ---------  Data members  ---------
 
-        Simulator& ebosSimulator_;
+        Simulator& eebosSimulator_;
         const Grid&            grid_;
         const ISTLSolverType*  istlSolver_;
         const PhaseUsage phaseUsage_;
@@ -886,12 +886,12 @@ namespace Ewoms {
 
         void beginReportStep()
         {
-            ebosSimulator_.problem().beginEpisode();
+            eebosSimulator_.problem().beginEpisode();
         }
 
         void endReportStep()
         {
-            ebosSimulator_.problem().endEpisode();
+            eebosSimulator_.problem().endEpisode();
         }
 
     private:

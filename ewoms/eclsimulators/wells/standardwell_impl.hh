@@ -465,7 +465,7 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    assembleWellEq(const Simulator& ebosSimulator,
+    assembleWellEq(const Simulator& eebosSimulator,
                    const std::vector<Scalar>& /* B_avg */,
                    const double dt,
                    WellState& well_state,
@@ -474,7 +474,7 @@ namespace Ewoms
         // TODO: only_wells should be put back to save some computation
         // for example, the matrices B C does not need to update if only_wells
 
-        checkWellOperability(ebosSimulator, well_state, deferred_logger);
+        checkWellOperability(eebosSimulator, well_state, deferred_logger);
 
         if (!this->isOperable() && !this->wellIsStopped()) return;
 
@@ -487,7 +487,7 @@ namespace Ewoms
         // TODO: it probably can be static member for StandardWell
         const double volume = 0.002831684659200; // 0.1 cu ft;
 
-        const bool allow_cf = getAllowCrossFlow() || openCrossFlowAvoidSingularity(ebosSimulator);
+        const bool allow_cf = getAllowCrossFlow() || openCrossFlowAvoidSingularity(eebosSimulator);
 
         const EvalWell& bhp = getBhp();
 
@@ -503,14 +503,14 @@ namespace Ewoms
         for (int perf = 0; perf < number_of_perforations_; ++perf) {
 
             const int cell_idx = well_cells_[perf];
-            const auto& intQuants = *(ebosSimulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0));
+            const auto& intQuants = *(eebosSimulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0));
             std::vector<EvalWell> mob(num_components_, {numWellEq_ + numEq, 0.});
-            getMobility(ebosSimulator, perf, mob, deferred_logger);
+            getMobility(eebosSimulator, perf, mob, deferred_logger);
 
             std::vector<EvalWell> cq_s(num_components_, {numWellEq_ + numEq, 0.});
             double perf_dis_gas_rate = 0.;
             double perf_vap_oil_rate = 0.;
-            double trans_mult = ebosSimulator.problem().template rockCompTransMultiplier<double>(intQuants,  cell_idx);
+            double trans_mult = eebosSimulator.problem().template rockCompTransMultiplier<double>(intQuants,  cell_idx);
             const double Tw = well_index_[perf] * trans_mult;
             computePerfRate(intQuants, mob, bhp, Tw, perf, allow_cf,
                             cq_s, perf_dis_gas_rate, perf_vap_oil_rate, deferred_logger);
@@ -600,7 +600,7 @@ namespace Ewoms
                         typename FluidSystem::template ParameterCache<FsScalar> paramCache;
                         const unsigned pvtRegionIdx = intQuants.pvtRegionIndex();
                         paramCache.setRegionIndex(pvtRegionIdx);
-                        paramCache.setMaxOilSat(ebosSimulator.problem().maxOilSaturation(cell_idx));
+                        paramCache.setMaxOilSat(eebosSimulator.problem().maxOilSaturation(cell_idx));
                         paramCache.updatePhase(fs, phaseIdx);
 
                         const auto& rho = FluidSystem::density(fs, paramCache, phaseIdx);
@@ -647,8 +647,8 @@ namespace Ewoms
 
             // Compute Productivity index if asked for
             const auto& pu = phaseUsage();
-            const Ewoms::SummaryConfig& summaryConfig = ebosSimulator.vanguard().summaryConfig();
-            const Ewoms::Schedule& schedule = ebosSimulator.vanguard().schedule();
+            const Ewoms::SummaryConfig& summaryConfig = eebosSimulator.vanguard().summaryConfig();
+            const Ewoms::Schedule& schedule = eebosSimulator.vanguard().schedule();
             for (int p = 0; p < np; ++p) {
                 if ( (pu.phase_pos[Water] == p && (summaryConfig.hasSummaryKey("WPIW:" + name()) || summaryConfig.hasSummaryKey("WPIL:" + name())))
                         || (pu.phase_pos[Oil] == p && (summaryConfig.hasSummaryKey("WPIO:" + name()) || summaryConfig.hasSummaryKey("WPIL:" + name())))
@@ -683,8 +683,8 @@ namespace Ewoms
             resWell_[0][componentIdx] += resWell_loc.value();
         }
 
-        const auto& summaryState = ebosSimulator.vanguard().summaryState();
-        const Ewoms::Schedule& schedule = ebosSimulator.vanguard().schedule();
+        const auto& summaryState = eebosSimulator.vanguard().summaryState();
+        const Ewoms::Schedule& schedule = eebosSimulator.vanguard().schedule();
         assembleControlEq(well_state, schedule, summaryState, deferred_logger);
 
         // do the local inversion of D.
@@ -1193,15 +1193,15 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    getMobility(const Simulator& ebosSimulator,
+    getMobility(const Simulator& eebosSimulator,
                 const int perf,
                 std::vector<EvalWell>& mob,
                 Ewoms::DeferredLogger& deferred_logger) const
     {
         const int cell_idx = well_cells_[perf];
         assert (int(mob.size()) == num_components_);
-        const auto& intQuants = *(ebosSimulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/0));
-        const auto& materialLawManager = ebosSimulator.problem().materialLawManager();
+        const auto& intQuants = *(eebosSimulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/0));
+        const auto& materialLawManager = eebosSimulator.problem().materialLawManager();
 
         // either use mobility of the perforation cell or calcualte its own
         // based on passing the saturation table index
@@ -1251,7 +1251,7 @@ namespace Ewoms
                 EWOMS_DEFLOG_THROW(std::runtime_error, "Water is required when polymer is active", deferred_logger);
             }
 
-            updateWaterMobilityWithPolymer(ebosSimulator, perf, mob, deferred_logger);
+            updateWaterMobilityWithPolymer(eebosSimulator, perf, mob, deferred_logger);
         }
     }
 
@@ -1553,7 +1553,7 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    updateWellStateWithTarget(const Simulator& ebos_simulator,
+    updateWellStateWithTarget(const Simulator& eebos_simulator,
                               WellState& well_state,
                               Ewoms::DeferredLogger& deferred_logger) const
     {
@@ -1563,7 +1563,7 @@ namespace Ewoms
         const int well_index = index_of_well_;
         const auto& pu = phaseUsage();
         const int np = well_state.numPhases();
-        const auto& summaryState = ebos_simulator.vanguard().summaryState();
+        const auto& summaryState = eebos_simulator.vanguard().summaryState();
 
         if (wellIsStopped_) {
             for (int p = 0; p<np; ++p) {
@@ -1749,7 +1749,7 @@ namespace Ewoms
             case Well::ProducerCMode::THP:
             {
                 well_state.thp()[well_index] = controls.thp_limit;
-                auto bhp = computeBhpAtThpLimitProd(ebos_simulator, summaryState, deferred_logger);
+                auto bhp = computeBhpAtThpLimitProd(eebos_simulator, summaryState, deferred_logger);
                 if (bhp) {
                     well_state.bhp()[well_index] = *bhp;
                 } else {
@@ -1780,7 +1780,7 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    updateIPR(const Simulator& ebos_simulator, Ewoms::DeferredLogger& deferred_logger) const
+    updateIPR(const Simulator& eebos_simulator, Ewoms::DeferredLogger& deferred_logger) const
     {
         // TODO: not handling solvent related here for now
 
@@ -1797,10 +1797,10 @@ namespace Ewoms
         for (int perf = 0; perf < number_of_perforations_; ++perf) {
             std::vector<EvalWell> mob(num_components_, {numWellEq_ + numEq, 0.0});
             // TODO: mabye we should store the mobility somewhere, so that we only need to calculate it one per iteration
-            getMobility(ebos_simulator, perf, mob, deferred_logger);
+            getMobility(eebos_simulator, perf, mob, deferred_logger);
 
             const int cell_idx = well_cells_[perf];
-            const auto& int_quantities = *(ebos_simulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0));
+            const auto& int_quantities = *(eebos_simulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0));
             const auto& fs = int_quantities.fluidState();
             // the pressure of the reservoir grid block the well connection is in
             Eval perf_pressure = getPerfCellPressure(fs);
@@ -1829,7 +1829,7 @@ namespace Ewoms
             }
 
             // the well index associated with the connection
-            const double tw_perf = well_index_[perf]*ebos_simulator.problem().template rockCompTransMultiplier<double>(int_quantities, cell_idx);
+            const double tw_perf = well_index_[perf]*eebos_simulator.problem().template rockCompTransMultiplier<double>(int_quantities, cell_idx);
 
             // TODO: there might be some indices related problems here
             // phases vs components
@@ -1873,7 +1873,7 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    checkWellOperability(const Simulator& ebos_simulator,
+    checkWellOperability(const Simulator& eebos_simulator,
                          const WellState& well_state,
                          Ewoms::DeferredLogger& deferred_logger)
     {
@@ -1898,7 +1898,7 @@ namespace Ewoms
 
         const bool old_well_operable = this->operability_status_.isOperable();
 
-        updateWellOperability(ebos_simulator, well_state, deferred_logger);
+        updateWellOperability(eebos_simulator, well_state, deferred_logger);
 
         const bool well_operable = this->operability_status_.isOperable();
 
@@ -1922,31 +1922,31 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    updateWellOperability(const Simulator& ebos_simulator,
+    updateWellOperability(const Simulator& eebos_simulator,
                           const WellState& /* well_state */,
                           Ewoms::DeferredLogger& deferred_logger)
     {
         this->operability_status_.reset();
 
-        updateIPR(ebos_simulator, deferred_logger);
+        updateIPR(eebos_simulator, deferred_logger);
 
         // checking the BHP limit related
-        checkOperabilityUnderBHPLimitProducer(ebos_simulator, deferred_logger);
+        checkOperabilityUnderBHPLimitProducer(eebos_simulator, deferred_logger);
 
-        const auto& summaryState = ebos_simulator.vanguard().summaryState();
+        const auto& summaryState = eebos_simulator.vanguard().summaryState();
 
         // checking whether the well can operate under the THP constraints.
         if (this->wellHasTHPConstraints(summaryState)) {
-            checkOperabilityUnderTHPLimitProducer(ebos_simulator, deferred_logger);
+            checkOperabilityUnderTHPLimitProducer(eebos_simulator, deferred_logger);
         }
     }
 
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    checkOperabilityUnderBHPLimitProducer(const Simulator& ebos_simulator, Ewoms::DeferredLogger& deferred_logger)
+    checkOperabilityUnderBHPLimitProducer(const Simulator& eebos_simulator, Ewoms::DeferredLogger& deferred_logger)
     {
-        const auto& summaryState = ebos_simulator.vanguard().summaryState();
+        const auto& summaryState = eebos_simulator.vanguard().summaryState();
         const double bhp_limit = mostStrictBhpFromBhpLimits(summaryState);
         // Crude but works: default is one atmosphere.
         // TODO: a better way to detect whether the BHP is defaulted or not
@@ -1969,7 +1969,7 @@ namespace Ewoms
                 // option 2: stick with the above IPR curve
                 // we use IPR here
                 std::vector<double> well_rates_bhp_limit;
-                computeWellRatesWithBhp(ebos_simulator, bhp_limit, well_rates_bhp_limit, deferred_logger);
+                computeWellRatesWithBhp(eebos_simulator, bhp_limit, well_rates_bhp_limit, deferred_logger);
 
                 const double thp = calculateThpFromBhp(well_rates_bhp_limit, bhp_limit, deferred_logger);
                 const double thp_limit = this->getTHPConstraint(summaryState);
@@ -1994,10 +1994,10 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    checkOperabilityUnderTHPLimitProducer(const Simulator& ebos_simulator, Ewoms::DeferredLogger& deferred_logger)
+    checkOperabilityUnderTHPLimitProducer(const Simulator& eebos_simulator, Ewoms::DeferredLogger& deferred_logger)
     {
-        const auto& summaryState = ebos_simulator.vanguard().summaryState();
-        const auto obtain_bhp = computeBhpAtThpLimitProd(ebos_simulator, summaryState, deferred_logger);
+        const auto& summaryState = eebos_simulator.vanguard().summaryState();
+        const auto obtain_bhp = computeBhpAtThpLimitProd(eebos_simulator, summaryState, deferred_logger);
 
         if (obtain_bhp) {
             this->operability_status_.can_obtain_bhp_with_thp_limit = true;
@@ -2028,13 +2028,13 @@ namespace Ewoms
     template<typename TypeTag>
     bool
     StandardWell<TypeTag>::
-    allDrawDownWrongDirection(const Simulator& ebos_simulator) const
+    allDrawDownWrongDirection(const Simulator& eebos_simulator) const
     {
         bool all_drawdown_wrong_direction = true;
 
         for (int perf = 0; perf < number_of_perforations_; ++perf) {
             const int cell_idx = well_cells_[perf];
-            const auto& intQuants = *(ebos_simulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/0));
+            const auto& intQuants = *(eebos_simulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/0));
             const auto& fs = intQuants.fluidState();
 
             const double pressure = (fs.pressure(FluidSystem::oilPhaseIdx)).value();
@@ -2060,13 +2060,13 @@ namespace Ewoms
     template<typename TypeTag>
     bool
     StandardWell<TypeTag>::
-    canProduceInjectWithCurrentBhp(const Simulator& ebos_simulator,
+    canProduceInjectWithCurrentBhp(const Simulator& eebos_simulator,
                                    const WellState& well_state,
                                    Ewoms::DeferredLogger& deferred_logger)
     {
         const double bhp = well_state.bhp()[index_of_well_];
         std::vector<double> well_rates;
-        computeWellRatesWithBhp(ebos_simulator, bhp, well_rates, deferred_logger);
+        computeWellRatesWithBhp(eebos_simulator, bhp, well_rates, deferred_logger);
 
         const double sign = (this->isProducer()) ? -1. : 1.;
         const double threshold = sign * std::numeric_limits<double>::min();
@@ -2092,15 +2092,15 @@ namespace Ewoms
     template<typename TypeTag>
     bool
     StandardWell<TypeTag>::
-    openCrossFlowAvoidSingularity(const Simulator& ebos_simulator) const
+    openCrossFlowAvoidSingularity(const Simulator& eebos_simulator) const
     {
-        return !getAllowCrossFlow() && allDrawDownWrongDirection(ebos_simulator);
+        return !getAllowCrossFlow() && allDrawDownWrongDirection(eebos_simulator);
     }
 
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    computePropertiesForWellConnectionPressures(const Simulator& ebosSimulator,
+    computePropertiesForWellConnectionPressures(const Simulator& eebosSimulator,
                                                 const WellState& well_state,
                                                 std::vector<double>& b_perf,
                                                 std::vector<double>& rsmax_perf,
@@ -2126,7 +2126,7 @@ namespace Ewoms
         // Compute the average pressure in each well block
         for (int perf = 0; perf < nperf; ++perf) {
             const int cell_idx = well_cells_[perf];
-            const auto& intQuants = *(ebosSimulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/0));
+            const auto& intQuants = *(eebosSimulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/0));
             const auto& fs = intQuants.fluidState();
 
             // TODO: this is another place to show why WellState need to be a vector of WellState.
@@ -2464,7 +2464,7 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    computeWellConnectionPressures(const Simulator& ebosSimulator,
+    computeWellConnectionPressures(const Simulator& eebosSimulator,
                                    const WellState& well_state)
     {
          // 1. Compute properties required by computeConnectionPressureDelta().
@@ -2474,7 +2474,7 @@ namespace Ewoms
          std::vector<double> rsmax_perf;
          std::vector<double> rvmax_perf;
          std::vector<double> surf_dens_perf;
-         computePropertiesForWellConnectionPressures(ebosSimulator, well_state, b_perf, rsmax_perf, rvmax_perf, surf_dens_perf);
+         computePropertiesForWellConnectionPressures(eebosSimulator, well_state, b_perf, rsmax_perf, rvmax_perf, surf_dens_perf);
          computeWellConnectionDensitesPressures(well_state, b_perf, rsmax_perf, rvmax_perf, surf_dens_perf);
     }
 
@@ -2497,13 +2497,13 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    calculateExplicitQuantities(const Simulator& ebosSimulator,
+    calculateExplicitQuantities(const Simulator& eebosSimulator,
                                 const WellState& well_state,
                                 Ewoms::DeferredLogger& deferred_logger)
     {
         updatePrimaryVariables(well_state, deferred_logger);
         initPrimaryVariablesEvaluation();
-        computeWellConnectionPressures(ebosSimulator, well_state);
+        computeWellConnectionPressures(eebosSimulator, well_state);
         computeAccumWell();
     }
 
@@ -2592,7 +2592,7 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    computeWellRatesWithBhp(const Simulator& ebosSimulator,
+    computeWellRatesWithBhp(const Simulator& eebosSimulator,
                             const double& bhp,
                             std::vector<double>& well_flux,
                             Ewoms::DeferredLogger& deferred_logger) const
@@ -2605,11 +2605,11 @@ namespace Ewoms
 
         for (int perf = 0; perf < number_of_perforations_; ++perf) {
             const int cell_idx = well_cells_[perf];
-            const auto& intQuants = *(ebosSimulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0));
+            const auto& intQuants = *(eebosSimulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0));
             // flux for each perforation
             std::vector<EvalWell> mob(num_components_, {numWellEq_ + numEq, 0.});
-            getMobility(ebosSimulator, perf, mob, deferred_logger);
-            double trans_mult = ebosSimulator.problem().template rockCompTransMultiplier<double>(intQuants, cell_idx);
+            getMobility(eebosSimulator, perf, mob, deferred_logger);
+            double trans_mult = eebosSimulator.problem().template rockCompTransMultiplier<double>(intQuants, cell_idx);
             const double Tw = well_index_[perf] * trans_mult;
 
             std::vector<EvalWell> cq_s(num_components_, {numWellEq_ + numEq, 0.});
@@ -2627,7 +2627,7 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    computeWellRatesWithBhpPotential(const Simulator& ebosSimulator,
+    computeWellRatesWithBhpPotential(const Simulator& eebosSimulator,
                             const std::vector<Scalar>& B_avg,
                             const double& bhp,
                             std::vector<double>& well_flux,
@@ -2637,9 +2637,9 @@ namespace Ewoms
         // iterate to get a more accurate well density
         // create a copy of the well_state to use. If the operability checking is sucessful, we use this one
         // to replace the original one
-        WellState well_state_copy = ebosSimulator.problem().wellModel().wellState();
+        WellState well_state_copy = eebosSimulator.problem().wellModel().wellState();
 
-        bool converged = this->solveWellEqUntilConverged(ebosSimulator, B_avg, well_state_copy, deferred_logger);
+        bool converged = this->solveWellEqUntilConverged(eebosSimulator, B_avg, well_state_copy, deferred_logger);
 
         if (!converged) {
             const std::string msg = " well " + name() + " did not get converged during well potential calculations "
@@ -2648,49 +2648,49 @@ namespace Ewoms
             return;
         }
         updatePrimaryVariables(well_state_copy, deferred_logger);
-        computeWellConnectionPressures(ebosSimulator, well_state_copy);
+        computeWellConnectionPressures(eebosSimulator, well_state_copy);
         initPrimaryVariablesEvaluation();
 
-        computeWellRatesWithBhp(ebosSimulator, bhp, well_flux, deferred_logger);
+        computeWellRatesWithBhp(eebosSimulator, bhp, well_flux, deferred_logger);
     }
 
     template<typename TypeTag>
     std::vector<double>
     StandardWell<TypeTag>::
-    computeWellPotentialWithTHP(const Simulator& ebos_simulator,
+    computeWellPotentialWithTHP(const Simulator& eebos_simulator,
                                 Ewoms::DeferredLogger& deferred_logger) const
     {
         std::vector<double> potentials(number_of_phases_, 0.0);
-        const auto& summary_state = ebos_simulator.vanguard().summaryState();
+        const auto& summary_state = eebos_simulator.vanguard().summaryState();
 
         const auto& well = well_ecl_;
         if (well.isInjector()){
-            auto bhp_at_thp_limit = computeBhpAtThpLimitInj(ebos_simulator, summary_state, deferred_logger);
+            auto bhp_at_thp_limit = computeBhpAtThpLimitInj(eebos_simulator, summary_state, deferred_logger);
             if (bhp_at_thp_limit) {
                 const auto& controls = well_ecl_.injectionControls(summary_state);
                 const double bhp = std::min(*bhp_at_thp_limit, controls.bhp_limit);
-                computeWellRatesWithBhp(ebos_simulator, bhp, potentials, deferred_logger);
+                computeWellRatesWithBhp(eebos_simulator, bhp, potentials, deferred_logger);
             } else {
                 deferred_logger.warning("FAILURE_GETTING_CONVERGED_POTENTIAL",
                                         "Failed in getting converged thp based potential calculation for well "
                                         + name() + ". Instead the bhp based value is used");
                 const auto& controls = well_ecl_.injectionControls(summary_state);
                 const double bhp = controls.bhp_limit;
-                computeWellRatesWithBhp(ebos_simulator, bhp, potentials, deferred_logger);
+                computeWellRatesWithBhp(eebos_simulator, bhp, potentials, deferred_logger);
             }
         } else {
-            auto bhp_at_thp_limit = computeBhpAtThpLimitProd(ebos_simulator, summary_state, deferred_logger);
+            auto bhp_at_thp_limit = computeBhpAtThpLimitProd(eebos_simulator, summary_state, deferred_logger);
             if (bhp_at_thp_limit) {
                 const auto& controls = well_ecl_.productionControls(summary_state);
                 const double bhp = std::max(*bhp_at_thp_limit, controls.bhp_limit);
-                computeWellRatesWithBhp(ebos_simulator, bhp, potentials, deferred_logger);
+                computeWellRatesWithBhp(eebos_simulator, bhp, potentials, deferred_logger);
             } else {
                 deferred_logger.warning("FAILURE_GETTING_CONVERGED_POTENTIAL",
                                         "Failed in getting converged thp based potential calculation for well "
                                         + name() + ". Instead the bhp based value is used");
                 const auto& controls = well_ecl_.productionControls(summary_state);
                 const double bhp = controls.bhp_limit;
-                computeWellRatesWithBhp(ebos_simulator, bhp, potentials, deferred_logger);
+                computeWellRatesWithBhp(eebos_simulator, bhp, potentials, deferred_logger);
             }
         }
 
@@ -2700,7 +2700,7 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    computeWellPotentials(const Simulator& ebosSimulator,
+    computeWellPotentials(const Simulator& eebosSimulator,
                           const std::vector<Scalar>& B_avg,
                           const WellState& well_state,
                           std::vector<double>& well_potentials,
@@ -2718,23 +2718,23 @@ namespace Ewoms
         StandardWell<TypeTag> well(*this);
 
         well.updatePrimaryVariables(well_state, deferred_logger);
-        well.computeWellConnectionPressures(ebosSimulator, well_state);
+        well.computeWellConnectionPressures(eebosSimulator, well_state);
 
         // initialize the primary variables in Evaluation, which is used in computePerfRate for computeWellPotentials
         // TODO: for computeWellPotentials, no derivative is required actually
         well.initPrimaryVariablesEvaluation();
 
         // does the well have a THP related constraint?
-        const auto& summaryState = ebosSimulator.vanguard().summaryState();
+        const auto& summaryState = eebosSimulator.vanguard().summaryState();
         const Well::ProducerCMode& current_control = well_state.currentProductionControls()[this->index_of_well_];
         if ( !well.Base::wellHasTHPConstraints(summaryState) || current_control == Well::ProducerCMode::BHP ) {
             // get the bhp value based on the bhp constraints
             const double bhp = well.mostStrictBhpFromBhpLimits(summaryState);
             assert(std::abs(bhp) != std::numeric_limits<double>::max());
-            well.computeWellRatesWithBhpPotential(ebosSimulator, B_avg, bhp, well_potentials, deferred_logger);
+            well.computeWellRatesWithBhpPotential(eebosSimulator, B_avg, bhp, well_potentials, deferred_logger);
         } else {
             // the well has a THP related constraint
-            well_potentials = well.computeWellPotentialWithTHP(ebosSimulator, deferred_logger);
+            well_potentials = well.computeWellPotentialWithTHP(eebosSimulator, deferred_logger);
         }
     }
 
@@ -2932,7 +2932,7 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    updateWaterMobilityWithPolymer(const Simulator& ebos_simulator,
+    updateWaterMobilityWithPolymer(const Simulator& eebos_simulator,
                                    const int perf,
                                    std::vector<EvalWell>& mob,
                                    Ewoms::DeferredLogger& deferred_logger) const
@@ -2943,7 +2943,7 @@ namespace Ewoms
             return;
         }
         const int cell_idx = well_cells_[perf];
-        const auto& int_quant = *(ebos_simulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0));
+        const auto& int_quant = *(eebos_simulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0));
         const EvalWell polymer_concentration = extendEval(int_quant.polymerConcentration());
 
         // TODO: not sure should based on the well type or injecting/producing peforations
@@ -2963,19 +2963,19 @@ namespace Ewoms
             }
             // compute the well water velocity with out shear effects.
             // TODO: do we need to turn on crossflow here?
-            const bool allow_cf = getAllowCrossFlow() || openCrossFlowAvoidSingularity(ebos_simulator);
+            const bool allow_cf = getAllowCrossFlow() || openCrossFlowAvoidSingularity(eebos_simulator);
             const EvalWell& bhp = getBhp();
 
             std::vector<EvalWell> cq_s(num_components_, {numWellEq_ + numEq, 0.});
             double perf_dis_gas_rate = 0.;
             double perf_vap_oil_rate = 0.;
-            double trans_mult = ebos_simulator.problem().template rockCompTransMultiplier<double>(int_quant, cell_idx);
+            double trans_mult = eebos_simulator.problem().template rockCompTransMultiplier<double>(int_quant, cell_idx);
             const double Tw = well_index_[perf] * trans_mult;
             computePerfRate(int_quant, mob, bhp, Tw, perf, allow_cf,
                             cq_s, perf_dis_gas_rate, perf_vap_oil_rate, deferred_logger);
             // TODO: make area a member
             const double area = 2 * M_PI * perf_rep_radius_[perf] * perf_length_[perf];
-            const auto& material_law_manager = ebos_simulator.problem().materialLawManager();
+            const auto& material_law_manager = eebos_simulator.problem().materialLawManager();
             const auto& scaled_drainage_info =
                         material_law_manager->oilWaterScaledEpsInfoDrainage(cell_idx);
             const double swcr = scaled_drainage_info.Swcr;
@@ -3119,7 +3119,7 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    wellTestingPhysical(const Simulator& ebos_simulator, const std::vector<double>& B_avg,
+    wellTestingPhysical(const Simulator& eebos_simulator, const std::vector<double>& B_avg,
                         const double /* simulation_time */, const int /* report_step */,
                         WellState& well_state, WellTestState& welltest_state,
                         Ewoms::DeferredLogger& deferred_logger)
@@ -3141,9 +3141,9 @@ namespace Ewoms
 
         // TODO: well state for this well is kind of all zero status
         // we should be able to provide a better initialization
-        calculateExplicitQuantities(ebos_simulator, well_state_copy, deferred_logger);
+        calculateExplicitQuantities(eebos_simulator, well_state_copy, deferred_logger);
 
-        updateWellOperability(ebos_simulator, well_state_copy, deferred_logger);
+        updateWellOperability(eebos_simulator, well_state_copy, deferred_logger);
 
         if ( !this->isOperable() ) {
             const std::string msg = " well " + name() + " is not operable during well testing for physical reason";
@@ -3151,13 +3151,13 @@ namespace Ewoms
             return;
         }
 
-        updateWellStateWithTarget(ebos_simulator, well_state_copy, deferred_logger);
+        updateWellStateWithTarget(eebos_simulator, well_state_copy, deferred_logger);
 
-        calculateExplicitQuantities(ebos_simulator, well_state_copy, deferred_logger);
+        calculateExplicitQuantities(eebos_simulator, well_state_copy, deferred_logger);
         updatePrimaryVariables(well_state_copy, deferred_logger);
         initPrimaryVariablesEvaluation();
 
-        const bool converged = this->solveWellEqUntilConverged(ebos_simulator, B_avg, well_state_copy, deferred_logger);
+        const bool converged = this->solveWellEqUntilConverged(eebos_simulator, B_avg, well_state_copy, deferred_logger);
 
         if (!converged) {
             const std::string msg = " well " + name() + " did not get converged during well testing for physical reason";
@@ -3486,7 +3486,7 @@ namespace Ewoms
     template<typename TypeTag>
     boost::optional<double>
     StandardWell<TypeTag>::
-    computeBhpAtThpLimitProd(const Simulator& ebos_simulator,
+    computeBhpAtThpLimitProd(const Simulator& eebos_simulator,
                              const SummaryState& summary_state,
                              DeferredLogger& deferred_logger) const
     {
@@ -3548,14 +3548,14 @@ namespace Ewoms
         };
 
         // Make the frates() function.
-        auto frates = [this, &ebos_simulator, &deferred_logger](const double bhp) {
+        auto frates = [this, &eebos_simulator, &deferred_logger](const double bhp) {
             // Not solving the well equations here, which means we are
             // calculating at the current Fg/Fw values of the
             // well. This does not matter unless the well is
             // crossflowing, and then it is likely still a good
             // approximation.
             std::vector<double> rates(3);
-            computeWellRatesWithBhp(ebos_simulator, bhp, rates, deferred_logger);
+            computeWellRatesWithBhp(eebos_simulator, bhp, rates, deferred_logger);
             return rates;
         };
 
@@ -3689,7 +3689,7 @@ namespace Ewoms
     template<typename TypeTag>
     boost::optional<double>
     StandardWell<TypeTag>::
-    computeBhpAtThpLimitInj(const Simulator& ebos_simulator,
+    computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
                             const SummaryState& summary_state,
                             DeferredLogger& deferred_logger) const
     {
@@ -3751,14 +3751,14 @@ namespace Ewoms
         };
 
         // Make the frates() function.
-        auto frates = [this, &ebos_simulator, &deferred_logger](const double bhp) {
+        auto frates = [this, &eebos_simulator, &deferred_logger](const double bhp) {
             // Not solving the well equations here, which means we are
             // calculating at the current Fg/Fw values of the
             // well. This does not matter unless the well is
             // crossflowing, and then it is likely still a good
             // approximation.
             std::vector<double> rates(3);
-            computeWellRatesWithBhp(ebos_simulator, bhp, rates, deferred_logger);
+            computeWellRatesWithBhp(eebos_simulator, bhp, rates, deferred_logger);
             return rates;
         };
 

@@ -42,7 +42,7 @@ END_PROPERTIES
 
 namespace Ewoms {
 
-void ebosThermalSetDeck(Ewoms::Deck* deck,
+void eebosThermalSetDeck(Ewoms::Deck* deck,
                         Ewoms::ParseContext* parseContext,
                         Ewoms::ErrorGuard* errorGuard,
                         double externalSetupTime)
@@ -56,7 +56,7 @@ void ebosThermalSetDeck(Ewoms::Deck* deck,
     Vanguard::setExternalDeck(deck);
 }
 
-int ebosThermalMain(int argc, char **argv)
+int eebosThermalMain(int argc, char **argv)
 {
     typedef TTAG(EebosThermalTypeTag) ProblemTypeTag;
     return Ewoms::start<ProblemTypeTag>(argc, argv);

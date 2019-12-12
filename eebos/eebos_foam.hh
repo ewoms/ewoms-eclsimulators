@@ -23,22 +23,22 @@
 /*!
  * \file
  *
- * \brief The function prototypes required to start the foam variant of ebos
+ * \brief The function prototypes required to start the foam variant of eebos
  */
-#ifndef EBOS_FOAM_HH
-#define EBOS_FOAM_HH
+#ifndef EEBOS_FOAM_HH
+#define EEBOS_FOAM_HH
 
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/parsecontext.hh>
 #include <ewoms/eclio/parser/errorguard.hh>
 
 namespace Ewoms {
-void ebosFoamSetDeck(Ewoms::Deck* deck,
+void eebosFoamSetDeck(Ewoms::Deck* deck,
                      Ewoms::ParseContext* parseContext,
                      Ewoms::ErrorGuard* errorGuard,
                      double externalSetupTime);
 
-int ebosFoamMain(int argc, char** argv);
+int eebosFoamMain(int argc, char** argv);
 }
 
 #endif

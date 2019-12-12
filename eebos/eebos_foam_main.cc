@@ -23,9 +23,9 @@
 /*!
  * \file
  *
- * \brief The main function for the stand alone foam variant of ebos.
+ * \brief The main function for the stand alone foam variant of eebos.
  *
- * This only calls the ebosFoamMain() function.
+ * This only calls the eebosFoamMain() function.
  */
 #include "config.h"
 
@@ -33,5 +33,5 @@
 
 int main(int argc, char** argv)
 {
-    return Ewoms::ebosFoamMain(argc, argv);
+    return Ewoms::eebosFoamMain(argc, argv);
 }

@@ -1,7 +1,7 @@
 /*
 */
-#ifndef EWOMS_ADAPTIVE_TIME_STEPPING_EBOS_HH
-#define EWOMS_ADAPTIVE_TIME_STEPPING_EBOS_HH
+#ifndef EWOMS_ADAPTIVE_TIME_STEPPING_EEBOS_HH
+#define EWOMS_ADAPTIVE_TIME_STEPPING_EEBOS_HH
 
 #include <iostream>
 #include <utility>
@@ -206,8 +206,8 @@ namespace Ewoms {
                 suggestedNextTimestep_ = timestepAfterEvent_;
             }
 
-            auto& ebosSimulator = solver.model().ebosSimulator();
-            auto& ebosProblem = ebosSimulator.problem();
+            auto& eebosSimulator = solver.model().eebosSimulator();
+            auto& eebosProblem = eebosSimulator.problem();
 
             // create adaptive step timer with previously used sub step size
             AdaptiveSimulatorTimer substepTimer(simulatorTimer, suggestedNextTimestep_, maxTimeStep_);
@@ -333,7 +333,7 @@ namespace Ewoms {
                         Ewoms::time::StopWatch perfTimer;
                         perfTimer.start();
 
-                        ebosProblem.writeOutput();
+                        eebosProblem.writeOutput();
 
                         report.output_write_time += perfTimer.secsSinceStart();
                     }
@@ -427,7 +427,7 @@ namespace Ewoms {
                         }
                     }
                 }
-                ebosProblem.setNextTimeStepSize(substepTimer.currentStepLength());
+                eebosProblem.setNextTimeStepSize(substepTimer.currentStepLength());
             }
 
             // store estimated time step for next reportStep
@@ -575,4 +575,4 @@ namespace Ewoms {
     };
 }
 
-#endif // EWOMS_ADAPTIVE_TIME_STEPPING_EBOS_HH
+#endif // EWOMS_ADAPTIVE_TIME_STEPPING_EEBOS_HH

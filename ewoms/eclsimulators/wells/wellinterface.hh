@@ -152,7 +152,7 @@ namespace Ewoms
 
         virtual void solveEqAndUpdateWellState(WellState& well_state, Ewoms::DeferredLogger& deferred_logger) = 0;
 
-        virtual void assembleWellEq(const Simulator& ebosSimulator,
+        virtual void assembleWellEq(const Simulator& eebosSimulator,
                                     const std::vector<Scalar>& B_avg,
                                     const double dt,
                                     WellState& well_state,
@@ -182,23 +182,23 @@ namespace Ewoms
         virtual void apply(BVector& r) const = 0;
 
         // TODO: before we decide to put more information under mutable, this function is not const
-        virtual void computeWellPotentials(const Simulator& ebosSimulator,
+        virtual void computeWellPotentials(const Simulator& eebosSimulator,
                                            const std::vector<Scalar>& B_avg,
                                            const WellState& well_state,
                                            std::vector<double>& well_potentials,
                                            Ewoms::DeferredLogger& deferred_logger) = 0;
 
-        virtual void updateWellStateWithTarget(const Simulator& ebos_simulator,
+        virtual void updateWellStateWithTarget(const Simulator& eebos_simulator,
                                                WellState& well_state,
                                                Ewoms::DeferredLogger& deferred_logger) const = 0;
 
-        void updateWellControl(const Simulator& ebos_simulator,
+        void updateWellControl(const Simulator& eebos_simulator,
                                WellState& well_state,
                                Ewoms::DeferredLogger& deferred_logger) /* const */;
 
         virtual void updatePrimaryVariables(const WellState& well_state, Ewoms::DeferredLogger& deferred_logger) const = 0;
 
-        virtual void calculateExplicitQuantities(const Simulator& ebosSimulator,
+        virtual void calculateExplicitQuantities(const Simulator& eebosSimulator,
                                                  const WellState& well_state,
                                                  Ewoms::DeferredLogger& deferred_logger) = 0; // should be const?
 
@@ -243,7 +243,7 @@ namespace Ewoms
 
         void updatePerforatedCell(std::vector<bool>& is_cell_perforated);
 
-        virtual void checkWellOperability(const Simulator& ebos_simulator, const WellState& well_state, Ewoms::DeferredLogger& deferred_logger) = 0;
+        virtual void checkWellOperability(const Simulator& eebos_simulator, const WellState& well_state, Ewoms::DeferredLogger& deferred_logger) = 0;
 
         // whether the well is operable
         bool isOperable() const;
@@ -443,11 +443,11 @@ namespace Ewoms
                                          WellTestState& well_test_state,
                                          Ewoms::DeferredLogger& deferred_logger) const;
 
-        void solveWellForTesting(const Simulator& ebosSimulator, WellState& well_state,
+        void solveWellForTesting(const Simulator& eebosSimulator, WellState& well_state,
                                  const std::vector<double>& B_avg,
                                  Ewoms::DeferredLogger& deferred_logger);
 
-        bool solveWellEqUntilConverged(const Simulator& ebosSimulator,
+        bool solveWellEqUntilConverged(const Simulator& eebosSimulator,
                                        const std::vector<double>& B_avg,
                                        WellState& well_state,
                                        Ewoms::DeferredLogger& deferred_logger);

@@ -16,8 +16,8 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EWOMS_SIMULATORFULLYIMPLICITBLACKOILEBOS_HH
-#define EWOMS_SIMULATORFULLYIMPLICITBLACKOILEBOS_HH
+#ifndef EWOMS_SIMULATORFULLYIMPLICITBLACKOILEEBOS_HH
+#define EWOMS_SIMULATORFULLYIMPLICITBLACKOILEEBOS_HH
 
 #include <ewoms/eclsimulators/eflow/nonlinearsolver.hh>
 #include <ewoms/eclsimulators/eflow/blackoilmodel.hh>
@@ -91,8 +91,8 @@ public:
     /// \param[in] eclipse_state the object which represents an internalized ECL deck
     /// \param[in] output_writer
     /// \param[in] threshold_pressures_by_face   if nonempty, threshold pressures that inhibit flow
-    SimulatorFullyImplicitBlackoil(Simulator& ebosSimulator)
-        : ebosSimulator_(ebosSimulator)
+    SimulatorFullyImplicitBlackoil(Simulator& eebosSimulator)
+        : eebosSimulator_(eebosSimulator)
     {
         phaseUsage_ = phaseUsageFromDeck(eclState());
 
@@ -126,7 +126,7 @@ public:
     {
         failureReport_ = SimulatorReport();
 
-        ebosSimulator_.setEpisodeIndex(-1);
+        eebosSimulator_.setEpisodeIndex(-1);
 
         // Create timers and file for writing timing info.
         Ewoms::time::StopWatch solverTimer;
@@ -147,9 +147,9 @@ public:
             }
 
             if (isRestart()) {
-                // For restarts the ebosSimulator may have gotten some information
+                // For restarts the eebosSimulator may have gotten some information
                 // about the next timestep size from the OPMEXTRA field
-                adaptiveTimeStepping->setSuggestedNextStep(ebosSimulator_.timeStepSize());
+                adaptiveTimeStepping->setSuggestedNextStep(eebosSimulator_.timeStepSize());
             }
         }
 
@@ -182,12 +182,12 @@ public:
                 Dune::Timer perfTimer;
                 perfTimer.start();
 
-                ebosSimulator_.setEpisodeIndex(-1);
-                ebosSimulator_.setEpisodeLength(0.0);
-                ebosSimulator_.setTimeStepSize(0.0);
+                eebosSimulator_.setEpisodeIndex(-1);
+                eebosSimulator_.setEpisodeLength(0.0);
+                eebosSimulator_.setTimeStepSize(0.0);
 
                 wellModel_().beginReportStep(timer.currentStepNum());
-                ebosSimulator_.problem().writeOutput();
+                eebosSimulator_.problem().writeOutput();
 
                 report.output_write_time += perfTimer.stop();
             }
@@ -197,9 +197,9 @@ public:
 
             auto solver = createSolver(wellModel_());
 
-            ebosSimulator_.startNextEpisode(ebosSimulator_.startTime() + schedule().getTimeMap().getTimePassedUntil(timer.currentStepNum()),
+            eebosSimulator_.startNextEpisode(eebosSimulator_.startTime() + schedule().getTimeMap().getTimePassedUntil(timer.currentStepNum()),
                                             timer.currentStepLength());
-            ebosSimulator_.setEpisodeIndex(timer.currentStepNum());
+            eebosSimulator_.setEpisodeIndex(timer.currentStepNum());
             solver->model().beginReportStep();
 
             // If sub stepping is enabled allow the solver to sub cycle
@@ -239,8 +239,8 @@ public:
             Dune::Timer perfTimer;
             perfTimer.start();
             const double nextstep = adaptiveTimeStepping ? adaptiveTimeStepping->suggestedNextStep() : -1.0;
-            ebosSimulator_.problem().setNextTimeStepSize(nextstep);
-            ebosSimulator_.problem().writeOutput();
+            eebosSimulator_.problem().setNextTimeStepSize(nextstep);
+            eebosSimulator_.problem().writeOutput();
             report.output_write_time += perfTimer.stop();
 
             solver->model().endReportStep();
@@ -284,13 +284,13 @@ public:
     { return failureReport_; };
 
     const Grid& grid() const
-    { return ebosSimulator_.vanguard().grid(); }
+    { return eebosSimulator_.vanguard().grid(); }
 
 protected:
 
     std::unique_ptr<Solver> createSolver(WellModel& wellModel)
     {
-        auto model = std::unique_ptr<Model>(new Model(ebosSimulator_,
+        auto model = std::unique_ptr<Model>(new Model(eebosSimulator_,
                                                       modelParam_,
                                                       wellModel,
                                                       terminalOutput_));
@@ -313,10 +313,10 @@ protected:
     }
 
     const EclipseState& eclState() const
-    { return ebosSimulator_.vanguard().eclState(); }
+    { return eebosSimulator_.vanguard().eclState(); }
 
     const Schedule& schedule() const
-    { return ebosSimulator_.vanguard().schedule(); }
+    { return eebosSimulator_.vanguard().schedule(); }
 
     bool isRestart() const
     {
@@ -325,13 +325,13 @@ protected:
     }
 
     WellModel& wellModel_()
-    { return ebosSimulator_.problem().wellModel(); }
+    { return eebosSimulator_.problem().wellModel(); }
 
     const WellModel& wellModel_() const
-    { return ebosSimulator_.problem().wellModel(); }
+    { return eebosSimulator_.problem().wellModel(); }
 
     // Data.
-    Simulator& ebosSimulator_;
+    Simulator& eebosSimulator_;
     std::unique_ptr<WellConnectionAuxiliaryModule<TypeTag>> wellAuxMod_;
     SimulatorReport failureReport_;
 
@@ -346,4 +346,4 @@ protected:
 
 } // namespace Ewoms
 
-#endif // EWOMS_SIMULATOR_FULLY_IMPLICIT_BLACKOIL_EBOS_HH
+#endif // EWOMS_SIMULATOR_FULLY_IMPLICIT_BLACKOIL_EEBOS_HH

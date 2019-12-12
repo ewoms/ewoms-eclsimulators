@@ -377,7 +377,7 @@ namespace Ewoms
     template<typename TypeTag>
     void
     WellInterface<TypeTag>::
-    updateWellControl(const Simulator& ebos_simulator,
+    updateWellControl(const Simulator& eebos_simulator,
                       WellState& well_state,
                       Ewoms::DeferredLogger& deferred_logger) /* const */
     {
@@ -385,7 +385,7 @@ namespace Ewoms
             return;
         }
 
-        const auto& summaryState = ebos_simulator.vanguard().summaryState();
+        const auto& summaryState = eebos_simulator.vanguard().summaryState();
         const auto& well = well_ecl_;
         std::string from;
         if (well.isInjector()) {
@@ -414,7 +414,7 @@ namespace Ewoms
                ss << " on rank " << cc.rank();
             }
             deferred_logger.info(ss.str());
-            updateWellStateWithTarget(ebos_simulator, well_state, deferred_logger);
+            updateWellStateWithTarget(eebos_simulator, well_state, deferred_logger);
             updatePrimaryVariables(well_state, deferred_logger);
         }
     }
@@ -1074,7 +1074,7 @@ namespace Ewoms
     template<typename TypeTag>
     bool
     WellInterface<TypeTag>::
-    solveWellEqUntilConverged(const Simulator& ebosSimulator,
+    solveWellEqUntilConverged(const Simulator& eebosSimulator,
                               const std::vector<double>& B_avg,
                               WellState& well_state,
                               Ewoms::DeferredLogger& deferred_logger)
@@ -1085,7 +1085,7 @@ namespace Ewoms
         bool converged;
         WellState well_state0 = well_state;
         do {
-            assembleWellEq(ebosSimulator, B_avg, dt, well_state, deferred_logger);
+            assembleWellEq(eebosSimulator, B_avg, dt, well_state, deferred_logger);
 
             auto report = getWellConvergence(well_state, B_avg, deferred_logger);
 
@@ -1098,7 +1098,7 @@ namespace Ewoms
             solveEqAndUpdateWellState(well_state, deferred_logger);
 
             // We don't allow for switching well controls while computing well potentials and testing wells
-            // updateWellControl(ebosSimulator, well_state, deferred_logger);
+            // updateWellControl(eebosSimulator, well_state, deferred_logger);
             initPrimaryVariablesEvaluation();
         } while (it < max_iter);
 
@@ -1145,13 +1145,13 @@ namespace Ewoms
     template<typename TypeTag>
     void
     WellInterface<TypeTag>::
-    solveWellForTesting(const Simulator& ebosSimulator, WellState& well_state,
+    solveWellForTesting(const Simulator& eebosSimulator, WellState& well_state,
                         const std::vector<double>& B_avg,
                         Ewoms::DeferredLogger& deferred_logger)
     {
         // keep a copy of the original well state
         const WellState well_state0 = well_state;
-        const bool converged = solveWellEqUntilConverged(ebosSimulator, B_avg, well_state, deferred_logger);
+        const bool converged = solveWellEqUntilConverged(eebosSimulator, B_avg, well_state, deferred_logger);
         if (converged) {
             deferred_logger.debug("WellTest: Well equation for well " + name() +  " converged");
         } else {

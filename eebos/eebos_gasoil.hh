@@ -23,22 +23,22 @@
 /*!
  * \file
  *
- * \brief The function prototypes required to start the gas-oil variant of ebos
+ * \brief The function prototypes required to start the gas-oil variant of eebos
  */
-#ifndef EBOS_GAS_OIL_HH
-#define EBOS_GAS_OIL_HH
+#ifndef EEBOS_GAS_OIL_HH
+#define EEBOS_GAS_OIL_HH
 
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/parsecontext.hh>
 #include <ewoms/eclio/parser/errorguard.hh>
 
 namespace Ewoms {
-void ebosGasOilSetDeck(Ewoms::Deck* deck,
+void eebosGasOilSetDeck(Ewoms::Deck* deck,
                        Ewoms::ParseContext* parseContext,
                        Ewoms::ErrorGuard* errorGuard,
                        double externalSetupTime);
 
-int ebosGasOilMain(int argc, char** argv);
+int eebosGasOilMain(int argc, char** argv);
 }
 
 #endif

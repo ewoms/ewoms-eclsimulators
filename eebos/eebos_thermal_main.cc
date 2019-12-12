@@ -23,9 +23,9 @@
 /*!
  * \file
  *
- * \brief The main function for the stand alone thermal variant of ebos.
+ * \brief The main function for the stand alone thermal variant of eebos.
  *
- * This only calls the ebosThermalMain() function.
+ * This only calls the eebosThermalMain() function.
  */
 #include "config.h"
 
@@ -33,5 +33,5 @@
 
 int main(int argc, char** argv)
 {
-    return Ewoms::ebosThermalMain(argc, argv);
+    return Ewoms::eebosThermalMain(argc, argv);
 }
