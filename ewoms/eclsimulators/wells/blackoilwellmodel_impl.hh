@@ -612,6 +612,8 @@ namespace Ewoms {
     {
         std::vector<WellInterfacePtr> well_container;
 
+        Ewoms::DeferredLogger local_deferredLogger;
+
         const int nw = numLocalWells();
 
         if (nw > 0) {
@@ -660,6 +662,40 @@ namespace Ewoms {
                     continue;
                 }
 
+                // If a production well disallows crossflow and its
+                // (prediction type) rate control is zero, then it is effectively shut.
+                if (!well_ecl.getAllowCrossFlow() && well_ecl.isProducer() && well_ecl.predictionMode()) {
+                    const auto& summaryState = eebosSimulator_.vanguard().summaryState();
+                    auto prod_controls = well_ecl.productionControls(summaryState);
+                    bool zero_rate_control = false;
+                    switch (prod_controls.cmode) {
+                    case Well::ProducerCMode::ORAT:
+                        zero_rate_control = (prod_controls.oil_rate == 0.0);
+                        break;
+                    case Well::ProducerCMode::WRAT:
+                        zero_rate_control = (prod_controls.water_rate == 0.0);
+                        break;
+                    case Well::ProducerCMode::GRAT:
+                        zero_rate_control = (prod_controls.gas_rate == 0.0);
+                        break;
+                    case Well::ProducerCMode::LRAT:
+                        zero_rate_control = (prod_controls.liquid_rate == 0.0);
+                        break;
+                    case Well::ProducerCMode::RESV:
+                        zero_rate_control = (prod_controls.resv_rate == 0.0);
+                        break;
+                    default:
+                        // Might still have zero rate controls, but is pressure controlled.
+                        zero_rate_control = false;
+                    }
+                    if (zero_rate_control) {
+                        // Treat as shut, do not add to container.
+                        local_deferredLogger.info("  Well shut due to zero rate control and disallowing crossflow: " + well_ecl.name());
+                        well_state_.shutWell(w);
+                        continue;
+                    }
+                }
+
                 if (well_status == Well::Status::STOP) {
                     well_state_.thp()[w] = 0.;
                     wellIsStopped = true;
@@ -695,6 +731,12 @@ namespace Ewoms {
                 if (wellIsStopped)
                     well_container.back()->stopWell();
             }
+        }
+
+        // Collect log messages and print.
+        Ewoms::DeferredLogger global_deferredLogger = gatherDeferredLogger(local_deferredLogger);
+        if (terminal_output_) {
+            global_deferredLogger.logMessages();
         }
 
         return well_container;
