@@ -24,6 +24,13 @@
 #include <boost/test/unit_test.hpp>
 
 #include <ewoms/eclsimulators/utils/parallelrestart.hh>
+#include <ewoms/eclio/parser/eclipsestate/edit/editnnc.hh>
+#include <ewoms/eclio/parser/eclipsestate/grid/nnc.hh>
+#include <ewoms/eclio/parser/eclipsestate/simulationconfig/thresholdpressure.hh>
+#include <ewoms/eclio/parser/eclipsestate/tables/columnschema.hh>
+#include <ewoms/eclio/parser/eclipsestate/tables/rock2dtable.hh>
+#include <ewoms/eclio/parser/eclipsestate/tables/rock2dtrtable.hh>
+#include <ewoms/eclio/parser/eclipsestate/tables/tableschema.hh>
 #include <ewoms/eclio/output/restartvalue.hh>
 
 namespace {
@@ -97,6 +104,21 @@ Ewoms::data::Well getWell()
     return well1;
 }
 #endif
+
+Ewoms::ThresholdPressure getThresholdPressure()
+{
+    return Ewoms::ThresholdPressure(false, true, {{true, 1.0}, {false, 2.0}},
+                                  {{{1,2},{false,3.0}},{{2,3},{true,4.0}}});
+}
+
+Ewoms::TableSchema getTableSchema()
+{
+    Ewoms::OrderedMap<std::string, Ewoms::ColumnSchema> data;
+    data.insert({"test1", Ewoms::ColumnSchema("test1", Ewoms::Table::INCREASING,
+                                                     Ewoms::Table::DEFAULT_LINEAR)});
+    data.insert({"test2", Ewoms::ColumnSchema("test2", Ewoms::Table::INCREASING, 1.0)});
+    return Ewoms::TableSchema(data);
+}
 
 }
 
@@ -205,6 +227,81 @@ BOOST_AUTO_TEST_CASE(RestartValue)
     Ewoms::data::WellRates wells1;
     wells1.insert({"test_well", getWell()});
     Ewoms::RestartValue val1(getSolution(), wells1);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(ThresholdPressure)
+{
+#if HAVE_MPI
+    Ewoms::ThresholdPressure val1 = getThresholdPressure();
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(EDITNNC)
+{
+#if HAVE_MPI
+    Ewoms::EDITNNC val1({{1,2,1.0},{2,3,2.0}});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(NNC)
+{
+#if HAVE_MPI
+    Ewoms::NNC val1({{1,2,1.0},{2,3,2.0}});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Rock2dTable)
+{
+#if HAVE_MPI
+    Ewoms::Rock2dTable val1({{1.0,2.0},{3.0,4.0}}, {1.0, 2.0, 3.0});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Rock2dtrTable)
+{
+#if HAVE_MPI
+    Ewoms::Rock2dtrTable val1({{1.0,2.0},{3.0,4.0}}, {1.0, 2.0, 3.0});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(ColumnSchema)
+{
+#if HAVE_MPI
+    Ewoms::ColumnSchema val1("test1", Ewoms::Table::INCREASING,
+                           Ewoms::Table::DEFAULT_LINEAR);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+    Ewoms::ColumnSchema val3("test2", Ewoms::Table::DECREASING, 1.0);
+    val2 = PackUnpack(val3);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val3 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(TableSchema)
+{
+#if HAVE_MPI
+    Ewoms::TableSchema val1 = getTableSchema();
     auto val2 = PackUnpack(val1);
     BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
     BOOST_CHECK(val1 == std::get<0>(val2));
