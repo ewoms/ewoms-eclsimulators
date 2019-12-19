@@ -42,15 +42,17 @@ namespace detail
     {
         if ( grid.comm().size() > 1)
         {
-            wellGraph.resize(grid.numCells());
+            Dune::CartesianIndexMapper< Grid > cartMapper( grid );
+            const int numCells = cartMapper.compressedSize(); // grid.numCells()
+            wellGraph.resize(numCells);
 
             if (useWellConn) {
-                const auto& cpgdim = grid.logicalCartesianSize();
+                const auto& cpgdim = cartMapper.cartesianDimensions();
 
                 std::vector<int> cart(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
 
-                for( int i=0; i < grid.numCells(); ++i )
-                    cart[grid.globalCell()[i]] = i;
+                for( int i=0; i < numCells; ++i )
+                    cart[ cartMapper.cartesianIndex( i ) ] = i;
 
                 Dune::cpgrid::WellConnections well_indices;
                 well_indices.init(wells, cpgdim, cart);
@@ -87,7 +89,7 @@ namespace detail
         if ( grid.comm().size() > 1)
         {
             //Numbering of cells
-            auto lid = grid.localIdSet();
+            const auto& lid = grid.localIdSet();
 
             const auto& gridView = grid.leafGridView();
             auto elemIt = gridView.template begin<0>();

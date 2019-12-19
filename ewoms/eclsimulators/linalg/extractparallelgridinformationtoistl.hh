@@ -37,6 +37,11 @@ namespace Ewoms
 
 void extractParallelGridInformationToISTL(const Dune::CpGrid& grid, boost::any& anyComm);
 
+// Grid is not CpGrid --> do nothing.
+template <class Grid>
+void extractParallelGridInformationToISTL(const Grid&, boost::any&)
+{}
+
 } // end namespace Ewoms
 #endif //defined(HAVE_EWOMS_ECLGRIDS)
 #endif // EWOMS_EXTRACTPARALLELGRIDINFORMATIONTOISTL_HH

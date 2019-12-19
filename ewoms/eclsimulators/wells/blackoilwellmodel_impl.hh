@@ -380,7 +380,10 @@ namespace Ewoms {
             guideRate_->compute(well->name(), reportStepIdx, simulationTime, oilpot, gaspot, waterpot);
         }
         const Group& fieldGroup = schedule().getGroup("FIELD", reportStepIdx);
-        wellGroupHelpers::updateGuideRateForGroups(fieldGroup, schedule(), phase_usage_, reportStepIdx, simulationTime, guideRate_.get(), well_state_);
+        std::vector<double> pot(numPhases(), 0.0);
+        wellGroupHelpers::updateGuideRateForGroups(fieldGroup, schedule(), phase_usage_, reportStepIdx, simulationTime, /*isInjector*/ false, well_state_, guideRate_.get(), pot);
+        std::vector<double> potInj(numPhases(), 0.0);
+        wellGroupHelpers::updateGuideRateForGroups(fieldGroup, schedule(), phase_usage_, reportStepIdx, simulationTime, /*isInjector*/ true, well_state_, guideRate_.get(), potInj);
 
         // compute wsolvent fraction for REIN wells
         updateWsolvent(fieldGroup, schedule(), reportStepIdx,  well_state_);
@@ -1131,6 +1134,12 @@ namespace Ewoms {
             std::vector<double> groupTargetReductionInj(numPhases(), 0.0);
             wellGroupHelpers::updateGroupTargetReduction(fieldGroup, schedule(), reportStepIdx, /*isInjector*/ true, well_state_, groupTargetReductionInj);
         }
+
+        const double simulationTime = eebosSimulator_.time();
+        std::vector<double> pot(numPhases(), 0.0);
+        wellGroupHelpers::updateGuideRateForGroups(fieldGroup, schedule(), phase_usage_, reportStepIdx, simulationTime, /*isInjector*/ false, well_state_, guideRate_.get(), pot);
+        std::vector<double> potInj(numPhases(), 0.0);
+        wellGroupHelpers::updateGuideRateForGroups(fieldGroup, schedule(), phase_usage_, reportStepIdx, simulationTime, /*isInjector*/ true, well_state_, guideRate_.get(), potInj);
     }
 
     template<typename TypeTag>
@@ -1401,8 +1410,7 @@ namespace Ewoms {
 
         depth_.resize(numCells);
         for (unsigned cellIdx = 0; cellIdx < numCells; ++cellIdx) {
-            depth_[cellIdx] =
-                grid.cellCenterDepth(cellIdx);
+            depth_[cellIdx] = Ewoms::UgGridHelpers::cellCenterDepth( grid, cellIdx );
         }
     }
 
@@ -1808,7 +1816,7 @@ namespace Ewoms {
         case Group::ExceedAction::RATE: {
             if (oldControl != newControl) {
                 well_state.setCurrentProductionGroupControl(group.name(), newControl);
-                ss << "Switching control mode for group to " << Group::ProductionCMode2String(newControl);
+                ss << "Switching control mode for group "<< group.name() << " to " << Group::ProductionCMode2String(newControl);
             }
             wellGroupHelpers::setGroupControl(group, schedule(), reportStepIdx, false, well_state, ss);
             break;
@@ -1838,7 +1846,7 @@ namespace Ewoms {
             const std::string from = Group::InjectionCMode2String(oldControl);
             ss << "Group " << group.name() << " exceeding "
                << from << " limit \n";
-            ss << "Switching control mode for group to " << Group::InjectionCMode2String(newControl);
+            ss << "Switching control mode for group "<< group.name() << " to " << Group::InjectionCMode2String(newControl);
             auto cc = Dune::MPIHelper::getCollectiveCommunication();
             if (cc.size() > 1) {
                 ss << " on rank " << cc.rank();

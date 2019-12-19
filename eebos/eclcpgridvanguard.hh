@@ -261,7 +261,7 @@ protected:
         const std::vector<double>& porv = gridProps.getDoubleGridProperty("PORV").getData();
 
         grid_.reset(new Dune::CpGrid());
-        grid_->processEclipseFormat(this->eclState().getInputGrid(),
+        grid_->processEclipseFormat(&(this->eclState().getInputGrid()),
                                     /*isPeriodic=*/false,
                                     /*flipNormals=*/false,
                                     /*clipZ=*/false,

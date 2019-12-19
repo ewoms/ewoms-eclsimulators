@@ -42,6 +42,7 @@ NEW_PROP_TAG(TimeStepControlTargetNewtonIterations);
 NEW_PROP_TAG(TimeStepControlDecayRate);
 NEW_PROP_TAG(TimeStepControlGrowthRate);
 NEW_PROP_TAG(TimeStepControlFileName);
+NEW_PROP_TAG(MinTimeStepBeforeShuttingProblematicWellsInDays);
 
 SET_SCALAR_PROP(EFlowTimeSteppingParameters, SolverRestartFactor, 0.33);
 SET_SCALAR_PROP(EFlowTimeSteppingParameters, SolverGrowthFactor, 2.0);
@@ -61,6 +62,7 @@ SET_INT_PROP(EFlowTimeSteppingParameters, TimeStepControlTargetNewtonIterations,
 SET_SCALAR_PROP(EFlowTimeSteppingParameters, TimeStepControlDecayRate, 0.75);
 SET_SCALAR_PROP(EFlowTimeSteppingParameters, TimeStepControlGrowthRate, 1.25);
 SET_STRING_PROP(EFlowTimeSteppingParameters, TimeStepControlFileName, "timesteps");
+SET_SCALAR_PROP(EFlowTimeSteppingParameters, MinTimeStepBeforeShuttingProblematicWellsInDays, 0.25);
 
 END_PROPERTIES
 
@@ -112,6 +114,8 @@ namespace Ewoms {
             , fullTimestepInitially_(EWOMS_GET_PARAM(TypeTag, bool, FullTimeStepInitially)) // false
             , timestepAfterEvent_(EWOMS_GET_PARAM(TypeTag, double, TimeStepAfterEventInDays)*24*60*60) // 1e30
             , useNewtonIteration_(false)
+            , minTimeStepBeforeShuttingProblematicWells_(EWOMS_GET_PARAM(TypeTag, double, MinTimeStepBeforeShuttingProblematicWellsInDays)*unit::day)
+
         {
             init_();
         }
@@ -135,6 +139,7 @@ namespace Ewoms {
             , fullTimestepInitially_(EWOMS_GET_PARAM(TypeTag, bool, FullTimeStepInitially)) // false
             , timestepAfterEvent_(EWOMS_GET_PARAM(TypeTag, double, TimeStepAfterEventInDays)*24*60*60) // 1e30
             , useNewtonIteration_(false)
+            , minTimeStepBeforeShuttingProblematicWells_(EWOMS_GET_PARAM(TypeTag, double, MinTimeStepBeforeShuttingProblematicWellsInDays)*unit::day)
         {
             init_();
         }
@@ -178,6 +183,8 @@ namespace Ewoms {
                                  "The growth rate of the time step size of the number of target iterations is undercut");
             EWOMS_REGISTER_PARAM(TypeTag, std::string, TimeStepControlFileName,
                                  "The name of the file which contains the hardcoded time steps sizes");
+            EWOMS_REGISTER_PARAM(TypeTag, double, MinTimeStepBeforeShuttingProblematicWellsInDays,
+                                 "The minimum time step size in days for which problematic wells are not shut");
         }
 
         /** \brief  step method that acts like the solver::step method
@@ -388,7 +395,7 @@ namespace Ewoms {
                         ++restarts;
                     };
 
-                    const double minimumChoppedTimestep = 0.25 * unit::day;
+                    const double minimumChoppedTimestep = minTimeStepBeforeShuttingProblematicWells_;
                     if (newTimeStep > minimumChoppedTimestep) {
                         chopTimestep();
                     } else {
@@ -572,6 +579,7 @@ namespace Ewoms {
         bool fullTimestepInitially_;        //!< beginning with the size of the time step from data file
         double timestepAfterEvent_;         //!< suggested size of timestep after an event
         bool useNewtonIteration_;           //!< use newton iteration count for adaptive time step control
+        double minTimeStepBeforeShuttingProblematicWells_; //! < shut problematic wells when time step size in days are less than this
     };
 }
 

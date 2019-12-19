@@ -148,6 +148,7 @@ class EclWriter
     typedef typename GET_PROP_TYPE(TypeTag, Vanguard) Vanguard;
     typedef typename GET_PROP_TYPE(TypeTag, GridView) GridView;
     typedef typename GET_PROP_TYPE(TypeTag, Grid) Grid;
+    typedef typename GET_PROP_TYPE(TypeTag, EquilGrid) EquilGrid;
     typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
     typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
     typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
@@ -179,10 +180,8 @@ public:
         , eclOutputModule_(simulator, collectToIORank_)
     {
         if (collectToIORank_.isIORank()) {
-            globalGrid_ = simulator_.vanguard().grid();
-            globalGrid_.switchToGlobalView();
             eclIO_.reset(new Ewoms::EclipseIO(simulator_.vanguard().eclState(),
-                                            Ewoms::UgGridHelpers::createEclipseGrid(globalGrid_, simulator_.vanguard().eclState().getInputGrid()),
+                                            Ewoms::UgGridHelpers::createEclipseGrid(globalGrid(), simulator_.vanguard().eclState().getInputGrid()),
                                             simulator_.vanguard().schedule(),
                                             simulator_.vanguard().summaryConfig()));
         }
@@ -205,14 +204,19 @@ public:
         return *eclIO_;
     }
 
+    const EquilGrid& globalGrid() const
+    {
+        return simulator_.vanguard().equilGrid();
+    }
+
     void writeInit()
     {
         if (collectToIORank_.isIORank()) {
             std::map<std::string, std::vector<int> > integerVectors;
             if (collectToIORank_.isParallel())
                 integerVectors.emplace("MPI_RANK", collectToIORank_.globalRanks());
-            auto cartMap = Ewoms::cartesianToCompressed(globalGrid_.size(0),
-                                                      Ewoms::UgGridHelpers::globalCell(globalGrid_));
+            auto cartMap = Ewoms::cartesianToCompressed(globalGrid().size(0),
+                                                      Ewoms::UgGridHelpers::globalCell(globalGrid()));
             eclIO_->writeInitial(computeTrans_(cartMap), integerVectors, exportNncStructure_(cartMap));
         }
     }
@@ -472,7 +476,7 @@ private:
 
     Ewoms::data::Solution computeTrans_(const std::unordered_map<int,int>& cartesianToActive) const
     {
-        const auto& cartMapper = simulator_.vanguard().cartesianIndexMapper();
+        const auto& cartMapper = simulator_.vanguard().equilCartesianIndexMapper();
         const auto& cartDims = cartMapper.cartesianDimensions();
         const int globalSize = cartDims[0]*cartDims[1]*cartDims[2];
 
@@ -486,8 +490,8 @@ private:
             tranz.data[0] = 0.0;
         }
 
-        typedef typename Grid :: LeafGridView  GlobalGridView;
-        const GlobalGridView& globalGridView = globalGrid_.leafGridView();
+        typedef typename EquilGrid :: LeafGridView  GlobalGridView;
+        const GlobalGridView& globalGridView = globalGrid().leafGridView();
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
         typedef Dune::MultipleCodimMultipleGeomTypeMapper<GlobalGridView> ElementMapper;
         ElementMapper globalElemMapper(globalGridView, Dune::mcmgElementLayout());
@@ -496,7 +500,6 @@ private:
         ElementMapper globalElemMapper(globalGridView);
 #endif
 
-        const auto& cartesianCellIdx = globalGrid_.globalCell();
         const EclTransmissibility<TypeTag>* globalTrans;
 
         if (!collectToIORank_.isParallel())
@@ -534,9 +537,12 @@ private:
                     continue; // we only need to handle each connection once, thank you.
 
                 // Ordering of compressed and uncompressed index should be the same
-                assert(cartesianCellIdx[c1] <= cartesianCellIdx[c2]);
-                int gc1 = std::min(cartesianCellIdx[c1], cartesianCellIdx[c2]);
-                int gc2 = std::max(cartesianCellIdx[c1], cartesianCellIdx[c2]);
+                const int cartIdx1 = cartMapper.cartesianIndex( c1 );
+                const int cartIdx2 = cartMapper.cartesianIndex( c2 );
+                // Ordering of compressed and uncompressed index should be the same
+                assert(cartIdx1 <= cartIdx2);
+                int gc1 = std::min(cartIdx1, cartIdx2);
+                int gc2 = std::max(cartIdx1, cartIdx2);
 
                 if (gc2 - gc1 == 1) {
                     tranx.data[gc1] = globalTrans->transmissibility(c1, c2);
@@ -591,8 +597,8 @@ private:
         // Checked when writing NNC transmissibilities from the simulation.
         std::sort(nncData.begin(), nncData.end(), nncCompare);
 
-        typedef typename Grid :: LeafGridView  GlobalGridView;
-        const GlobalGridView& globalGridView = globalGrid_.leafGridView();
+        typedef typename EquilGrid :: LeafGridView  GlobalGridView;
+        const GlobalGridView& globalGridView = globalGrid().leafGridView();
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
         typedef Dune::MultipleCodimMultipleGeomTypeMapper<GlobalGridView> ElementMapper;
         ElementMapper globalElemMapper(globalGridView, Dune::mcmgElementLayout());
@@ -617,7 +623,10 @@ private:
             globalTrans = &(simulator_.vanguard().globalTransmissibility());
         }
 
-        auto cartDims = simulator_.vanguard().cartesianIndexMapper().cartesianDimensions();
+        // Cartesian index mapper for the serial I/O grid
+        const auto& equilCartMapper =  simulator_.vanguard().equilCartesianIndexMapper();
+
+        const auto& cartDims = simulator_.vanguard().cartesianIndexMapper().cartesianDimensions();
         auto elemIt = globalGridView.template begin</*codim=*/0>();
         const auto& elemEndIt = globalGridView.template end</*codim=*/0>();
         for (; elemIt != elemEndIt; ++ elemIt) {
@@ -637,11 +646,8 @@ private:
                 if (c1 > c2)
                     continue; // we only need to handle each connection once, thank you.
 
-                // TODO (?): use the cartesian index mapper to make this code work
-                // with grids other than Dune::CpGrid. The problem is that we need
-                // the a mapper for the sequential grid, not for the distributed one.
-                std::size_t cc1 = globalGrid_.globalCell()[c1];
-                std::size_t cc2 = globalGrid_.globalCell()[c2];
+                std::size_t cc1 = equilCartMapper.cartesianIndex( c1 ); //globalIOGrid_.globalCell()[c1];
+                std::size_t cc2 = equilCartMapper.cartesianIndex( c2 ); //globalIOGrid_.globalCell()[c2];
 
                 if ( cc2 < cc1 )
                     std::swap(cc1, cc2);
@@ -729,7 +735,6 @@ private:
     CollectDataToIORankType collectToIORank_;
     EclOutputBlackOilModule<TypeTag> eclOutputModule_;
     std::unique_ptr<Ewoms::EclipseIO> eclIO_;
-    Grid globalGrid_;
     std::unique_ptr<TaskletRunner> taskletRunner_;
     Scalar restartTimeStepSize_;
 

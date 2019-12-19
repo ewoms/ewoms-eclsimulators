@@ -232,7 +232,7 @@ protected:
         {
             parameters_.template init<TypeTag>();
             extractParallelGridInformationToISTL(simulator_.vanguard().grid(), parallelInformation_);
-            auto gridForConn = simulator_.vanguard().grid();
+            const auto& gridForConn = simulator_.vanguard().grid();
             const auto wellsForConn = simulator_.vanguard().schedule().getWellsatEnd();
             const bool useWellConn = EWOMS_GET_PARAM(TypeTag, bool, MatrixAddWellContributions);
 
@@ -633,15 +633,15 @@ protected:
         /// Create sparsity pattern of matrix without off-diagonal ghost entries.
         void noGhostAdjacency()
         {
-            auto grid = simulator_.vanguard().grid();
+            const auto& grid = simulator_.vanguard().grid();
             typedef typename Matrix::size_type size_type;
-            size_type numCells = grid.numCells();
+            size_type numCells = grid.size( 0 );
             noGhostMat_.reset(new Matrix(numCells, numCells, Matrix::random));
 
             std::vector<std::set<size_type>> pattern;
-            pattern.resize(grid.numCells());
+            pattern.resize(numCells);
 
-            auto lid = grid.localIdSet();
+            const auto& lid = grid.localIdSet();
             const auto& gridView = grid.leafGridView();
             auto elemIt = gridView.template begin<0>();
             const auto& elemEndIt = gridView.template end<0>();
