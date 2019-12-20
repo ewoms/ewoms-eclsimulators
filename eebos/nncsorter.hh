@@ -25,6 +25,7 @@
 #define EWOMS_EEBOS_NNCSORTER_HH
 
 #include <ewoms/eclio/parser/eclipsestate/grid/nnc.hh>
+#include <ewoms/eclio/opmlog/opmlog.hh>
 
 #include <vector>
 

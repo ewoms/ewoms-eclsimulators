@@ -20,7 +20,7 @@
 
 #define BOOST_TEST_MODULE MultMatrixTransposed
 #include <boost/test/unit_test.hpp>
-#include <ewoms/eclsimulators/linalg/matrixblock.hh>
+#include <ewoms/eclsimulators/linalg/matrixutils.hh>
 
 using namespace Dune;
 using namespace Ewoms::Detail;

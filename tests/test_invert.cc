@@ -20,7 +20,7 @@
 
 #define BOOST_TEST_MODULE InvertSpecializationTest
 #include <boost/test/unit_test.hpp>
-#include <ewoms/eclsimulators/linalg/matrixblock.hh>
+#include <ewoms/eclsimulators/linalg/matrixutils.hh>
 
 void checkIdentity(Dune::FieldMatrix<double, 4, 4> M) {
     double diag = 0.0;
