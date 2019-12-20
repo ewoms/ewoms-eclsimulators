@@ -296,6 +296,7 @@ public:
         tmp.emplace_back(Ewoms::ParseContext::SUMMARY_UNKNOWN_WELL, Ewoms::InputError::WARN);
         tmp.emplace_back(Ewoms::ParseContext::SUMMARY_UNKNOWN_GROUP, Ewoms::InputError::WARN);
         tmp.emplace_back(Ewoms::ParseContext::PARSE_EXTRA_RECORDS, Ewoms::InputError::WARN);
+        tmp.emplace_back(Ewoms::ParseContext::PARSE_WGNAME_SPACE, Ewoms::InputError::WARN);
 
         std::unique_ptr<Ewoms::ParseContext> parseContext(new Ewoms::ParseContext(tmp));
 
