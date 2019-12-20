@@ -1583,12 +1583,7 @@ namespace Ewoms {
     BlackoilWellModel<TypeTag>::
     checkGroupConstraints(const Group& group, Ewoms::DeferredLogger& deferred_logger) {
 
-        // call recursively
         const int reportStepIdx = eebosSimulator_.episodeIndex();
-        for (const std::string& groupName : group.groups()) {
-            checkGroupConstraints( schedule().getGroup(groupName, reportStepIdx), deferred_logger);
-        }
-
         const auto& summaryState = eebosSimulator_.vanguard().summaryState();
         auto& well_state = well_state_;
 
@@ -1776,6 +1771,11 @@ namespace Ewoms {
         } else {
 
             //neither production or injecting group FIELD?
+        }
+
+        // call recursively down the group hiearchy
+        for (const std::string& groupName : group.groups()) {
+            checkGroupConstraints( schedule().getGroup(groupName, reportStepIdx), deferred_logger);
         }
 
     }

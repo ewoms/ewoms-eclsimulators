@@ -61,6 +61,7 @@ NEW_PROP_TAG(CprMaxEllIter);
 NEW_PROP_TAG(CprEllSolvetype);
 NEW_PROP_TAG(CprReuseSetup);
 NEW_PROP_TAG(LinearSolverConfigurationJsonFile);
+NEW_PROP_TAG(UseGpu);
 
 SET_SCALAR_PROP(EFlowIstlSolverParams, LinearSolverReduction, 1e-2);
 SET_SCALAR_PROP(EFlowIstlSolverParams, IluRelaxation, 0.9);
@@ -86,6 +87,7 @@ SET_INT_PROP(EFlowIstlSolverParams, CprMaxEllIter, 20);
 SET_INT_PROP(EFlowIstlSolverParams, CprEllSolvetype, 0);
 SET_INT_PROP(EFlowIstlSolverParams, CprReuseSetup, 0);
 SET_STRING_PROP(EFlowIstlSolverParams, LinearSolverConfigurationJsonFile, "none");
+SET_BOOL_PROP(EFlowIstlSolverParams, UseGpu, false);
 
 END_PROPERTIES
 
@@ -152,6 +154,7 @@ namespace Ewoms
         std::string system_strategy_;
         bool scale_linear_system_;
         std::string linear_solver_configuration_json_file_;
+        bool use_gpu_;
 
         template <class TypeTag>
         void init()
@@ -179,6 +182,7 @@ namespace Ewoms
             cpr_ell_solvetype_  =  EWOMS_GET_PARAM(TypeTag, int, CprEllSolvetype);
             cpr_reuse_setup_  =  EWOMS_GET_PARAM(TypeTag, int, CprReuseSetup);
             linear_solver_configuration_json_file_ = EWOMS_GET_PARAM(TypeTag, std::string, LinearSolverConfigurationJsonFile);
+            use_gpu_ = EWOMS_GET_PARAM(TypeTag, bool, UseGpu);
         }
 
         template <class TypeTag>
@@ -206,6 +210,7 @@ namespace Ewoms
             EWOMS_REGISTER_PARAM(TypeTag, int, CprEllSolvetype, "Solver type of elliptic pressure solve (0: bicgstab, 1: cg, 2: only amg preconditioner)");
             EWOMS_REGISTER_PARAM(TypeTag, int, CprReuseSetup, "Reuse Amg Setup");
             EWOMS_REGISTER_PARAM(TypeTag, std::string, LinearSolverConfigurationJsonFile, "Filename of JSON configuration for flexible linear solver system.");
+            EWOMS_REGISTER_PARAM(TypeTag, bool, UseGpu, "Use GPU cusparseSolver as the linear solver");
         }
 
         EFlowLinearSolverParameters() { reset(); }
@@ -227,6 +232,7 @@ namespace Ewoms
             ilu_milu_                 = MILU_VARIANT::ILU;
             ilu_redblack_             = false;
             ilu_reorder_sphere_       = true;
+            use_gpu_                  = false;
         }
     };
 

@@ -39,7 +39,9 @@
 #include <ewoms/eclio/output/eclipseio.hh>
 #include <ewoms/eclio/output/summary.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/dynamicstate.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/dynamicvector.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/timemap.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/well/welltestconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/util/orderedmap.hh>
 
 #include <dune/common/parallel/mpihelper.hh>
@@ -63,13 +65,17 @@ class EDITNNC;
 class EndpointScaling;
 class Equil;
 class EquilRecord;
+class Events;
 class FoamConfig;
 class FoamData;
 class InitConfig;
 class IOConfig;
 class JFunc;
+class MessageLimits;
+class MLimits;
 class NNC;
 struct NNCdata;
+class OilVaporizationProperties;
 class Phases;
 class PlymwinjTable;
 class PolyInjTable;
@@ -98,6 +104,8 @@ class TableManager;
 class TableSchema;
 class ThresholdPressure;
 class UDQParams;
+class VFPInjTable;
+class VFPProdTable;
 class VISCREFRecord;
 class ViscrefTable;
 class WATDENTRecord;
@@ -153,6 +161,9 @@ std::size_t packSize(const std::unordered_map<T1,T2,H,P,A>& data, Dune::MPIHelpe
 
 template<class Key, class Value>
 std::size_t packSize(const OrderedMap<Key,Value>& data, Dune::MPIHelper::MPICommunicator comm);
+
+template<class T>
+std::size_t packSize(const DynamicVector<T>& data, Dune::MPIHelper::MPICommunicator comm);
 
 template<class T>
 std::size_t packSize(const DynamicState<T>& data, Dune::MPIHelper::MPICommunicator comm);
@@ -268,6 +279,10 @@ void pack(const OrderedMap<Key,Value>& data, std::vector<char>& buffer,
 
 template<class T>
 void pack(const DynamicState<T>& data, std::vector<char>& buffer,
+          int& position, Dune::MPIHelper::MPICommunicator comm);
+
+template<class T>
+void pack(const DynamicVector<T>& data, std::vector<char>& buffer,
           int& position, Dune::MPIHelper::MPICommunicator comm);
 
 template<class Scalar>
@@ -403,6 +418,10 @@ template<class T>
 void unpack(DynamicState<T>& data, std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm);
 
+template<class T>
+void unpack(DynamicVector<T>& data, std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm);
+
 template<class Scalar>
 void unpack(Tabulated1DFunction<Scalar>& data, std::vector<char>& buffer,
             int& position, Dune::MPIHelper::MPICommunicator comm);
@@ -498,6 +517,7 @@ ADD_PACK_PROTOTYPES(EDITNNC)
 ADD_PACK_PROTOTYPES(EndpointScaling)
 ADD_PACK_PROTOTYPES(Equil)
 ADD_PACK_PROTOTYPES(EquilRecord)
+ADD_PACK_PROTOTYPES(Events)
 ADD_PACK_PROTOTYPES(FoamConfig)
 ADD_PACK_PROTOTYPES(FoamData)
 ADD_PACK_PROTOTYPES(EclHysterConfig)
@@ -505,8 +525,11 @@ ADD_PACK_PROTOTYPES(Eqldims)
 ADD_PACK_PROTOTYPES(InitConfig)
 ADD_PACK_PROTOTYPES(IOConfig)
 ADD_PACK_PROTOTYPES(JFunc)
+ADD_PACK_PROTOTYPES(MessageLimits)
+ADD_PACK_PROTOTYPES(MLimits)
 ADD_PACK_PROTOTYPES(NNC)
 ADD_PACK_PROTOTYPES(NNCdata)
+ADD_PACK_PROTOTYPES(OilVaporizationProperties)
 ADD_PACK_PROTOTYPES(Phases)
 ADD_PACK_PROTOTYPES(PlymwinjTable)
 ADD_PACK_PROTOTYPES(PolyInjTable)
@@ -540,12 +563,16 @@ ADD_PACK_PROTOTYPES(ThresholdPressure)
 ADD_PACK_PROTOTYPES(TimeMap)
 ADD_PACK_PROTOTYPES(TimeMap::StepData)
 ADD_PACK_PROTOTYPES(UDQParams)
+ADD_PACK_PROTOTYPES(VFPInjTable)
+ADD_PACK_PROTOTYPES(VFPProdTable)
 ADD_PACK_PROTOTYPES(VISCREFRecord)
 ADD_PACK_PROTOTYPES(ViscrefTable)
 ADD_PACK_PROTOTYPES(WATDENTRecord)
 ADD_PACK_PROTOTYPES(WatdentTable)
 ADD_PACK_PROTOTYPES(Welldims)
 ADD_PACK_PROTOTYPES(WellSegmentDims)
+ADD_PACK_PROTOTYPES(WellTestConfig)
+ADD_PACK_PROTOTYPES(WellTestConfig::WTESTWell)
 
 } // end namespace Mpi
 RestartValue loadParallelRestart(const EclipseIO* eclIO, SummaryState& summaryState,

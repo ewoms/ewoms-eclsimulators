@@ -29,7 +29,12 @@
 #include <ewoms/eclio/parser/eclipsestate/ioconfig/ioconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/ioconfig/restartconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/edit/editnnc.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/events.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/messagelimits.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/oilvaporizationproperties.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/timemap.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/vfpinjtable.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/vfpprodtable.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/simulationconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/thresholdpressure.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/aqudims.hh>
@@ -189,6 +194,12 @@ std::size_t packSize(const DynamicState<T>& data, Dune::MPIHelper::MPICommunicat
     return packSize(data.data(), comm) + packSize(data.initialRange(), comm);
 }
 
+template<class T>
+std::size_t packSize(const DynamicVector<T>& data, Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.data(), comm);
+}
+
 std::size_t packSize(const char* str, Dune::MPIHelper::MPICommunicator comm)
 {
 #if HAVE_MPI
@@ -242,6 +253,7 @@ HANDLE_AS_POD(Eqldims)
 HANDLE_AS_POD(EquilRecord)
 HANDLE_AS_POD(FoamData)
 HANDLE_AS_POD(JFunc)
+HANDLE_AS_POD(MLimits)
 HANDLE_AS_POD(PVTWRecord)
 HANDLE_AS_POD(PVCDORecord)
 HANDLE_AS_POD(Regdims)
@@ -864,6 +876,76 @@ std::size_t packSize(const WaterPvtThermal<Scalar>& data,
 template std::size_t packSize(const WaterPvtThermal<double>& data,
                               Dune::MPIHelper::MPICommunicator comm);
 
+std::size_t packSize(const OilVaporizationProperties& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.getType(), comm) +
+           packSize(data.vap1(), comm) +
+           packSize(data.vap2(), comm) +
+           packSize(data.maxDRSDT(), comm) +
+           packSize(data.maxDRSDT_allCells(), comm) +
+           packSize(data.maxDRVDT(), comm);
+}
+
+std::size_t packSize(const Events& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.events(), comm);
+}
+
+std::size_t packSize(const MessageLimits& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.getLimits(), comm);
+}
+
+std::size_t packSize(const VFPInjTable& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.getTableNum(), comm) +
+           packSize(data.getDatumDepth(), comm) +
+           packSize(data.getFloType(), comm) +
+           packSize(data.getFloAxis(), comm) +
+           packSize(data.getTHPAxis(), comm) +
+           data.getTable().num_elements() *
+           packSize(double(), comm);
+}
+
+std::size_t packSize(const VFPProdTable& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.getTableNum(), comm) +
+           packSize(data.getDatumDepth(), comm) +
+           packSize(data.getFloType(), comm) +
+           packSize(data.getWFRType(), comm) +
+           packSize(data.getGFRType(), comm) +
+           packSize(data.getALQType(), comm) +
+           packSize(data.getFloAxis(), comm) +
+           packSize(data.getTHPAxis(), comm) +
+           packSize(data.getWFRAxis(), comm) +
+           packSize(data.getGFRAxis(), comm) +
+           packSize(data.getALQAxis(), comm) +
+           data.getTable().num_elements() *
+           packSize(double(), comm);
+}
+
+std::size_t packSize(const WellTestConfig::WTESTWell& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.name, comm) +
+           packSize(data.shut_reason, comm) +
+           packSize(data.test_interval, comm) +
+           packSize(data.num_test, comm) +
+           packSize(data.startup_time, comm) +
+           packSize(data.begin_report_step, comm);
+}
+
+std::size_t packSize(const WellTestConfig& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.getWells(), comm);
+}
+
 ////// pack routines
 
 template<class T>
@@ -1001,6 +1083,13 @@ void pack(const DynamicState<T>& data, std::vector<char>& buffer, int& position,
 {
     pack(data.data(), buffer, position, comm);
     pack(data.initialRange(), buffer, position, comm);
+}
+
+template<class T>
+void pack(const DynamicVector<T>& data, std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.data(), buffer, position, comm);
 }
 
 void pack(const char* str, std::vector<char>& buffer, int& position,
@@ -1739,6 +1828,83 @@ template void pack(const WaterPvtThermal<double>& data,
                    std::vector<char>& buffer, int& position,
                    Dune::MPIHelper::MPICommunicator comm);
 
+void pack(const OilVaporizationProperties& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.getType(), buffer, position, comm);
+    pack(data.vap1(), buffer, position, comm);
+    pack(data.vap2(), buffer, position, comm);
+    pack(data.maxDRSDT(), buffer, position, comm);
+    pack(data.maxDRSDT_allCells(), buffer, position, comm);
+    pack(data.maxDRVDT(), buffer, position, comm);
+
+}
+
+void pack(const Events& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.events(), buffer, position, comm);
+}
+
+void pack(const MessageLimits& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.getLimits(), buffer, position, comm);
+}
+void pack(const VFPInjTable& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.getTableNum(), buffer, position, comm);
+    pack(data.getDatumDepth(), buffer, position, comm);
+    pack(data.getFloType(), buffer, position, comm);
+    pack(data.getFloAxis(), buffer, position, comm);
+    pack(data.getTHPAxis(), buffer, position, comm);
+    for (size_t i = 0; i < data.getTable().num_elements(); ++i)
+        pack(*(data.getTable().data() + i), buffer, position, comm);
+}
+
+void pack(const VFPProdTable& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.getTableNum(), buffer, position, comm);
+    pack(data.getDatumDepth(), buffer, position, comm);
+    pack(data.getFloType(), buffer, position, comm);
+    pack(data.getWFRType(), buffer, position, comm);
+    pack(data.getGFRType(), buffer, position, comm);
+    pack(data.getALQType(), buffer, position, comm);
+    pack(data.getFloAxis(), buffer, position, comm);
+    pack(data.getTHPAxis(), buffer, position, comm);
+    pack(data.getWFRAxis(), buffer, position, comm);
+    pack(data.getGFRAxis(), buffer, position, comm);
+    pack(data.getALQAxis(), buffer, position, comm);
+    for (size_t i = 0; i < data.getTable().num_elements(); ++i)
+        pack(*(data.getTable().data() + i), buffer, position, comm);
+}
+
+void pack(const WellTestConfig::WTESTWell& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.name, buffer, position, comm);
+    pack(data.shut_reason, buffer, position, comm);
+    pack(data.test_interval, buffer, position, comm);
+    pack(data.num_test, buffer, position, comm);
+    pack(data.startup_time, buffer, position, comm);
+    pack(data.begin_report_step, buffer, position, comm);
+}
+
+void pack(const WellTestConfig& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.getWells(), buffer, position, comm);
+}
+
 /// unpack routines
 
 template<class T>
@@ -1885,6 +2051,15 @@ void unpack(DynamicState<T>& data, std::vector<char>& buffer, int& position,
     unpack(ddata, buffer, position, comm);
     unpack(initial_range, buffer, position, comm);
     data = DynamicState<T>(ddata, initial_range);
+}
+
+template<class T>
+void unpack(DynamicVector<T>& data, std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    std::vector<T> ddata;
+    unpack(ddata, buffer, position, comm);
+    data = DynamicVector<T>(ddata);
 }
 
 void unpack(char* str, std::size_t length, std::vector<char>& buffer, int& position,
@@ -2913,7 +3088,129 @@ template void unpack(WaterPvtThermal<double>& data,
                      std::vector<char>& buffer, int& position,
                      Dune::MPIHelper::MPICommunicator comm);
 
+void unpack(OilVaporizationProperties& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    OilVaporizationProperties::OilVaporization type;
+    std::vector<double> vap1, vap2, maxDRSDT, maxDRVDT;
+    std::vector<bool> maxDRSDT_allCells;
+    unpack(type, buffer, position, comm);
+    unpack(vap1, buffer, position, comm);
+    unpack(vap2, buffer, position, comm);
+    unpack(maxDRSDT, buffer, position, comm);
+    unpack(maxDRSDT_allCells, buffer, position, comm);
+    unpack(maxDRVDT, buffer, position, comm);
+    data = OilVaporizationProperties(type, vap1, vap2, maxDRSDT,
+                                     maxDRSDT_allCells, maxDRVDT);
+}
+
+void unpack(Events& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    DynamicVector<uint64_t> events;
+    unpack(events, buffer, position, comm);
+    data = Events(events);
+}
+
+void unpack(MessageLimits& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    DynamicState<MLimits> limits;
+    unpack(limits, buffer, position, comm);
+    data = MessageLimits(limits);
+}
+
+void unpack(VFPInjTable& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    int tableNum;
+    double datumDepth;
+    VFPInjTable::FLO_TYPE floType;
+    std::vector<double> floAxis, thpAxis;
+    VFPInjTable::array_type table;
+
+    unpack(tableNum, buffer, position, comm);
+    unpack(datumDepth, buffer, position, comm);
+    unpack(floType, buffer, position, comm);
+    unpack(floAxis, buffer, position, comm);
+    unpack(thpAxis, buffer, position, comm);
+    VFPInjTable::extents extents;
+    extents[0] = thpAxis.size();
+    extents[1] = floAxis.size();
+    table.resize(extents);
+    for (size_t i = 0; i < table.num_elements(); ++i)
+        unpack(*(table.data() + i), buffer, position, comm);
+
+    data = VFPInjTable(tableNum, datumDepth, floType,
+                       floAxis, thpAxis, table);
+}
+
+void unpack(VFPProdTable& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    int tableNum;
+    double datumDepth;
+    VFPProdTable::FLO_TYPE floType;
+    VFPProdTable::WFR_TYPE wfrType;
+    VFPProdTable::GFR_TYPE gfrType;
+    VFPProdTable::ALQ_TYPE alqType;
+    std::vector<double> floAxis, thpAxis, wfrAxis, gfrAxis, alqAxis;
+    VFPProdTable::array_type table;
+
+    unpack(tableNum, buffer, position, comm);
+    unpack(datumDepth, buffer, position, comm);
+    unpack(floType, buffer, position, comm);
+    unpack(wfrType, buffer, position, comm);
+    unpack(gfrType, buffer, position, comm);
+    unpack(alqType, buffer, position, comm);
+    unpack(floAxis, buffer, position, comm);
+    unpack(thpAxis, buffer, position, comm);
+    unpack(wfrAxis, buffer, position, comm);
+    unpack(gfrAxis, buffer, position, comm);
+    unpack(alqAxis, buffer, position, comm);
+    VFPProdTable::extents extents;
+    extents[0] = thpAxis.size();
+    extents[1] = wfrAxis.size();
+    extents[2] = gfrAxis.size();
+    extents[3] = alqAxis.size();
+    extents[4] = floAxis.size();
+    table.resize(extents);
+    for (size_t i = 0; i < table.num_elements(); ++i)
+      unpack(*(table.data() + i), buffer, position, comm);
+
+    data = VFPProdTable(tableNum, datumDepth, floType, wfrType,
+                        gfrType, alqType, floAxis, thpAxis,
+                        wfrAxis, gfrAxis, alqAxis, table);
+}
+
+void unpack(WellTestConfig::WTESTWell& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    unpack(data.name, buffer, position, comm);
+    unpack(data.shut_reason, buffer, position, comm);
+    unpack(data.test_interval, buffer, position, comm);
+    unpack(data.num_test, buffer, position, comm);
+    unpack(data.startup_time, buffer, position, comm);
+    unpack(data.begin_report_step, buffer, position, comm);
+}
+
+void unpack(WellTestConfig& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    std::vector<WellTestConfig::WTESTWell> ddata;
+    unpack(ddata, buffer, position, comm);
+    data = WellTestConfig(ddata);
+}
+
 } // end namespace Mpi
+
 RestartValue loadParallelRestart(const EclipseIO* eclIO, SummaryState& summaryState,
                                  const std::vector<Ewoms::RestartKey>& solutionKeys,
                                  const std::vector<Ewoms::RestartKey>& extraKeys,

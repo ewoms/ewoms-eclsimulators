@@ -35,7 +35,12 @@
 #include <ewoms/eclio/parser/eclipsestate/initconfig/initconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/ioconfig/ioconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/ioconfig/restartconfig.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/events.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/messagelimits.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/oilvaporizationproperties.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/timemap.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/vfpinjtable.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/vfpprodtable.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/simulationconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/thresholdpressure.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/aqudims.hh>
@@ -207,6 +212,44 @@ Ewoms::TableContainer getTableContainer()
     result.addTable(0, std::make_shared<const Ewoms::SimpleTable>(tab1));
     result.addTable(1, std::make_shared<const Ewoms::SimpleTable>(tab1));
     return result;
+}
+
+Ewoms::VFPInjTable getVFPInjTable()
+{
+    Ewoms::VFPInjTable::array_type table;
+    Ewoms::VFPInjTable::extents shape;
+    shape[0] = 3;
+    shape[1] = 2;
+    table.resize(shape);
+    double foo = 1.0;
+    for (size_t i = 0; i < table.num_elements(); ++i)
+        *(table.data() + i) = foo++;
+    return Ewoms::VFPInjTable(1, 2.0, Ewoms::VFPInjTable::FLO_WAT, {1.0, 2.0},
+                            {3.0, 4.0, 5.0}, table);
+}
+
+Ewoms::VFPProdTable getVFPProdTable()
+{
+    Ewoms::VFPProdTable::array_type table;
+    Ewoms::VFPProdTable::extents shape;
+    shape[0] = 1;
+    shape[1] = 2;
+    shape[2] = 3;
+    shape[3] = 4;
+    shape[4] = 5;
+    table.resize(shape);
+    double foo = 1.0;
+    for (size_t i = 0; i < table.num_elements(); ++i)
+        *(table.data() + i) = foo++;
+    return Ewoms::VFPProdTable(1, 2.0, Ewoms::VFPProdTable::FLO_OIL,
+                             Ewoms::VFPProdTable::WFR_WOR,
+                             Ewoms::VFPProdTable::GFR_GLR,
+                             Ewoms::VFPProdTable::ALQ_TGLR,
+                             {1.0, 2.0, 3.0, 4.0, 5.0},
+                             {1.0},
+                             {1.0, 2.0},
+                             {1.0, 2.0, 3.0},
+                             {1.0, 2.0, 3.0, 4.0}, table);
 }
 #endif
 
@@ -1067,6 +1110,99 @@ BOOST_AUTO_TEST_CASE(WaterPvtThermal)
                                       {7.0, 8.0}, {9.0, 10.0}, {11.0, 12.0},
                                       {13.0, 14.0}, {15.0, 16.0}, {17.0, 18.0},
                                       {func}, {func}, true, true, false);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(OilVaporizationProperties)
+{
+#ifdef HAVE_MPI
+    using VapType = Ewoms::OilVaporizationProperties::OilVaporization;
+    Ewoms::OilVaporizationProperties val1(VapType::VAPPARS,
+                                        {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
+                                        {false, true}, {7.0, 8.0});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+    val1 = Ewoms::OilVaporizationProperties(VapType::DRDT,
+                                          {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
+                                          {false, true}, {7.0, 8.0});
+    val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Events)
+{
+#ifdef HAVE_MPI
+    Ewoms::Events val1(Ewoms::DynamicVector<uint64_t>({1,2,3,4,5}));
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(MLimits)
+{
+#ifdef HAVE_MPI
+    Ewoms::MLimits val1{1,2,3,4,5,6,7,8,9,10,11,12};
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(MessageLimits)
+{
+#ifdef HAVE_MPI
+    std::vector<Ewoms::MLimits> limits{Ewoms::MLimits{1,2,3,4,5,6,7,8,9,10,11,12}};
+    Ewoms::MessageLimits val1(Ewoms::DynamicState<Ewoms::MLimits>(limits,2));
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(VFPInjTable)
+{
+#ifdef HAVE_MPI
+    Ewoms::VFPInjTable val1 = getVFPInjTable();
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(VFPProdTable)
+{
+#ifdef HAVE_MPI
+    Ewoms::VFPProdTable val1 = getVFPProdTable();
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(WTESTWell)
+{
+#ifdef HAVE_MPI
+    Ewoms::WellTestConfig::WTESTWell val1{"test", Ewoms::WellTestConfig::ECONOMIC,
+                                         1.0, 2, 3.0, 4};
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(WellTestConfig)
+{
+#ifdef HAVE_MPI
+    Ewoms::WellTestConfig::WTESTWell tw{"test", Ewoms::WellTestConfig::ECONOMIC,
+                                         1.0, 2, 3.0, 4};
+    Ewoms::WellTestConfig val1({tw, tw, tw});
     auto val2 = PackUnpack(val1);
     BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
     BOOST_CHECK(val1 == std::get<0>(val2));
