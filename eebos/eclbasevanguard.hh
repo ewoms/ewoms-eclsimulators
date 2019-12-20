@@ -154,14 +154,18 @@ public:
 
         // make sure that the directory specified via the --output-dir="..." parameter
         // exists
-        const std::string& outputDir = EWOMS_GET_PARAM(TypeTag, std::string, OutputDir);
-        if (!outputDir.empty())
-            ensureOutputDirExists_(outputDir);
+        std::string outputDir = EWOMS_GET_PARAM(TypeTag, std::string, OutputDir);
 
         // find the base name of the case, i.e., the file name without the extension
         namespace fs = boost::filesystem;
         const std::string& deckFileNameParam = EWOMS_GET_PARAM(TypeTag, std::string, EclDeckFileName);
         fs::path deckFileNamePath(deckFileNameParam);
+
+        if (outputDir.empty())
+            outputDir = boost::filesystem::canonical(deckFileNamePath.parent_path()).string();
+
+        if (!outputDir.empty())
+            ensureOutputDirExists_(outputDir);
 
         // Strip extension "." or ".DATA"
         std::string extension = boost::to_upper_copy(deckFileNamePath.extension().string());
