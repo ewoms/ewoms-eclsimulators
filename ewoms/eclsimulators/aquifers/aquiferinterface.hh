@@ -19,28 +19,28 @@
 #ifndef EWOMS_AQUIFERINTERFACE_HH
 #define EWOMS_AQUIFERINTERFACE_HH
 
+#include <ewoms/eclio/utility/numeric/linearinterpolation.hh>
+#include <ewoms/eclio/parser/eclipsestate/aquancon.hh>
 #include <ewoms/eclio/parser/eclipsestate/aquiferct.hh>
 #include <ewoms/eclio/parser/eclipsestate/aquifetp.hh>
-#include <ewoms/eclio/parser/eclipsestate/aquancon.hh>
-#include <ewoms/eclio/utility/numeric/linearinterpolation.hh>
 
 #include <ewoms/eclio/output/data/aquifer.hh>
 
 #include <ewoms/common/mathtoolbox.hh>
-#include <ewoms/common/densead/math.hh>
 #include <ewoms/common/densead/evaluation.hh>
+#include <ewoms/common/densead/math.hh>
 #include <ewoms/material/fluidstates/blackoilfluidstate.hh>
 
-#include <vector>
 #include <algorithm>
 #include <unordered_map>
+#include <vector>
 
 namespace Ewoms
 {
-  template<typename TypeTag>
-  class AquiferInterface
-  {
-  public:
+template <typename TypeTag>
+class AquiferInterface
+{
+public:
     typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
     typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
     typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
@@ -56,154 +56,165 @@ namespace Ewoms
 
     typedef DenseAd::Evaluation<double, /*size=*/numEq> Eval;
 
-    typedef Ewoms::BlackOilFluidState<Eval, FluidSystem, enableTemperature, enableEnergy, BlackoilIndices::gasEnabled, BlackoilIndices::numPhases> FluidState;
+    typedef Ewoms::BlackOilFluidState<Eval,
+                                    FluidSystem,
+                                    enableTemperature,
+                                    enableEnergy,
+                                    BlackoilIndices::gasEnabled,
+                                    BlackoilIndices::numPhases>
+        FluidState;
 
     static const auto waterCompIdx = FluidSystem::waterCompIdx;
     static const auto waterPhaseIdx = FluidSystem::waterPhaseIdx;
 
     // Constructor
-    AquiferInterface( const Aquancon::AquanconOutput& connection,
-                      const std::unordered_map<int, int>& cartesian_to_compressed,
-                      const Simulator& eebosSimulator)
-                    : connection_(connection)
-                    , eebos_simulator_(eebosSimulator)
-                    , cartesian_to_compressed_(cartesian_to_compressed)
-    {}
+    AquiferInterface(const Aquancon::AquanconOutput& connection,
+                     const std::unordered_map<int, int>& cartesian_to_compressed,
+                     const Simulator& eebosSimulator)
+        : connection_(connection)
+        , eebos_simulator_(eebosSimulator)
+        , cartesian_to_compressed_(cartesian_to_compressed)
+    {
+    }
 
     // Deconstructor
-    virtual ~AquiferInterface() {}
+    virtual ~AquiferInterface()
+    {
+    }
 
     void initFromRestart(const std::vector<data::AquiferData>& aquiferSoln)
     {
-      auto xaqPos = std::find_if(aquiferSoln.begin(), aquiferSoln.end(),
-        [this](const data::AquiferData& xaq) -> bool
-      {
-        return xaq.aquiferID == this->connection_.aquiferID;
-      });
+        auto xaqPos
+            = std::find_if(aquiferSoln.begin(), aquiferSoln.end(), [this](const data::AquiferData& xaq) -> bool {
+                  return xaq.aquiferID == this->connection_.aquiferID;
+              });
 
-      if (xaqPos == aquiferSoln.end()) {
-        // No restart value applies to this aquifer.  Nothing to do.
-        return;
-      }
+        if (xaqPos == aquiferSoln.end()) {
+            // No restart value applies to this aquifer.  Nothing to do.
+            return;
+        }
 
-      this->assignRestartData(*xaqPos);
+        this->assignRestartData(*xaqPos);
 
-      this->W_flux_ = xaqPos->volume;
-      this->pa0_    = xaqPos->initPressure;
-      this->solution_set_from_restart_ = true;
+        this->W_flux_ = xaqPos->volume;
+        this->pa0_ = xaqPos->initPressure;
+        this->solution_set_from_restart_ = true;
     }
 
     void initialSolutionApplied()
     {
-      initQuantities(connection_);
+        initQuantities(connection_);
     }
 
     void beginTimeStep()
     {
-      ElementContext elemCtx(eebos_simulator_);
-      auto elemIt = eebos_simulator_.gridView().template begin<0>();
-      const auto& elemEndIt = eebos_simulator_.gridView().template end<0>();
-      for (; elemIt != elemEndIt; ++elemIt) {
-        const auto& elem = *elemIt;
+        ElementContext elemCtx(eebos_simulator_);
+        auto elemIt = eebos_simulator_.gridView().template begin<0>();
+        const auto& elemEndIt = eebos_simulator_.gridView().template end<0>();
+        for (; elemIt != elemEndIt; ++elemIt) {
+            const auto& elem = *elemIt;
 
-        elemCtx.updatePrimaryStencil(elem);
+            elemCtx.updatePrimaryStencil(elem);
 
-        int cellIdx = elemCtx.globalSpaceIndex(0, 0);
-        int idx = cellToConnectionIdx_[cellIdx];
-        if (idx < 0)
-        continue;
+            int cellIdx = elemCtx.globalSpaceIndex(0, 0);
+            int idx = cellToConnectionIdx_[cellIdx];
+            if (idx < 0)
+                continue;
 
-        elemCtx.updateIntensiveQuantities(0);
-        const auto& iq = elemCtx.intensiveQuantities(0, 0);
-        pressure_previous_[idx] = Ewoms::getValue(iq.fluidState().pressure(waterPhaseIdx));
-      }
+            elemCtx.updateIntensiveQuantities(0);
+            const auto& iq = elemCtx.intensiveQuantities(0, 0);
+            pressure_previous_[idx] = Ewoms::getValue(iq.fluidState().pressure(waterPhaseIdx));
+        }
     }
 
     template <class Context>
     void addToSource(RateVector& rates, const Context& context, unsigned spaceIdx, unsigned timeIdx)
     {
-      unsigned cellIdx = context.globalSpaceIndex(spaceIdx, timeIdx);
+        unsigned cellIdx = context.globalSpaceIndex(spaceIdx, timeIdx);
 
-      int idx = cellToConnectionIdx_[cellIdx];
-      if (idx < 0)
-      return;
+        int idx = cellToConnectionIdx_[cellIdx];
+        if (idx < 0)
+            return;
 
-      // We are dereferencing the value of IntensiveQuantities because cachedIntensiveQuantities return a const pointer to
-      // IntensiveQuantities of that particular cell_id
-      const IntensiveQuantities intQuants = context.intensiveQuantities(spaceIdx, timeIdx);
-      // This is the pressure at td + dt
-      updateCellPressure(pressure_current_,idx,intQuants);
-      updateCellDensity(idx,intQuants);
-      calculateInflowRate(idx, context.simulator());
-      rates[BlackoilIndices::conti0EqIdx + FluidSystem::waterCompIdx] +=
-      Qai_[idx]/context.dofVolume(spaceIdx, timeIdx);
+        // We are dereferencing the value of IntensiveQuantities because cachedIntensiveQuantities return a const
+        // pointer to IntensiveQuantities of that particular cell_id
+        const IntensiveQuantities intQuants = context.intensiveQuantities(spaceIdx, timeIdx);
+        // This is the pressure at td + dt
+        updateCellPressure(pressure_current_, idx, intQuants);
+        updateCellDensity(idx, intQuants);
+        calculateInflowRate(idx, context.simulator());
+        rates[BlackoilIndices::conti0EqIdx + FluidSystem::waterCompIdx]
+            += Qai_[idx] / context.dofVolume(spaceIdx, timeIdx);
     }
 
-  protected:
+protected:
     inline Scalar gravity_() const
     {
-      return eebos_simulator_.problem().gravity()[2];
+        return eebos_simulator_.problem().gravity()[2];
     }
 
     inline void initQuantities(const Aquancon::AquanconOutput& connection)
     {
-      // We reset the cumulative flux at the start of any simulation, so, W_flux = 0
-      if (!this->solution_set_from_restart_)
-      {
-        W_flux_ = 0.;
-      }
+        // We reset the cumulative flux at the start of any simulation, so, W_flux = 0
+        if (!this->solution_set_from_restart_) {
+            W_flux_ = 0.;
+        }
 
-      // We next get our connections to the aquifer and initialize these quantities using the initialize_connections function
-      initializeConnections(connection);
-      calculateAquiferCondition();
-      calculateAquiferConstants();
+        // We next get our connections to the aquifer and initialize these quantities using the initialize_connections
+        // function
+        initializeConnections(connection);
+        calculateAquiferCondition();
+        calculateAquiferConstants();
 
-      pressure_previous_.resize(cell_idx_.size(), 0.);
-      pressure_current_.resize(cell_idx_.size(), 0.);
-      Qai_.resize(cell_idx_.size(), 0.0);
+        pressure_previous_.resize(cell_idx_.size(), 0.);
+        pressure_current_.resize(cell_idx_.size(), 0.);
+        Qai_.resize(cell_idx_.size(), 0.0);
     }
 
-    inline void updateCellPressure(std::vector<Eval>& pressure_water, const int idx, const IntensiveQuantities& intQuants)
+    inline void
+    updateCellPressure(std::vector<Eval>& pressure_water, const int idx, const IntensiveQuantities& intQuants)
     {
-      const auto& fs = intQuants.fluidState();
-      pressure_water.at(idx) = fs.pressure(waterPhaseIdx);
+        const auto& fs = intQuants.fluidState();
+        pressure_water.at(idx) = fs.pressure(waterPhaseIdx);
     }
 
-    inline void updateCellPressure(std::vector<Scalar>& pressure_water, const int idx, const IntensiveQuantities& intQuants)
+    inline void
+    updateCellPressure(std::vector<Scalar>& pressure_water, const int idx, const IntensiveQuantities& intQuants)
     {
-      const auto& fs = intQuants.fluidState();
-      pressure_water.at(idx) = fs.pressure(waterPhaseIdx).value();
+        const auto& fs = intQuants.fluidState();
+        pressure_water.at(idx) = fs.pressure(waterPhaseIdx).value();
     }
 
     inline void updateCellDensity(const int idx, const IntensiveQuantities& intQuants)
     {
-      const auto& fs = intQuants.fluidState();
-      rhow_.at(idx) = fs.density(waterPhaseIdx);
+        const auto& fs = intQuants.fluidState();
+        rhow_.at(idx) = fs.density(waterPhaseIdx);
     }
 
-    template<class faceCellType, class ugridType>
-    inline double getFaceArea(const faceCellType& faceCells, const ugridType& ugrid,
-                              const int faceIdx, const int idx,
+    template <class faceCellType, class ugridType>
+    inline double getFaceArea(const faceCellType& faceCells,
+                              const ugridType& ugrid,
+                              const int faceIdx,
+                              const int idx,
                               const Aquancon::AquanconOutput& connection) const
     {
-      // Check now if the face is outside of the reservoir, or if it adjoins an inactive cell
-      // Do not make the connection if the product of the two cellIdx > 0. This is because the
-      // face is within the reservoir/not connected to boundary. (We still have yet to check for inactive cell adjoining)
-      double faceArea = 0.;
-      const auto cellNeighbour0 = faceCells(faceIdx,0);
-      const auto cellNeighbour1 = faceCells(faceIdx,1);
-      const auto defaultFaceArea = Ewoms::UgGridHelpers::faceArea(ugrid, faceIdx);
-      const auto calculatedFaceArea = (!connection.influx_coeff.at(idx))?
-      defaultFaceArea :
-      *(connection.influx_coeff.at(idx));
-      faceArea = (cellNeighbour0 * cellNeighbour1 > 0)? 0. : calculatedFaceArea;
-      if (cellNeighbour1 == 0){
-        faceArea = (cellNeighbour0 < 0)? faceArea : 0.;
-      }
-      else if (cellNeighbour0 == 0){
-        faceArea = (cellNeighbour1 < 0)? faceArea : 0.;
-      }
-      return faceArea;
+        // Check now if the face is outside of the reservoir, or if it adjoins an inactive cell
+        // Do not make the connection if the product of the two cellIdx > 0. This is because the
+        // face is within the reservoir/not connected to boundary. (We still have yet to check for inactive cell
+        // adjoining)
+        double faceArea = 0.;
+        const auto cellNeighbour0 = faceCells(faceIdx, 0);
+        const auto cellNeighbour1 = faceCells(faceIdx, 1);
+        const auto defaultFaceArea = Ewoms::UgGridHelpers::faceArea(ugrid, faceIdx);
+        const auto calculatedFaceArea
+            = (!connection.influx_coeff.at(idx)) ? defaultFaceArea : *(connection.influx_coeff.at(idx));
+        faceArea = (cellNeighbour0 * cellNeighbour1 > 0) ? 0. : calculatedFaceArea;
+        if (cellNeighbour1 == 0) {
+            faceArea = (cellNeighbour0 < 0) ? faceArea : 0.;
+        } else if (cellNeighbour0 == 0) {
+            faceArea = (cellNeighbour1 < 0) ? faceArea : 0.;
+        }
+        return faceArea;
     }
 
     virtual void endTimeStep() = 0;
@@ -229,9 +240,9 @@ namespace Ewoms
 
     Eval W_flux_;
 
-    bool solution_set_from_restart_{false};
+    bool solution_set_from_restart_ {false};
 
-    virtual void initializeConnections(const Aquancon::AquanconOutput& connection) =0;
+    virtual void initializeConnections(const Aquancon::AquanconOutput& connection) = 0;
 
     virtual void assignRestartData(const data::AquiferData& xaq) = 0;
 
@@ -241,8 +252,8 @@ namespace Ewoms
 
     virtual void calculateAquiferConstants() = 0;
 
-    virtual Scalar calculateReservoirEquilibrium() =0;
-      // This function is used to initialize and calculate the alpha_i for each grid connection to the aquifer
-  };
+    virtual Scalar calculateReservoirEquilibrium() = 0;
+    // This function is used to initialize and calculate the alpha_i for each grid connection to the aquifer
+};
 } // namespace Ewoms
 #endif

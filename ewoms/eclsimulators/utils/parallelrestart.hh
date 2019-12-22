@@ -41,6 +41,7 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/dynamicstate.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/dynamicvector.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/timemap.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/well/well.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/welltestconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/util/orderedmap.hh>
 
@@ -57,6 +58,7 @@ namespace Ewoms
 class Actdims;
 class Aqudims;
 class ColumnSchema;
+class Connection;
 class DENSITYRecord;
 class DensityTable;
 class EclHysterConfig;
@@ -103,6 +105,7 @@ class TableContainer;
 class TableManager;
 class TableSchema;
 class ThresholdPressure;
+class UDAValue;
 class UDQParams;
 class VFPInjTable;
 class VFPProdTable;
@@ -110,8 +113,13 @@ class VISCREFRecord;
 class ViscrefTable;
 class WATDENTRecord;
 class WatdentTable;
+class WellConnections;
 class Welldims;
+class WellEconProductionLimits;
+class WellFoamProperties;
+class WellPolymerProperties;
 class WellSegmentDims;
+class WellTracerProperties;
 
 namespace Mpi
 {
@@ -504,6 +512,7 @@ void unpack(char* str, std::size_t length, std::vector<char>& buffer, int& posit
 ADD_PACK_PROTOTYPES(Actdims)
 ADD_PACK_PROTOTYPES(Aqudims)
 ADD_PACK_PROTOTYPES(ColumnSchema)
+ADD_PACK_PROTOTYPES(Connection)
 ADD_PACK_PROTOTYPES(data::CellData)
 ADD_PACK_PROTOTYPES(data::Connection)
 ADD_PACK_PROTOTYPES(data::Rates)
@@ -562,6 +571,7 @@ ADD_PACK_PROTOTYPES(TableSchema)
 ADD_PACK_PROTOTYPES(ThresholdPressure)
 ADD_PACK_PROTOTYPES(TimeMap)
 ADD_PACK_PROTOTYPES(TimeMap::StepData)
+ADD_PACK_PROTOTYPES(UDAValue)
 ADD_PACK_PROTOTYPES(UDQParams)
 ADD_PACK_PROTOTYPES(VFPInjTable)
 ADD_PACK_PROTOTYPES(VFPProdTable)
@@ -569,10 +579,18 @@ ADD_PACK_PROTOTYPES(VISCREFRecord)
 ADD_PACK_PROTOTYPES(ViscrefTable)
 ADD_PACK_PROTOTYPES(WATDENTRecord)
 ADD_PACK_PROTOTYPES(WatdentTable)
+ADD_PACK_PROTOTYPES(Well::WellGuideRate)
+ADD_PACK_PROTOTYPES(Well::WellInjectionProperties)
+ADD_PACK_PROTOTYPES(Well::WellProductionProperties)
+ADD_PACK_PROTOTYPES(WellConnections)
 ADD_PACK_PROTOTYPES(Welldims)
+ADD_PACK_PROTOTYPES(WellEconProductionLimits)
+ADD_PACK_PROTOTYPES(WellFoamProperties)
+ADD_PACK_PROTOTYPES(WellPolymerProperties)
 ADD_PACK_PROTOTYPES(WellSegmentDims)
 ADD_PACK_PROTOTYPES(WellTestConfig)
 ADD_PACK_PROTOTYPES(WellTestConfig::WTESTWell)
+ADD_PACK_PROTOTYPES(WellTracerProperties)
 
 } // end namespace Mpi
 RestartValue loadParallelRestart(const EclipseIO* eclIO, SummaryState& summaryState,

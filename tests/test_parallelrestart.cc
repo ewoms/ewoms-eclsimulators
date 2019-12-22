@@ -41,6 +41,10 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/timemap.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/vfpinjtable.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/vfpprodtable.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/well/connection.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/well/wellfoamproperties.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/well/wellpolymerproperties.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/well/welltracerproperties.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/simulationconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/thresholdpressure.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/aqudims.hh>
@@ -290,7 +294,7 @@ BOOST_AUTO_TEST_CASE(Rates)
 #endif
 }
 
-BOOST_AUTO_TEST_CASE(Connection)
+BOOST_AUTO_TEST_CASE(dataConnection)
 {
 #if HAVE_MPI
     Ewoms::data::Connection con1 = getConnection();
@@ -1203,6 +1207,148 @@ BOOST_AUTO_TEST_CASE(WellTestConfig)
     Ewoms::WellTestConfig::WTESTWell tw{"test", Ewoms::WellTestConfig::ECONOMIC,
                                          1.0, 2, 3.0, 4};
     Ewoms::WellTestConfig val1({tw, tw, tw});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(WellPolymerProperties)
+{
+#ifdef HAVE_MPI
+    Ewoms::WellPolymerProperties val1{1.0, 2.0, 3, 4, 5};
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(WellFoamProperties)
+{
+#ifdef HAVE_MPI
+    Ewoms::WellFoamProperties val1{1.0};
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(WellTracerProperties)
+{
+#ifdef HAVE_MPI
+    Ewoms::WellTracerProperties val1({{"test", 1.0}, {"test2", 2.0}});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(UDAValue)
+{
+#ifdef HAVE_MPI
+    Ewoms::UDAValue val1("test");
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+    val1 = Ewoms::UDAValue(1.0);
+    auto val22 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val22) == std::get<2>(val22));
+    BOOST_CHECK(val1 == std::get<0>(val22));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Connection)
+{
+#ifdef HAVE_MPI
+    Ewoms::Connection val1(Ewoms::Connection::Direction::Y,
+                         1.0, Ewoms::Connection::State::SHUT,
+                         2, 3, 4.0, 5.0, 6.0, 7.0, 8.0,
+                         {9, 10, 11}, 12, 13.0, 14.0, true,
+                         15, 16, 17.0);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(WellInjectionProperties)
+{
+#ifdef HAVE_MPI
+    Ewoms::Well::WellInjectionProperties val1("test",
+                                            Ewoms::UDAValue(1.0),
+                                            Ewoms::UDAValue("test"),
+                                            Ewoms::UDAValue(2.0),
+                                            Ewoms::UDAValue(3.0),
+                                            4.0, 5.0, 6.0,
+                                            7,
+                                            true,
+                                            8,
+                                            Ewoms::Well::InjectorType::OIL,
+                                            Ewoms::Well::InjectorCMode::BHP);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(WellEconProductionLimits)
+{
+#ifdef HAVE_MPI
+    Ewoms::WellEconProductionLimits val1(1.0, 2.0, 3.0, 4.0, 5.0,
+                                       Ewoms::WellEconProductionLimits::EconWorkover::CONP,
+                                       true, "test",
+                                       Ewoms::WellEconProductionLimits::QuantityLimit::POTN,
+                                       6.0,
+                                       Ewoms::WellEconProductionLimits::EconWorkover::WELL,
+                                       7.0, 8.0, 9.0, 10.0);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(WellGuideRate)
+{
+#ifdef HAVE_MPI
+    Ewoms::Well::WellGuideRate val1{true, 1.0, Ewoms::Well::GuideRateTarget::COMB, 2.0};
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(WellConnections)
+{
+#ifdef HAVE_MPI
+    Ewoms::Connection conn(Ewoms::Connection::Direction::Y,
+                         1.0, Ewoms::Connection::State::SHUT,
+                         2, 3, 4.0, 5.0, 6.0, 7.0, 8.0,
+                         {9, 10, 11}, 12, 13.0, 14.0, true,
+                         15, 16, 17.0);
+    Ewoms::WellConnections val1(1, 2, 3, {conn, conn});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(WellProductionProperties)
+{
+#ifdef HAVE_MPI
+    Ewoms::Well::WellProductionProperties val1("test",
+                                             Ewoms::UDAValue(1.0),
+                                             Ewoms::UDAValue("test"),
+                                             Ewoms::UDAValue(2.0),
+                                             Ewoms::UDAValue(3.0),
+                                             Ewoms::UDAValue(4.0),
+                                             Ewoms::UDAValue(5.0),
+                                             Ewoms::UDAValue(6.0),
+                                             7.0, 8.0,
+                                             9,
+                                             10.0,
+                                             true,
+                                             Ewoms::Well::ProducerCMode::CRAT,
+                                             Ewoms::Well::ProducerCMode::BHP, 11);
     auto val2 = PackUnpack(val1);
     BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
     BOOST_CHECK(val1 == std::get<0>(val2));
