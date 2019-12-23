@@ -19,7 +19,7 @@
 #define EWOMS_AMGCPR_HH
 
 #include <ewoms/eclsimulators/linalg/twolevelmethodcpr.hh>
-#include <ewoms/numerics/linear/matrixblock.hh>
+#include <ewoms/eclsimulators/linalg/matrixutils.hh>
 #include <ewoms/eclsimulators/linalg/paralleloverlappingilu0.hh>
 #include <ewoms/eclsimulators/linalg/eflowlinearsolverparameters.hh>
 #include <ewoms/eclsimulators/linalg/cprpreconditioner.hh>

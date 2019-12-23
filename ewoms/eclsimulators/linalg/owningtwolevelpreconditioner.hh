@@ -41,7 +41,7 @@ namespace Dune
 // and OwningTwoLevelPreconditioner [which uses PreconditionerFactory to choose the fine-level smoother]
 // must be broken, accomplished by forward-declaration here.
 template <class Operator, class Comm = Dune::Amg::SequentialInformation>
-class PreconditionerFactory;
+class EclSimulatorsPreconditionerFactory;
 
 // Must forward-declare FlexibleSolver as we want to use it as solver for the pressure system.
 template <class MatrixTypeT, class VectorTypeT>
@@ -60,7 +60,7 @@ class OwningTwoLevelPreconditioner : public Dune::PreconditionerWithUpdate<Vecto
 public:
     using pt = boost::property_tree::ptree;
     using MatrixType = typename OperatorType::matrix_type;
-    using PrecFactory = PreconditionerFactory<OperatorType, Communication>;
+    using PrecFactory = EclSimulatorsPreconditionerFactory<OperatorType, Communication>;
 
     OwningTwoLevelPreconditioner(const OperatorType& linearoperator, const pt& prm)
         : linear_operator_(linearoperator)

@@ -117,9 +117,10 @@ namespace Ewoms
 
 #if HAVE_MPI
             if( this->isParallel() ) {
-
+#if DUNE_VERSION_NEWER(DUNE_ISTL, 2,6)
                 //remove ghost rows in local matrix without doing a copy.
                 this->makeOverlapRowsInvalid(*(this->matrix_));
+#endif
 
                 if (newton_iteration < 1 or not(this->parameters_.cpr_reuse_setup_)) {
                     //Not sure what actual_mat_for_prec is, so put eebosJacIgnoreOverlap as both variables

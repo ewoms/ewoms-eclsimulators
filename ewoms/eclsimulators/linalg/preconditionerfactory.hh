@@ -44,7 +44,7 @@ namespace Dune
 /// a user can call the addCreator() static method to add further
 /// preconditioners.
 template <class Operator, class Comm>
-class PreconditionerFactory
+class EclSimulatorsPreconditionerFactory
 {
 public:
     /// Linear algebra types.
@@ -290,14 +290,14 @@ private:
 
     // The method that implements the singleton pattern,
     // using the Meyers singleton technique.
-    static PreconditionerFactory& instance()
+    static EclSimulatorsPreconditionerFactory& instance()
     {
-        static PreconditionerFactory singleton;
+        static EclSimulatorsPreconditionerFactory singleton;
         return singleton;
     }
 
     // Private constructor, to keep users from creating a PreconditionerFactory.
-    PreconditionerFactory()
+    EclSimulatorsPreconditionerFactory()
     {
         Comm* dummy = nullptr;
         addStandardPreconditioners(dummy);

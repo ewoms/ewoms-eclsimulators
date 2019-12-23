@@ -93,7 +93,7 @@ private:
         auto linop = std::make_shared<ParOperatorType>(matrix, comm);
         linearoperator_ = linop;
         preconditioner_
-            = Dune::PreconditionerFactory<ParOperatorType, Comm>::create(*linop, prm.get_child("preconditioner"), comm);
+            = Dune::EclSimulatorsPreconditionerFactory<ParOperatorType, Comm>::create(*linop, prm.get_child("preconditioner"), comm);
         scalarproduct_ = Dune::createScalarProduct<VectorType, Comm>(comm, linearoperator_->category());
     }
 
@@ -103,7 +103,7 @@ private:
         using SeqOperatorType = Dune::MatrixAdapter<MatrixType, VectorType, VectorType>;
         auto linop = std::make_shared<SeqOperatorType>(matrix);
         linearoperator_ = linop;
-        preconditioner_ = Dune::PreconditionerFactory<SeqOperatorType>::create(*linop, prm.get_child("preconditioner"));
+        preconditioner_ = Dune::EclSimulatorsPreconditionerFactory<SeqOperatorType>::create(*linop, prm.get_child("preconditioner"));
         scalarproduct_ = std::make_shared<Dune::SeqScalarProduct<VectorType>>();
     }
 
