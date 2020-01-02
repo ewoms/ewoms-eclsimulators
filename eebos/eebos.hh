@@ -106,12 +106,6 @@ SET_INT_PROP(EebosTypeTag, EclNewtonStrictIterations, 100);
 // relatively often)
 SET_INT_PROP(EebosTypeTag, NewtonMaxIterations, 8);
 
-// if openMP is available, set the default the number of threads per process for the main
-// simulation to 2 (instead of grabbing everything that is available).
-#if _OPENMP
-SET_INT_PROP(EebosTypeTag, ThreadsPerProcess, 2);
-#endif
-
 // By default, eebos accepts the result of the time integration unconditionally if the
 // smallest time step size is reached.
 SET_BOOL_PROP(EebosTypeTag, ContinueOnConvergenceError, true);
