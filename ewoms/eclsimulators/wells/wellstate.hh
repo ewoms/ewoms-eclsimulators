@@ -62,6 +62,7 @@ namespace Ewoms
                 const int nw = wells_ecl.size();
                 // const int np = wells->number_of_phases;
                 const int np = pu.num_phases;
+                np_ = np;
                 open_for_output_.assign(nw, true);
                 bhp_.resize(nw, 0.0);
                 thp_.resize(nw, 0.0);
@@ -149,7 +150,7 @@ namespace Ewoms
         /// The number of phases present.
         int numPhases() const
         {
-            return wellRates().size() / numWells();
+            return np_;
         }
 
         virtual void shutWell(int well_index) {
@@ -219,6 +220,7 @@ namespace Ewoms
         std::vector<double> wellrates_;
         std::vector<double> perfrates_;
         std::vector<double> perfpress_;
+        int np_;
     protected:
         std::vector<bool>   open_for_output_;
     private:

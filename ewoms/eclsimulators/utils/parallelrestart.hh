@@ -40,7 +40,10 @@
 #include <ewoms/eclio/output/summary.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/dynamicstate.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/dynamicvector.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/group/group.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/timemap.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqassign.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqactive.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/well.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/welltestconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/util/orderedmap.hh>
@@ -61,6 +64,7 @@ class ColumnSchema;
 class Connection;
 class DENSITYRecord;
 class DensityTable;
+class Dimension;
 class EclHysterConfig;
 class Eqldims;
 class EDITNNC;
@@ -72,6 +76,7 @@ class FoamConfig;
 class FoamData;
 class InitConfig;
 class IOConfig;
+template<class T> class IOrderSet;
 class JFunc;
 class MessageLimits;
 class MLimits;
@@ -95,10 +100,12 @@ class RockTable;
 class Rock2dTable;
 class Rock2dtrTable;
 class Runspec;
+class Segment;
 class SimulationConfig;
 class SimpleTable;
 class SkprpolyTable;
 class SkprwatTable;
+class SpiralICD;
 class Tabdims;
 class TableColumn;
 class TableContainer;
@@ -106,7 +113,15 @@ class TableManager;
 class TableSchema;
 class ThresholdPressure;
 class UDAValue;
+class UDQASTNode;
+class UDQConfig;
+class UDQDefine;
+class UDQFunction;
+class UDQFunctionTable;
+class UDQIndex;
 class UDQParams;
+class UnitSystem;
+class Valve;
 class VFPInjTable;
 class VFPProdTable;
 class VISCREFRecord;
@@ -119,7 +134,10 @@ class WellEconProductionLimits;
 class WellFoamProperties;
 class WellPolymerProperties;
 class WellSegmentDims;
+class WellSegments;
 class WellTracerProperties;
+class WList;
+class WListManager;
 
 namespace Mpi
 {
@@ -151,11 +169,19 @@ std::size_t packSize(const std::pair<T1,T2>& data, Dune::MPIHelper::MPICommunica
 template<class T, class A>
 std::size_t packSize(const std::vector<T,A>& data, Dune::MPIHelper::MPICommunicator comm);
 
+template<class T, class H, class KE, class A>
+std::size_t packSize(const std::unordered_set<T,H,KE,A>& data,
+                     Dune::MPIHelper::MPICommunicator comm);
+
 template<class A>
 std::size_t packSize(const std::vector<bool,A>& data, Dune::MPIHelper::MPICommunicator comm);
 
 template<class... Ts>
 std::size_t packSize(const std::tuple<Ts...>& data, Dune::MPIHelper::MPICommunicator comm);
+
+template<class T>
+std::size_t packSize(const std::shared_ptr<T>& data,
+                     Dune::MPIHelper::MPICommunicator comm);
 
 std::size_t packSize(const char* str, Dune::MPIHelper::MPICommunicator comm);
 
@@ -231,6 +257,9 @@ std::size_t packSize(const ConstantCompressibilityWaterPvt<Scalar>& data,
 template<class Scalar>
 std::size_t packSize(const WaterPvtThermal<Scalar>& data, Dune::MPIHelper::MPICommunicator comm);
 
+template<class T>
+std::size_t packSize(const IOrderSet<T>& data, Dune::MPIHelper::MPICommunicator comm);
+
 ////// pack routines
 
 template<class T>
@@ -272,6 +301,15 @@ void pack(const std::vector<bool,A>& data, std::vector<char>& buffer, int& posit
 template<class... Ts>
 void pack(const std::tuple<Ts...>& data, std::vector<char>& buffer,
           int& position, Dune::MPIHelper::MPICommunicator comm);
+
+template<class T, class H, class KE, class A>
+void pack(const std::unordered_set<T,H,KE,A>& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm);
+
+template<class T>
+void pack(const std::shared_ptr<T>& data, std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm);
 
 template<class T1, class T2, class C, class A>
 void pack(const std::map<T1,T2,C,A>& data, std::vector<char>& buffer, int& position,
@@ -364,6 +402,10 @@ template<class Scalar>
 void pack(const WaterPvtThermal<Scalar>& data, std::vector<char>& buffer,
           int& position, Dune::MPIHelper::MPICommunicator comm);
 
+template<class T>
+void pack(const IOrderSet<T>& data, std::vector<char>& buffer,
+          int& position, Dune::MPIHelper::MPICommunicator comm);
+
 void pack(const char* str, std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm);
 
@@ -409,6 +451,15 @@ void unpack(std::vector<bool,A>& data, std::vector<char>& buffer, int& position,
 template<class... Ts>
 void unpack(std::tuple<Ts...>& data, std::vector<char>& buffer,
             int& position, Dune::MPIHelper::MPICommunicator comm);
+
+template<class T, class H, class KE, class A>
+void unpack(std::unordered_set<T,H,KE,A>& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm);
+
+template<class T>
+void unpack(std::shared_ptr<T>& data, std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm);
 
 template<class T1, class T2, class C, class A>
 void unpack(std::map<T1,T2,C,A>& data, std::vector<char>& buffer, int& position,
@@ -497,6 +548,10 @@ template<class Scalar>
 void unpack(ConstantCompressibilityWaterPvt<Scalar>& data, std::vector<char>& buffer,
             int& position, Dune::MPIHelper::MPICommunicator comm);
 
+template<class T>
+void unpack(IOrderSet<T>& data, std::vector<char>& buffer,
+            int& position, Dune::MPIHelper::MPICommunicator comm);
+
 void unpack(char* str, std::size_t length, std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm);
 
@@ -522,15 +577,19 @@ ADD_PACK_PROTOTYPES(data::Well)
 ADD_PACK_PROTOTYPES(data::WellRates)
 ADD_PACK_PROTOTYPES(DENSITYRecord)
 ADD_PACK_PROTOTYPES(DensityTable)
+ADD_PACK_PROTOTYPES(Dimension)
+ADD_PACK_PROTOTYPES(EclHysterConfig)
 ADD_PACK_PROTOTYPES(EDITNNC)
 ADD_PACK_PROTOTYPES(EndpointScaling)
 ADD_PACK_PROTOTYPES(Equil)
+ADD_PACK_PROTOTYPES(Eqldims)
 ADD_PACK_PROTOTYPES(EquilRecord)
 ADD_PACK_PROTOTYPES(Events)
 ADD_PACK_PROTOTYPES(FoamConfig)
 ADD_PACK_PROTOTYPES(FoamData)
-ADD_PACK_PROTOTYPES(EclHysterConfig)
-ADD_PACK_PROTOTYPES(Eqldims)
+ADD_PACK_PROTOTYPES(Group)
+ADD_PACK_PROTOTYPES(Group::GroupInjectionProperties)
+ADD_PACK_PROTOTYPES(Group::GroupProductionProperties)
 ADD_PACK_PROTOTYPES(InitConfig)
 ADD_PACK_PROTOTYPES(IOConfig)
 ADD_PACK_PROTOTYPES(JFunc)
@@ -559,10 +618,12 @@ ADD_PACK_PROTOTYPES(Rock2dTable)
 ADD_PACK_PROTOTYPES(Rock2dtrTable)
 ADD_PACK_PROTOTYPES(Runspec)
 ADD_PACK_PROTOTYPES(std::string)
+ADD_PACK_PROTOTYPES(Segment)
 ADD_PACK_PROTOTYPES(SimulationConfig)
 ADD_PACK_PROTOTYPES(SimpleTable)
 ADD_PACK_PROTOTYPES(SkprpolyTable)
 ADD_PACK_PROTOTYPES(SkprwatTable)
+ADD_PACK_PROTOTYPES(SpiralICD)
 ADD_PACK_PROTOTYPES(Tabdims)
 ADD_PACK_PROTOTYPES(TableColumn)
 ADD_PACK_PROTOTYPES(TableContainer)
@@ -572,13 +633,27 @@ ADD_PACK_PROTOTYPES(ThresholdPressure)
 ADD_PACK_PROTOTYPES(TimeMap)
 ADD_PACK_PROTOTYPES(TimeMap::StepData)
 ADD_PACK_PROTOTYPES(UDAValue)
+ADD_PACK_PROTOTYPES(UDQActive)
+ADD_PACK_PROTOTYPES(UDQActive::InputRecord)
+ADD_PACK_PROTOTYPES(UDQActive::Record)
+ADD_PACK_PROTOTYPES(UDQAssign)
+ADD_PACK_PROTOTYPES(UDQAssign::AssignRecord)
+ADD_PACK_PROTOTYPES(UDQASTNode)
+ADD_PACK_PROTOTYPES(UDQConfig)
+ADD_PACK_PROTOTYPES(UDQDefine)
+ADD_PACK_PROTOTYPES(UDQFunction)
+ADD_PACK_PROTOTYPES(UDQFunctionTable)
+ADD_PACK_PROTOTYPES(UDQIndex)
 ADD_PACK_PROTOTYPES(UDQParams)
+ADD_PACK_PROTOTYPES(UnitSystem)
+ADD_PACK_PROTOTYPES(Valve)
 ADD_PACK_PROTOTYPES(VFPInjTable)
 ADD_PACK_PROTOTYPES(VFPProdTable)
 ADD_PACK_PROTOTYPES(VISCREFRecord)
 ADD_PACK_PROTOTYPES(ViscrefTable)
 ADD_PACK_PROTOTYPES(WATDENTRecord)
 ADD_PACK_PROTOTYPES(WatdentTable)
+ADD_PACK_PROTOTYPES(Well)
 ADD_PACK_PROTOTYPES(Well::WellGuideRate)
 ADD_PACK_PROTOTYPES(Well::WellInjectionProperties)
 ADD_PACK_PROTOTYPES(Well::WellProductionProperties)
@@ -588,11 +663,15 @@ ADD_PACK_PROTOTYPES(WellEconProductionLimits)
 ADD_PACK_PROTOTYPES(WellFoamProperties)
 ADD_PACK_PROTOTYPES(WellPolymerProperties)
 ADD_PACK_PROTOTYPES(WellSegmentDims)
+ADD_PACK_PROTOTYPES(WellSegments)
 ADD_PACK_PROTOTYPES(WellTestConfig)
 ADD_PACK_PROTOTYPES(WellTestConfig::WTESTWell)
 ADD_PACK_PROTOTYPES(WellTracerProperties)
+ADD_PACK_PROTOTYPES(WList)
+ADD_PACK_PROTOTYPES(WListManager)
 
 } // end namespace Mpi
+
 RestartValue loadParallelRestart(const EclipseIO* eclIO, SummaryState& summaryState,
                                  const std::vector<Ewoms::RestartKey>& solutionKeys,
                                  const std::vector<Ewoms::RestartKey>& extraKeys,

@@ -103,46 +103,52 @@ protected:
         for (size_t idx = 0; idx < Base::cell_idx_.size(); ++idx) {
             const int cell_index = Base::cartesian_to_compressed_.at(Base::cell_idx_[idx]);
             Base::cellToConnectionIdx_[cell_index] = idx;
-
-            const auto cellFacesRange = cell2Faces[cell_index];
-            for (auto cellFaceIter = cellFacesRange.begin(); cellFaceIter != cellFacesRange.end(); ++cellFaceIter) {
-                // The index of the face in the compressed grid
-                const int faceIdx = *cellFaceIter;
-
-                // the logically-Cartesian direction of the face
-                const int faceTag = Ewoms::UgGridHelpers::faceTag(ugrid, cellFaceIter);
-
-                switch (faceTag) {
-                case 0:
-                    faceDirection = Ewoms::FaceDir::XMinus;
-                    break;
-                case 1:
-                    faceDirection = Ewoms::FaceDir::XPlus;
-                    break;
-                case 2:
-                    faceDirection = Ewoms::FaceDir::YMinus;
-                    break;
-                case 3:
-                    faceDirection = Ewoms::FaceDir::YPlus;
-                    break;
-                case 4:
-                    faceDirection = Ewoms::FaceDir::ZMinus;
-                    break;
-                case 5:
-                    faceDirection = Ewoms::FaceDir::ZPlus;
-                    break;
-                default:
-                    EWOMS_THROW(Ewoms::NumericalIssue,
-                              "Initialization of Aquifer problem. Make sure faceTag is correctly defined");
-                }
-
-                if (faceDirection == connection.reservoir_face_dir.at(idx)) {
-                    Base::faceArea_connected_.at(idx) = Base::getFaceArea(faceCells, ugrid, faceIdx, idx, connection);
-                    denom_face_areas += (connection.influx_multiplier.at(idx) * Base::faceArea_connected_.at(idx));
-                }
-            }
-            auto cellCenter = grid.getCellCenter(Base::cell_idx_.at(idx));
+            const auto cellCenter = grid.getCellCenter(Base::cell_idx_.at(idx));
             Base::cell_depth_.at(idx) = cellCenter[2];
+
+            if (!connection.influx_coeff[idx]) { // influx_coeff is defaulted
+                const auto cellFacesRange = cell2Faces[cell_index];
+                for (auto cellFaceIter = cellFacesRange.begin(); cellFaceIter != cellFacesRange.end(); ++cellFaceIter) {
+                    // The index of the face in the compressed grid
+                    const int faceIdx = *cellFaceIter;
+
+                    // the logically-Cartesian direction of the face
+                    const int faceTag = Ewoms::UgGridHelpers::faceTag(ugrid, cellFaceIter);
+
+                    switch (faceTag) {
+                    case 0:
+                        faceDirection = Ewoms::FaceDir::XMinus;
+                        break;
+                    case 1:
+                        faceDirection = Ewoms::FaceDir::XPlus;
+                        break;
+                    case 2:
+                        faceDirection = Ewoms::FaceDir::YMinus;
+                        break;
+                    case 3:
+                        faceDirection = Ewoms::FaceDir::YPlus;
+                        break;
+                    case 4:
+                        faceDirection = Ewoms::FaceDir::ZMinus;
+                        break;
+                    case 5:
+                        faceDirection = Ewoms::FaceDir::ZPlus;
+                        break;
+                    default:
+                        EWOMS_THROW(Ewoms::NumericalIssue,
+                                  "Initialization of Aquifer problem. Make sure faceTag is correctly defined");
+                    }
+
+                    if (faceDirection == connection.reservoir_face_dir.at(idx)) {
+                        Base::faceArea_connected_.at(idx)
+                            = Base::getFaceArea(faceCells, ugrid, faceIdx, idx, connection);
+                        break;
+                    }
+                }
+            } else {
+                Base::faceArea_connected_.at(idx) = *connection.influx_coeff[idx];
+            }
+            denom_face_areas += (connection.influx_multiplier.at(idx) * Base::faceArea_connected_.at(idx));
         }
 
         const double eps_sqrt = std::sqrt(std::numeric_limits<double>::epsilon());

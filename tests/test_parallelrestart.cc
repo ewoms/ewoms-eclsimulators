@@ -36,15 +36,29 @@
 #include <ewoms/eclio/parser/eclipsestate/ioconfig/ioconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/ioconfig/restartconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/events.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/group/group.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/messagelimits.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/msw/spiralicd.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/msw/valve.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/oilvaporizationproperties.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/timemap.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqactive.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqassign.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqastnode.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqconfig.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqdefine.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqfunction.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqfunctiontable.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqinput.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/vfpinjtable.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/vfpprodtable.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/connection.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/wellfoamproperties.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/wellpolymerproperties.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/welltracerproperties.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/well/well.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/well/wlist.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/well/wlistmanager.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/simulationconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/thresholdpressure.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/aqudims.hh>
@@ -218,6 +232,25 @@ Ewoms::TableContainer getTableContainer()
     return result;
 }
 
+Ewoms::Well getFullWell()
+{
+    Ewoms::UnitSystem unitSystem;
+    return Ewoms::Well("test1", "test2", 1, 2, 3, 4, 5.0,
+                     Ewoms::Phase::WATER, Ewoms::Connection::Order::DEPTH,
+                     unitSystem, 6.0, Ewoms::Well::Status::SHUT,
+                     7.0, true, true, false,
+                     Ewoms::Well::WellGuideRate{true, 1.0, Ewoms::Well::GuideRateTarget::COMB, 2.0},
+                     8.0, 9.0, false,
+                     std::make_shared<Ewoms::WellEconProductionLimits>(),
+                     std::make_shared<Ewoms::WellFoamProperties>(),
+                     std::make_shared<Ewoms::WellPolymerProperties>(),
+                     std::make_shared<Ewoms::WellTracerProperties>(),
+                     std::make_shared<Ewoms::WellConnections>(),
+                     std::make_shared<Ewoms::Well::WellProductionProperties>(),
+                     std::make_shared<Ewoms::Well::WellInjectionProperties>(),
+                     std::make_shared<Ewoms::WellSegments>());
+}
+
 Ewoms::VFPInjTable getVFPInjTable()
 {
     Ewoms::VFPInjTable::array_type table;
@@ -254,6 +287,33 @@ Ewoms::VFPProdTable getVFPProdTable()
                              {1.0, 2.0},
                              {1.0, 2.0, 3.0},
                              {1.0, 2.0, 3.0, 4.0}, table);
+}
+
+Ewoms::UDQConfig getUDQConfig()
+{
+    Ewoms::UDQParams params(true, 1, 2.0, 3.0, 4.0);
+    Ewoms::UDQFunctionTable::FunctionMap map{{"test", std::make_shared<Ewoms::UDQFunction>()}};
+    std::shared_ptr<Ewoms::UDQASTNode> n0;
+    Ewoms::UDQASTNode n1(Ewoms::UDQVarType::NONE,
+                       Ewoms::UDQTokenType::error,
+                       "test", 1.0, {"test1", "test2"}, n0, n0);
+    Ewoms::UDQDefine def("test", std::make_shared<Ewoms::UDQASTNode>(n1),
+                       Ewoms::UDQVarType::NONE, "test2");
+    Ewoms::UDQAssign ass("test", Ewoms::UDQVarType::NONE,
+                       {Ewoms::UDQAssign::AssignRecord{{"test1"}, 1.0},
+                        Ewoms::UDQAssign::AssignRecord{{"test2"}, 2.0}});
+    Ewoms::OrderedMap<std::string, Ewoms::UDQIndex> omap;
+    omap.insert({"test8", Ewoms::UDQIndex(1, 2, Ewoms::UDQAction::ASSIGN,
+                                        Ewoms::UDQVarType::WELL_VAR)});
+    omap.insert({"test9", Ewoms::UDQIndex(3, 4, Ewoms::UDQAction::ASSIGN,
+                                        Ewoms::UDQVarType::WELL_VAR)});
+    return Ewoms::UDQConfig(params,
+                          Ewoms::UDQFunctionTable(params, map),
+                          {{"test1", def}, {"test2", def}},
+                          {{"test3", ass}, {"test4", ass}},
+                          {{"test5", "test6"}, {"test7", "test8"}},
+                          omap,
+                          {{Ewoms::UDQVarType::SCALAR, 5}, {Ewoms::UDQVarType::WELL_VAR, 6}});
 }
 #endif
 
@@ -304,7 +364,7 @@ BOOST_AUTO_TEST_CASE(dataConnection)
 #endif
 }
 
-BOOST_AUTO_TEST_CASE(Segment)
+BOOST_AUTO_TEST_CASE(dataSegment)
 {
 #if HAVE_MPI
     Ewoms::data::Segment seg1 = getSegment();
@@ -314,7 +374,7 @@ BOOST_AUTO_TEST_CASE(Segment)
 #endif
 }
 
-BOOST_AUTO_TEST_CASE(Well)
+BOOST_AUTO_TEST_CASE(dataWell)
 {
 #if HAVE_MPI
     Ewoms::data::Well well1 = getWell();
@@ -1349,6 +1409,286 @@ BOOST_AUTO_TEST_CASE(WellProductionProperties)
                                              true,
                                              Ewoms::Well::ProducerCMode::CRAT,
                                              Ewoms::Well::ProducerCMode::BHP, 11);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(SpiralICD)
+{
+#ifdef HAVE_MPI
+    Ewoms::SpiralICD val1(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8, 9.0,
+                        Ewoms::SpiralICD::Status::OPEN, 10.0);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Valve)
+{
+#ifdef HAVE_MPI
+    Ewoms::Valve val1(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, Ewoms::Valve::Status::OPEN);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Segment)
+{
+#ifdef HAVE_MPI
+    Ewoms::Segment val1(1, 2, 3, {1, 2}, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, false,
+                      Ewoms::Segment::SegmentType::SICD,
+                      std::make_shared<Ewoms::SpiralICD>(),
+                      std::make_shared<Ewoms::Valve>());
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Dimension)
+{
+#ifdef HAVE_MPI
+    Ewoms::Dimension val1("test", 1.0, 2.0);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(UnitSystem)
+{
+#ifdef HAVE_MPI
+    Ewoms::UnitSystem val1(Ewoms::UnitSystem::UnitType::UNIT_TYPE_METRIC);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(WellSegments)
+{
+#ifdef HAVE_MPI
+    Ewoms::Segment seg(1, 2, 3, {1, 2}, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, false,
+                     Ewoms::Segment::SegmentType::SICD,
+                     std::make_shared<Ewoms::SpiralICD>(),
+                     std::make_shared<Ewoms::Valve>());
+    Ewoms::WellSegments val1("test", 1.0, 2.0, 3.0,
+                           Ewoms::WellSegments::LengthDepth::ABS,
+                           Ewoms::WellSegments::CompPressureDrop::HF_,
+                           Ewoms::WellSegments::MultiPhaseModel::DF,
+                           {seg, seg}, {{1,2},{3,4}});
+
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Well)
+{
+#ifdef HAVE_MPI
+    Ewoms::Well val1 = getFullWell();
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(GroupInjectionProperties)
+{
+#ifdef HAVE_MPI
+    Ewoms::Group::GroupInjectionProperties val1{Ewoms::Phase::WATER,
+                                              Ewoms::Group::InjectionCMode::REIN,
+                                              Ewoms::UDAValue(1.0),
+                                              Ewoms::UDAValue(2.0),
+                                              Ewoms::UDAValue(3.0),
+                                              Ewoms::UDAValue(4.0),
+                                              "test1", "test2", 5};
+
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(GroupProductionProperties)
+{
+#ifdef HAVE_MPI
+    Ewoms::Group::GroupProductionProperties val1{Ewoms::Group::ProductionCMode::PRBL,
+                                               Ewoms::Group::ExceedAction::WELL,
+                                               Ewoms::UDAValue(1.0),
+                                               Ewoms::UDAValue(2.0),
+                                               Ewoms::UDAValue(3.0),
+                                               Ewoms::UDAValue(4.0),
+                                               5.0, Ewoms::Group::GuideRateTarget::COMB,
+                                               6.0, 7};
+
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Group)
+{
+#ifdef HAVE_MPI
+    Ewoms::UnitSystem unitSystem;
+    Ewoms::Group val1("test1", 1, 2, 3.0, unitSystem,
+                    Ewoms::Group::GroupType::PRODUCTION,
+                    4.0, true, 5, "test2",
+                    Ewoms::IOrderSet<std::string>({"test3", "test4"}, {"test3","test4"}),
+                    Ewoms::IOrderSet<std::string>({"test5", "test6"}, {"test5","test6"}),
+                    Ewoms::Group::GroupInjectionProperties(),
+                    Ewoms::Group::GroupProductionProperties());
+
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(WList)
+{
+#ifdef HAVE_MPI
+    Ewoms::WList val1({"test1", "test2", "test3"});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(WListManager)
+{
+#ifdef HAVE_MPI
+    Ewoms::WList wl({"test1", "test2", "test3"});
+    std::map<std::string,Ewoms::WList> data{{"test", wl}, {"test2", wl}};
+    Ewoms::WListManager val1(data);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(UDQFunction)
+{
+#ifdef HAVE_MPI
+    Ewoms::UDQFunction val1("test", Ewoms::UDQTokenType::binary_op_add);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(UDQFunctionTable)
+{
+#ifdef HAVE_MPI
+    Ewoms::UDQFunctionTable::FunctionMap map{{"test",
+                                            std::make_shared<Ewoms::UDQFunction>()}};
+    Ewoms::UDQFunctionTable val1(Ewoms::UDQParams(true, 1, 2.0, 3.0, 4.0), map);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(UDQASTNode)
+{
+#ifdef HAVE_MPI
+  std::shared_ptr<Ewoms::UDQASTNode> n0;
+  std::shared_ptr<Ewoms::UDQASTNode> n1(new Ewoms::UDQASTNode(Ewoms::UDQVarType::NONE,
+                                                          Ewoms::UDQTokenType::error,
+                                                          "test1", 1.0, {"test2"},
+                                                          n0, n0));
+    Ewoms::UDQASTNode val1(Ewoms::UDQVarType::NONE,
+                         Ewoms::UDQTokenType::error,
+                         "test", 1.0, {"test3"}, n1, n1);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(UDQDefine)
+{
+#ifdef HAVE_MPI
+    std::shared_ptr<Ewoms::UDQASTNode> n0;
+    Ewoms::UDQASTNode n1(Ewoms::UDQVarType::NONE,
+                       Ewoms::UDQTokenType::error,
+                       "test", 1.0, {"test1", "test2"}, n0, n0);
+    Ewoms::UDQDefine val1("test", std::make_shared<Ewoms::UDQASTNode>(n1),
+                        Ewoms::UDQVarType::NONE, "test2");
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(UDQAssign)
+{
+#ifdef HAVE_MPI
+    Ewoms::UDQAssign val1("test", Ewoms::UDQVarType::NONE,
+                        {Ewoms::UDQAssign::AssignRecord{{"test1"}, 1.0},
+                         Ewoms::UDQAssign::AssignRecord{{"test2"}, 2.0}});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(UDQIndex)
+{
+#ifdef HAVE_MPI
+    Ewoms::UDQIndex val1(1, 2, Ewoms::UDQAction::ASSIGN, Ewoms::UDQVarType::WELL_VAR);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(UDQConfig)
+{
+#ifdef HAVE_MPI
+    Ewoms::UDQConfig val1 = getUDQConfig();
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(UDQActiveInputRecord)
+{
+#ifdef HAVE_MPI
+    Ewoms::UDQActive::InputRecord val1(1, "test1", "test2",
+                                     Ewoms::UDAControl::WCONPROD_ORAT);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(UDQActiveRecord)
+{
+#ifdef HAVE_MPI
+    Ewoms::UDQActive::Record val1("test1", 1, 2, "test2",
+                                Ewoms::UDAControl::WCONPROD_ORAT);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(UDQActive)
+{
+#ifdef HAVE_MPI
+    Ewoms::UDQActive val1({Ewoms::UDQActive::InputRecord(1, "test1", "test2",
+                                                     Ewoms::UDAControl::WCONPROD_ORAT)},
+                        {Ewoms::UDQActive::Record("test1", 1, 2, "test2",
+                                                  Ewoms::UDAControl::WCONPROD_ORAT)},
+                        {{"test1", 1}}, {{"test2", 2}});
     auto val2 = PackUnpack(val1);
     BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
     BOOST_CHECK(val1 == std::get<0>(val2));

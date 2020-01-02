@@ -247,6 +247,7 @@ namespace Ewoms {
 
             WellState well_state_;
             WellState previous_well_state_;
+            WellState well_state_nupcol_;
 
             const ModelParameters param_;
             bool terminal_output_;

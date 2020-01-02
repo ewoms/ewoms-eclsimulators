@@ -2644,7 +2644,7 @@ namespace Ewoms
             // considering the contributions due to flowing out from the segment
             {
                 for (int comp_idx = 0; comp_idx < num_components_; ++comp_idx) {
-                    const EvalWell segment_rate = getSegmentRateUpwinding(seg, comp_idx);
+                    const EvalWell segment_rate = getSegmentRateUpwinding(seg, comp_idx) * well_efficiency_factor_;
 
                     const int seg_upwind = upwinding_segments_[seg];
                     // segment_rate contains the derivatives with respect to GTotal in seg,
@@ -2661,7 +2661,7 @@ namespace Ewoms
             {
                 for (const int inlet : segment_inlets_[seg]) {
                     for (int comp_idx = 0; comp_idx < num_components_; ++comp_idx) {
-                        const EvalWell inlet_rate = getSegmentRateUpwinding(inlet, comp_idx);
+                        const EvalWell inlet_rate = getSegmentRateUpwinding(inlet, comp_idx) * well_efficiency_factor_;
 
                         const int inlet_upwind = upwinding_segments_[inlet];
                         // inlet_rate contains the derivatives with respect to GTotal in inlet,
