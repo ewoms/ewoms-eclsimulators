@@ -36,6 +36,7 @@
 #endif
 
 #include "eclproblem.hh"
+#include "eclbicgstabbackend.hh"
 
 #include <ewoms/eclsimulators/wells/blackoilwellmodel.hh>
 #include <ewoms/eclsimulators/aquifers/blackoilaquifermodel.hh>
@@ -79,23 +80,27 @@ SET_BOOL_PROP(EebosTypeTag, UseVolumetricResidual, false);
 // by default use eflow's aquifer model for now
 SET_TYPE_PROP(EebosTypeTag, EclAquiferModel, Ewoms::BlackoilAquiferModel<TypeTag>);
 
-// use eflow's linear solver backend for now
-SET_TAG_PROP(EebosTypeTag, LinearSolverSplice, EFlowIstlSolver);
+// use the eebos optimized linear solver backend
+SET_TAG_PROP(EebosTypeTag, LinearSolverSplice, EclBiCGStabSolverBackend);
 
-// the default for the allowed volumetric error for oil per second
-SET_SCALAR_PROP(EebosTypeTag, NewtonTolerance, 1e-1);
+// reducing the residual in the linear solver by a factor of 20 is enough for us
+SET_SCALAR_PROP(EebosTypeTag, LinearSolverTolerance, 0.05);
+
+// the default for the allowed volumetric error for oil per second. note that the "main"
+// convergence criterium is the sum tolerance (specified below)
+SET_SCALAR_PROP(EebosTypeTag, NewtonTolerance, 0.1);
 
 // set fraction of the pore volume where the volumetric residual may be violated during
 // strict Newton iterations
 SET_SCALAR_PROP(EebosTypeTag, EclNewtonRelaxedVolumeFraction, 0.05);
 
 // the maximum volumetric error of a cell in the relaxed region
-SET_SCALAR_PROP(EebosTypeTag, EclNewtonRelaxedTolerance, 1e6*GET_PROP_VALUE(TypeTag, NewtonTolerance));
+SET_SCALAR_PROP(EebosTypeTag, EclNewtonRelaxedTolerance, 1e10);
 
-// the tolerated amount of "incorrect" amount of oil per time step for the complete
+// the tolerated amount of "incorrect" amount of oil per second for the complete
 // reservoir. this is scaled by the pore volume of the reservoir, i.e., larger reservoirs
 // will tolerate larger residuals.
-SET_SCALAR_PROP(EebosTypeTag, EclNewtonSumTolerance, 1e-5);
+SET_SCALAR_PROP(EebosTypeTag, EclNewtonSumTolerance, 1.0);
 
 // make all Newton iterations strict, i.e., the volumetric Newton tolerance must be
 // always be upheld in the majority of the spatial domain. In this context, "majority"

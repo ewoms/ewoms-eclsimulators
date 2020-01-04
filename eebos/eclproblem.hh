@@ -235,15 +235,15 @@ SET_SCALAR_PROP(EclBaseProblem, EndTime, 1e100);
 // The chosen value means that the size of the first time step is the
 // one of the initial episode (if the length of the initial episode is
 // not millions of trillions of years, that is...)
-SET_SCALAR_PROP(EclBaseProblem, InitialTimeStepSize, 3600*24);
+SET_SCALAR_PROP(EclBaseProblem, InitialTimeStepSize, 3600.0*24);
 
-// the default for the allowed volumetric error for oil per second
-SET_SCALAR_PROP(EclBaseProblem, NewtonTolerance, 1e-2);
+// the default for the allowed volumetric error for oil per second [kg/(m^3 s)]
+SET_SCALAR_PROP(EclBaseProblem, NewtonTolerance, 10.0);
 
-// the tolerated amount of "incorrect" amount of oil per time step for the complete
+// the tolerated amount of "incorrect" amount of oil per second for the complete
 // reservoir. this is scaled by the pore volume of the reservoir, i.e., larger reservoirs
 // will tolerate larger residuals.
-SET_SCALAR_PROP(EclBaseProblem, EclNewtonSumTolerance, 1e-4);
+SET_SCALAR_PROP(EclBaseProblem, EclNewtonSumTolerance, 1.0);
 
 // set the exponent for the volume scaling of the sum tolerance: larger reservoirs can
 // tolerate a higher amount of mass lost per time step than smaller ones! since this is

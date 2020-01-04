@@ -47,8 +47,6 @@
 #include <ewoms/eclsimulators/linalg/istlsolver.hh>
 #include <ewoms/eclio/data/simulationdatacontainer.hh>
 
-#include <dune/istl/owneroverlapcopy.hh>
-#include <dune/common/parallel/collectivecommunication.hh>
 #include <dune/common/timer.hh>
 #include <dune/common/unused.hh>
 

@@ -196,9 +196,6 @@ public:
         sumPv = this->comm_.sum(sumPv);
         errorPvFraction_ = this->comm_.sum(errorPvFraction_);
 
-        componentSumError /= sumPv;
-        componentSumError *= dt;
-
         errorPvFraction_ /= sumPv;
 
         errorSum_ = 0;
