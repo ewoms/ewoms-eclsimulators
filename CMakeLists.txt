@@ -74,6 +74,12 @@ ewoms_add_application(eebos_plain
                     SOURCES eebos/eebos_plain.cc
                     EXE_NAME eebos_plain)
 
+# variant that uses an AMG-based linear solver
+ewoms_add_application(eebos_amg
+                    DEFAULT_ENABLE_IF ${BUILD_EEBOS_DEBUG_EXTENSIONS}
+                    SOURCES eebos/eebos_blackoil_amg.cc
+                    EXE_NAME eebos_amg)
+
 # variant that uses different phase and component indices than the others
 ewoms_add_application(eebos_altidx
                     DEFAULT_ENABLE_IF ${BUILD_EEBOS_DEBUG_EXTENSIONS}
