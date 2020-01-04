@@ -27,6 +27,7 @@
 #include <ewoms/material/fluidsystems/blackoilpvt/drygaspvt.hh>
 #include <ewoms/material/fluidsystems/blackoilpvt/solventpvt.hh>
 #include <ewoms/material/fluidsystems/blackoilpvt/wetgaspvt.hh>
+#include <ewoms/eclio/parser/deck/deckitem.hh>
 #include <ewoms/eclio/parser/eclipsestate/runspec.hh>
 #include <ewoms/eclio/parser/eclipsestate/edit/editnnc.hh>
 #include <ewoms/eclio/parser/eclipsestate/grid/nnc.hh>
@@ -36,11 +37,14 @@
 #include <ewoms/eclio/parser/eclipsestate/ioconfig/ioconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/ioconfig/restartconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/events.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/group/gconsale.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/group/group.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/group/guideratemodel.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/messagelimits.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/msw/spiralicd.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/msw/valve.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/oilvaporizationproperties.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/rftconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/timemap.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqactive.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqassign.hh>
@@ -315,7 +319,46 @@ Ewoms::UDQConfig getUDQConfig()
                           omap,
                           {{Ewoms::UDQVarType::SCALAR, 5}, {Ewoms::UDQVarType::WELL_VAR, 6}});
 }
+
+Ewoms::GuideRateModel getGuideRateModel()
+{
+    return Ewoms::GuideRateModel(1.0, Ewoms::GuideRateModel::Target::WAT,
+                               {2.0, 3.0, 4.0, 5.0, 6.0, 7.0},
+                               true, 8.0, false, false,
+                               {Ewoms::UDAValue(9.0),
+                               Ewoms::UDAValue(10.0),
+                               Ewoms::UDAValue(11.0)});
+}
 #endif
+
+Ewoms::GuideRateConfig::GroupTarget getGuideRateConfigGroup()
+{
+    return Ewoms::GuideRateConfig::GroupTarget{1.0, Ewoms::Group::GuideRateTarget::COMB};
+}
+
+Ewoms::GuideRateConfig::WellTarget getGuideRateConfigWell()
+{
+    return Ewoms::GuideRateConfig::WellTarget{1.0, Ewoms::Well::GuideRateTarget::COMB, 2.0};
+}
+
+Ewoms::DeckRecord getDeckRecord()
+{
+    Ewoms::DeckItem item1({1.0}, {2}, {"test3"}, {Ewoms::UDAValue(4)},
+                       Ewoms::type_tag::string, "test5",
+                       {Ewoms::value::status::deck_value},
+                       true,
+                       {Ewoms::Dimension("DimensionLess", 7.0, 8.0)},
+                       {Ewoms::Dimension("Metric", 10.0, 11.0)});
+
+    Ewoms::DeckItem item2({1.0}, {2}, {"test3"}, {Ewoms::UDAValue(4)},
+                       Ewoms::type_tag::string, "test6",
+                       {Ewoms::value::status::deck_value},
+                       true,
+                       {Ewoms::Dimension("DimensionLess", 7.0, 8.0)},
+                       {Ewoms::Dimension("Metric", 10.0, 11.0)});
+
+    return Ewoms::DeckRecord({item1, item2});
+}
 
 }
 
@@ -1689,6 +1732,146 @@ BOOST_AUTO_TEST_CASE(UDQActive)
                         {Ewoms::UDQActive::Record("test1", 1, 2, "test2",
                                                   Ewoms::UDAControl::WCONPROD_ORAT)},
                         {{"test1", 1}}, {{"test2", 2}});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(GuideRateModel)
+{
+#ifdef HAVE_MPI
+    Ewoms::GuideRateModel val1 = getGuideRateModel();
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(GuideRateConfigGroup)
+{
+#ifdef HAVE_MPI
+    Ewoms::GuideRateConfig::GroupTarget val1 = getGuideRateConfigGroup();
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(GuideRateConfigWell)
+{
+#ifdef HAVE_MPI
+    Ewoms::GuideRateConfig::WellTarget val1 = getGuideRateConfigWell();
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(GuideRateConfig)
+{
+#ifdef HAVE_MPI
+    auto model = std::make_shared<Ewoms::GuideRateModel>(getGuideRateModel());
+    Ewoms::GuideRateConfig val1(model,
+                              {{"test1", getGuideRateConfigWell()}},
+                              {{"test2", getGuideRateConfigGroup()}});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(GConSaleGroup)
+{
+#ifdef HAVE_MPI
+    Ewoms::GConSale::GCONSALEGroup val1{Ewoms::UDAValue(1.0),
+                                      Ewoms::UDAValue(2.0),
+                                      Ewoms::UDAValue(3.0),
+                                      Ewoms::GConSale::MaxProcedure::PLUG,
+                                      4.0, Ewoms::UnitSystem()};
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(GConSale)
+{
+#ifdef HAVE_MPI
+    Ewoms::GConSale::GCONSALEGroup group{Ewoms::UDAValue(1.0),
+                                       Ewoms::UDAValue(2.0),
+                                       Ewoms::UDAValue(3.0),
+                                       Ewoms::GConSale::MaxProcedure::PLUG,
+                                       4.0, Ewoms::UnitSystem()};
+    Ewoms::GConSale val1({{"test1", group}, {"test2", group}});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(GConSumpGroup)
+{
+#ifdef HAVE_MPI
+    Ewoms::GConSump::GCONSUMPGroup val1{Ewoms::UDAValue(1.0),
+                                      Ewoms::UDAValue(2.0),
+                                      "test",
+                                      3.0, Ewoms::UnitSystem()};
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(GConSump)
+{
+#ifdef HAVE_MPI
+    Ewoms::GConSump::GCONSUMPGroup group{Ewoms::UDAValue(1.0),
+                                       Ewoms::UDAValue(2.0),
+                                       "test",
+                                       3.0, Ewoms::UnitSystem()};
+    Ewoms::GConSump val1({{"test1", group}, {"test2", group}});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(RFTConfig)
+{
+#ifdef HAVE_MPI
+    Ewoms::RFTConfig val1(getTimeMap(),
+                        {true, 1},
+                        {"test1", "test2"},
+                        {{"test3", 2}},
+                        {{"test1", {{{Ewoms::RFTConfig::RFT::TIMESTEP, 3}}, 4}}},
+                        {{"test2", {{{Ewoms::RFTConfig::PLT::REPT, 5}}, 6}}});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(DeckItem)
+{
+#ifdef HAVE_MPI
+    Ewoms::DeckItem val1({1.0}, {2}, {"test3"}, {Ewoms::UDAValue(4)},
+                       Ewoms::type_tag::string, "test5",
+                       {Ewoms::value::status::deck_value},
+                       true,
+                       {Ewoms::Dimension("DimensionLess", 7.0, 8.0)},
+                       {Ewoms::Dimension("Metric", 10.0, 11.0)});
+
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(DeckRecord)
+{
+#ifdef HAVE_MPI
+    Ewoms::DeckRecord val1 = getDeckRecord();
     auto val2 = PackUnpack(val1);
     BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
     BOOST_CHECK(val1 == std::get<0>(val2));
