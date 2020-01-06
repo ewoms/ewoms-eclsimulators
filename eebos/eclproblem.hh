@@ -583,6 +583,7 @@ public:
             SolventModule::initFromDeck(vanguard.deck(), vanguard.eclState());
             PolymerModule::initFromDeck(vanguard.deck(), vanguard.eclState());
             FoamModule::initFromDeck(vanguard.deck(), vanguard.eclState());
+#if HAVE_MPI
             if (comm.size() > 1) {
                 EclMpiSerializer ser(comm);
                 size_t size = SolventModule::packSize(ser) +
@@ -596,7 +597,9 @@ public:
                 comm.broadcast(&position, 1, 0);
                 comm.broadcast(buffer.data(), position, 0);
             }
+#endif
         } else {
+#if HAVE_MPI
             int size;
             comm.broadcast(&size, 1, 0);
             std::vector<char> buffer(size);
@@ -606,6 +609,7 @@ public:
             SolventModule::unpack(buffer, position, ser);
             PolymerModule::unpack(buffer, position, ser);
             FoamModule::unpack(buffer, position, ser);
+#endif
         }
 
         // create the ECL writer
