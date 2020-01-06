@@ -87,7 +87,7 @@ SET_TAG_PROP(EebosTypeTag, LinearSolverSplice, EclBiCGStabSolverBackend);
 SET_SCALAR_PROP(EebosTypeTag, LinearSolverTolerance, 0.05);
 
 // the default for the allowed volumetric error for oil per second. note that the "main"
-// convergence criterium is the sum tolerance (specified below)
+// convergence criterium usually is the sum tolerance (specified below)
 SET_SCALAR_PROP(EebosTypeTag, NewtonTolerance, 0.1);
 
 // set fraction of the pore volume where the volumetric residual may be violated during

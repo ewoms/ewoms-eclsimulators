@@ -156,10 +156,12 @@ public:
     void printInitial(std::ostream& os = std::cout) const override
     {
         os << std::setw(20) << "iteration ";
-        os << std::setw(20) << "residual ";
+        os << std::setw(20) << "absResidual ";
         os << std::setw(20) << "reduction ";
         os << std::setw(20) << "reductionRate ";
         os << std::endl;
+
+        print(/*iter=*/0.0, os);
     }
 
     /*!
@@ -172,7 +174,7 @@ public:
         os << std::setw(20) << iter << " ";
         os << std::setw(20) << absResidual() << " ";
         os << std::setw(20) << residualReduction() << " ";
-        os << std::setw(20) << lastResidualError_/std::max<Scalar>(residualError_, eps) << " ";
+        os << std::setw(20) << residualError_/std::max<Scalar>(lastResidualError_, eps) << " ";
         os << std::endl << std::flush;
     }
 
@@ -180,9 +182,6 @@ private:
     // update the weighted absolute residual
     void updateErrors_(const Vector& curSol EWOMS_UNUSED, const Vector& changeIndicator,  const Vector& currentResidual)
     {
-        typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-        typedef typename GET_PROP_TYPE(TypeTag, Indices) Indices;
-
         const auto& constraintsMap = this->model_().linearizer().constraintsMap();
         this->lastResidualError_ = this->residualError_;
 
@@ -207,14 +206,6 @@ private:
 
             const auto& r = currentResidual[dofIdx];
             for (unsigned eqIdx = 0; eqIdx < r.size(); ++eqIdx) {
-                if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)
-                    && eqIdx == Indices::conti0EqIdx + Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx))
-                {
-                    // ignore water
-                    continue;
-                }
-
-
                 Scalar tmpError = r[eqIdx] * this->model_().eqWeight(dofIdx, eqIdx);
 
                 // in the case of a volumetric formulation, the residual in the above is
