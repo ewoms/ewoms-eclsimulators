@@ -21,7 +21,7 @@
 #define BOOST_TEST_MODULE NORNE_PVT_TESTS
 
 #include <boost/test/unit_test.hpp>
-#include <boost/test/floating_point_comparison.hpp>
+#include <boost/test/tools/floating_point_comparison.hpp>
 
 #include <sstream>
 #include <iostream>

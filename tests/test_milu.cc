@@ -12,7 +12,7 @@
 #include<ewoms/eclsimulators/linalg/paralleloverlappingilu0.hh>
 
 #include <boost/test/unit_test.hpp>
-#include <boost/test/floating_point_comparison.hpp>
+#include <boost/test/tools/floating_point_comparison.hpp>
 
 template<class M>
 void test_milu0(M& A)
