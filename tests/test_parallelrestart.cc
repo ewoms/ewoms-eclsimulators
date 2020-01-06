@@ -23,10 +23,11 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <ewoms/eclsimulators/utils/parallelrestart.hh>
+#include <ewoms/eclio/opmlog/location.hh>
 #include <ewoms/material/fluidsystems/blackoilpvt/drygaspvt.hh>
 #include <ewoms/material/fluidsystems/blackoilpvt/solventpvt.hh>
 #include <ewoms/material/fluidsystems/blackoilpvt/wetgaspvt.hh>
+#include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/deck/deckitem.hh>
 #include <ewoms/eclio/parser/eclipsestate/runspec.hh>
 #include <ewoms/eclio/parser/eclipsestate/edit/editnnc.hh>
@@ -36,6 +37,11 @@
 #include <ewoms/eclio/parser/eclipsestate/initconfig/initconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/ioconfig/ioconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/ioconfig/restartconfig.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/action/actionast.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/action/actions.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/action/actionx.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/action/astnode.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/action/condition.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/events.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/group/gconsale.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/group/group.hh>
@@ -45,7 +51,9 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/msw/valve.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/oilvaporizationproperties.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/rftconfig.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/timemap.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/tuning.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqactive.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqassign.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqastnode.hh>
@@ -85,6 +93,7 @@
 #include <ewoms/eclio/parser/eclipsestate/tables/tablemanager.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/tableschema.hh>
 #include <ewoms/eclio/output/restartvalue.hh>
+#include <ewoms/eclsimulators/utils/parallelrestart.hh>
 
 namespace {
 
@@ -329,7 +338,6 @@ Ewoms::GuideRateModel getGuideRateModel()
                                Ewoms::UDAValue(10.0),
                                Ewoms::UDAValue(11.0)});
 }
-#endif
 
 Ewoms::GuideRateConfig::GroupTarget getGuideRateConfigGroup()
 {
@@ -359,6 +367,74 @@ Ewoms::DeckRecord getDeckRecord()
 
     return Ewoms::DeckRecord({item1, item2});
 }
+
+Ewoms::Tuning getTuning()
+{
+    return Ewoms::Tuning(Ewoms::DynamicState<double>(std::vector<double>{1.0}, 1),  //TSINIT
+                       Ewoms::DynamicState<double>(std::vector<double>{2.0}, 1),  //TSMAXZ
+                       Ewoms::DynamicState<double>(std::vector<double>{3.0}, 1),  //TSMINZ
+                       Ewoms::DynamicState<double>(std::vector<double>{4.0}, 1),  //TSMCHP
+                       Ewoms::DynamicState<double>(std::vector<double>{5.0}, 1),  //TSFMAX
+                       Ewoms::DynamicState<double>(std::vector<double>{6.0}, 1),  //TSFMIN
+                       Ewoms::DynamicState<double>(std::vector<double>{7.0}, 1),  //TSFCNV
+                       Ewoms::DynamicState<double>(std::vector<double>{8.0}, 1),  //TFDIFF
+                       Ewoms::DynamicState<double>(std::vector<double>{9.0}, 1),  //THRUPT
+                       Ewoms::DynamicState<double>(std::vector<double>{10.0}, 1), //TMAXWC
+                       Ewoms::DynamicState<int>(std::vector<int>{1}, 1),       //TMAXWC_has_value
+                       Ewoms::DynamicState<double>(std::vector<double>{11.0}, 1), //TRGTTE
+                       Ewoms::DynamicState<double>(std::vector<double>{12.0}, 1), //TRGCNV
+                       Ewoms::DynamicState<double>(std::vector<double>{13.0}, 1), //TRGMBE
+                       Ewoms::DynamicState<double>(std::vector<double>{14.0}, 1), //TRGLCV
+                       Ewoms::DynamicState<double>(std::vector<double>{15.0}, 1), //XXXTTE
+                       Ewoms::DynamicState<double>(std::vector<double>{16.0}, 1), //XXXCNV
+                       Ewoms::DynamicState<double>(std::vector<double>{17.0}, 1), //XXXMBE
+                       Ewoms::DynamicState<double>(std::vector<double>{18.0}, 1), //XXXLCV
+                       Ewoms::DynamicState<double>(std::vector<double>{19.0}, 1), //XXXWFL
+                       Ewoms::DynamicState<double>(std::vector<double>{20.0}, 1), ///TRGFIP
+                       Ewoms::DynamicState<double>(std::vector<double>{21.0}, 1), //TRGSFT
+                       Ewoms::DynamicState<int>(std::vector<int>{2}, 1),       //TRGSFT_has_value
+                       Ewoms::DynamicState<double>(std::vector<double>{22.0}, 1), // THIONX
+                       Ewoms::DynamicState<int>(std::vector<int>{3}, 1),       //TRWGHT
+                       Ewoms::DynamicState<int>(std::vector<int>{4}, 1),       //NEWTMX
+                       Ewoms::DynamicState<int>(std::vector<int>{5}, 1),       //NEWTMN
+                       Ewoms::DynamicState<int>(std::vector<int>{6}, 1),       //LITMAX
+                       Ewoms::DynamicState<int>(std::vector<int>{7}, 1),       //LITMIN
+                       Ewoms::DynamicState<int>(std::vector<int>{8}, 1),       //MXWSIT
+                       Ewoms::DynamicState<int>(std::vector<int>{9}, 1),       //MXWPIT
+                       Ewoms::DynamicState<double>(std::vector<double>{23.0}, 1), //DDPLIM
+                       Ewoms::DynamicState<double>(std::vector<double>{24.0}, 1), //DDSLIM
+                       Ewoms::DynamicState<double>(std::vector<double>{25.0}, 1), //TGRDPR
+                       Ewoms::DynamicState<double>(std::vector<double>{26.0}, 1), //XXXDPR
+                       Ewoms::DynamicState<int>(std::vector<int>{10}, 1),      //XXDPR_has_value
+                       std::map<std::string,bool>{{"test", false}}); // resetValue
+}
+
+Ewoms::Action::Condition getCondition()
+{
+    Ewoms::Action::Quantity q;
+    q.quantity = "test1";
+    q.args = {"test2", "test3"};
+    Ewoms::Action::Condition val1;
+    val1.lhs = val1.rhs = q;
+    val1.logic = Ewoms::Action::Condition::Logical::OR;
+    val1.cmp = Ewoms::Action::Condition::Comparator::LESS;
+    val1.cmp_string = "test";
+    return val1;
+}
+
+Ewoms::Action::ActionX getActionX()
+{
+    std::shared_ptr<Ewoms::Action::ASTNode> node;
+    node.reset(new Ewoms::Action::ASTNode(number, FuncType::field,
+                                        "test1", {"test2"}, 1.0, {}));
+    Ewoms::Action::AST ast(node);
+    return Ewoms::Action::ActionX("test", 1, 2.0, 3,
+                                {Ewoms::DeckKeyword("test", {"test",1},
+                                                  {getDeckRecord(), getDeckRecord()},
+                                                  true, false)},
+                                ast, {getCondition()}, 4, 5);
+}
+#endif
 
 }
 
@@ -1872,6 +1948,225 @@ BOOST_AUTO_TEST_CASE(DeckRecord)
 {
 #ifdef HAVE_MPI
     Ewoms::DeckRecord val1 = getDeckRecord();
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Location)
+{
+#ifdef HAVE_MPI
+    Ewoms::Location val1{"test", 1};
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(DeckKeyword)
+{
+#ifdef HAVE_MPI
+    Ewoms::DeckKeyword val1("test", {"test",1},
+                          {getDeckRecord(), getDeckRecord()}, true, false);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Deck)
+{
+#ifdef HAVE_MPI
+    std::unique_ptr<Ewoms::UnitSystem> unitSys(new Ewoms::UnitSystem);
+    Ewoms::Deck val1({Ewoms::DeckKeyword("test", {"test",1},
+                                     {getDeckRecord(), getDeckRecord()}, true, false)},
+                   Ewoms::UnitSystem(), unitSys.get(),
+                   "test2", "test3", 2);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Tuning)
+{
+#ifdef HAVE_MPI
+    Ewoms::Tuning val1 = getTuning();
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(ASTNode)
+{
+#ifdef HAVE_MPI
+    Ewoms::Action::ASTNode child(number, FuncType::field, "test3", {"test2"}, 2.0, {});
+    Ewoms::Action::ASTNode val1(number, FuncType::field, "test1", {"test2"}, 1.0, {child});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(AST)
+{
+#ifdef HAVE_MPI
+    std::shared_ptr<Ewoms::Action::ASTNode> node;
+    node.reset(new Ewoms::Action::ASTNode(number, FuncType::field,
+                                        "test1", {"test2"}, 1.0, {}));
+    Ewoms::Action::AST val1(node);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Quantity)
+{
+#ifdef HAVE_MPI
+    Ewoms::Action::Quantity val1;
+    val1.quantity = "test1";
+    val1.args = {"test2", "test3"};
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Condition)
+{
+#ifdef HAVE_MPI
+    Ewoms::Action::Condition val1 = getCondition();
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(ActionX)
+{
+#ifdef HAVE_MPI
+    Ewoms::Action::ActionX val1 = getActionX();
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Actions)
+{
+#ifdef HAVE_MPI
+    Ewoms::Action::Actions val1({getActionX()});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Schedule)
+{
+#ifdef HAVE_MPI
+    Ewoms::UnitSystem unitSystem;
+    Ewoms::Schedule::WellMap wells;
+    wells.insert({"test", {{std::make_shared<Ewoms::Well>(getFullWell())},1}});
+    Ewoms::Schedule::GroupMap groups;
+    groups.insert({"test", {{std::make_shared<Ewoms::Group>("test1", 1, 2, 3.0, unitSystem,
+                                                          Ewoms::Group::GroupType::PRODUCTION,
+                                                          4.0, true, 5, "test2",
+                                                          Ewoms::IOrderSet<std::string>({"test3", "test4"}, {"test3","test4"}),
+                                                          Ewoms::IOrderSet<std::string>({"test5", "test6"}, {"test5","test6"}),
+                                                          Ewoms::Group::GroupInjectionProperties(),
+                                                          Ewoms::Group::GroupProductionProperties())},1}});
+    using VapType = Ewoms::OilVaporizationProperties::OilVaporization;
+    Ewoms::DynamicState<Ewoms::OilVaporizationProperties> oilvap{{Ewoms::OilVaporizationProperties(VapType::VAPPARS,
+                                                                                   {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
+                                                                                   {false, true}, {7.0, 8.0})},1};
+    Ewoms::Events events(Ewoms::DynamicVector<uint64_t>({1,2,3,4,5}));
+    std::unique_ptr<Ewoms::UnitSystem> unitSys(new Ewoms::UnitSystem);
+    Ewoms::Deck sdeck({Ewoms::DeckKeyword("test", {"test",1},
+                                     {getDeckRecord(), getDeckRecord()}, true, false)},
+                   Ewoms::UnitSystem(), unitSys.get(),
+                   "test2", "test3", 2);
+    Ewoms::DynamicVector<Ewoms::Deck> modifierDeck({sdeck});
+    std::vector<Ewoms::MLimits> limits{Ewoms::MLimits{1,2,3,4,5,6,7,8,9,10,11,12}};
+    Ewoms::MessageLimits messageLimits(Ewoms::DynamicState<Ewoms::MLimits>(limits,2));
+    Ewoms::Runspec runspec(Ewoms::Phases(true, true, true, false, true, false, true, false),
+                         Ewoms::Tabdims(1,2,3,4,5,6),
+                         Ewoms::EndpointScaling(std::bitset<4>(13)),
+                         Ewoms::Welldims(1,2,3,4),
+                         Ewoms::WellSegmentDims(1,2,3),
+                         Ewoms::UDQParams(true, 1, 2.0, 3.0, 4.0),
+                         Ewoms::EclHysterConfig(true, 1, 2),
+                         Ewoms::Actdims(1,2,3,4));
+    Ewoms::Schedule::VFPProdMap vfpProd {{1, {{std::make_shared<Ewoms::VFPProdTable>(getVFPProdTable())},1}}};
+    Ewoms::Schedule::VFPInjMap vfpIn{{1, {{std::make_shared<Ewoms::VFPInjTable>(getVFPInjTable())},1}}};
+    Ewoms::WellTestConfig::WTESTWell tw{"test", Ewoms::WellTestConfig::ECONOMIC,
+                                         1.0, 2, 3.0, 4};
+    Ewoms::WellTestConfig wtc({tw, tw, tw});
+
+    Ewoms::WList wl({"test1", "test2", "test3"});
+    std::map<std::string,Ewoms::WList> data{{"test", wl}, {"test2", wl}};
+    Ewoms::WListManager wlm(data);
+
+    Ewoms::UDQActive udqa({Ewoms::UDQActive::InputRecord(1, "test1", "test2",
+                                                     Ewoms::UDAControl::WCONPROD_ORAT)},
+                        {Ewoms::UDQActive::Record("test1", 1, 2, "test2",
+                                                  Ewoms::UDAControl::WCONPROD_ORAT)},
+                        {{"test1", 1}}, {{"test2", 2}});
+
+    auto model = std::make_shared<Ewoms::GuideRateModel>(getGuideRateModel());
+    Ewoms::GuideRateConfig grc(model,
+                             {{"test1", getGuideRateConfigWell()}},
+                             {{"test2", getGuideRateConfigGroup()}});
+
+    Ewoms::GConSale::GCONSALEGroup group{Ewoms::UDAValue(1.0),
+                                       Ewoms::UDAValue(2.0),
+                                       Ewoms::UDAValue(3.0),
+                                       Ewoms::GConSale::MaxProcedure::PLUG,
+                                       4.0, Ewoms::UnitSystem()};
+    Ewoms::GConSale gcs({{"test1", group}, {"test2", group}});
+
+    Ewoms::GConSump::GCONSUMPGroup grp{Ewoms::UDAValue(1.0),
+                                     Ewoms::UDAValue(2.0),
+                                     "test",
+                                     3.0, Ewoms::UnitSystem()};
+    Ewoms::GConSump gcm({{"test1", grp}, {"test2", grp}});
+
+    Ewoms::Action::Actions acnts({getActionX()});
+
+    Ewoms::RFTConfig rftc(getTimeMap(),
+                        {true, 1},
+                        {"test1", "test2"},
+                        {{"test3", 2}},
+                        {{"test1", {{{Ewoms::RFTConfig::RFT::TIMESTEP, 3}}, 4}}},
+                        {{"test2", {{{Ewoms::RFTConfig::PLT::REPT, 5}}, 6}}});
+
+    Ewoms::Schedule val1(getTimeMap(),
+                       wells,
+                       groups,
+                       oilvap,
+                       events,
+                       modifierDeck,
+                       getTuning(),
+                       messageLimits,
+                       runspec,
+                       vfpProd,
+                       vfpIn,
+                       {{std::make_shared<Ewoms::WellTestConfig>(wtc)}, 1},
+                       {{std::make_shared<Ewoms::WListManager>(wlm)}, 1},
+                       {{std::make_shared<Ewoms::UDQConfig>(getUDQConfig())}, 1},
+                       {{std::make_shared<Ewoms::UDQActive>(udqa)}, 1},
+                       {{std::make_shared<Ewoms::GuideRateConfig>(grc)}, 1},
+                       {{std::make_shared<Ewoms::GConSale>(gcs)}, 1},
+                       {{std::make_shared<Ewoms::GConSump>(gcm)}, 1},
+                       {{Ewoms::Well::ProducerCMode::CRAT}, 1},
+                       {{std::make_shared<Ewoms::Action::Actions>(acnts)}, 1},
+                       rftc,
+                       {std::vector<int>{1}, 1},
+                       {{"test", events}});
+
     auto val2 = PackUnpack(val1);
     BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
     BOOST_CHECK(val1 == std::get<0>(val2));

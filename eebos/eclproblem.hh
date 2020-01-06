@@ -32,6 +32,7 @@
 
 #include "eclwellmanager.hh"
 #include "eclequilinitializer.hh"
+#include "eclmpiserializer.hh"
 #include "eclwriter.hh"
 #include "ecloutputblackoilmodule.hh"
 #include "ecltransmissibility.hh"
@@ -577,9 +578,35 @@ public:
         this->model().addOutputModule(new VtkEclTracerModule<TypeTag>(simulator));
         // Tell the black-oil extensions to initialize their internal data structures
         const auto& vanguard = simulator.vanguard();
-        SolventModule::initFromDeck(vanguard.deck(), vanguard.eclState());
-        PolymerModule::initFromDeck(vanguard.deck(), vanguard.eclState());
-        FoamModule::initFromDeck(vanguard.deck(), vanguard.eclState());
+        const auto& comm = this->gridView().comm();
+        if (comm.rank() == 0) {
+            SolventModule::initFromDeck(vanguard.deck(), vanguard.eclState());
+            PolymerModule::initFromDeck(vanguard.deck(), vanguard.eclState());
+            FoamModule::initFromDeck(vanguard.deck(), vanguard.eclState());
+            if (comm.size() > 1) {
+                EclMpiSerializer ser(comm);
+                size_t size = SolventModule::packSize(ser) +
+                              PolymerModule::packSize(ser) +
+                              FoamModule::packSize(ser);
+                std::vector<char> buffer(size);
+                int position = 0;
+                SolventModule::pack(buffer, position, ser);
+                PolymerModule::pack(buffer, position, ser);
+                FoamModule::pack(buffer, position, ser);
+                comm.broadcast(&position, 1, 0);
+                comm.broadcast(buffer.data(), position, 0);
+            }
+        } else {
+            int size;
+            comm.broadcast(&size, 1, 0);
+            std::vector<char> buffer(size);
+            comm.broadcast(buffer.data(), size, 0);
+            int position = 0;
+            EclMpiSerializer ser(comm);
+            SolventModule::unpack(buffer, position, ser);
+            PolymerModule::unpack(buffer, position, ser);
+            FoamModule::unpack(buffer, position, ser);
+        }
 
         // create the ECL writer
         eclWriter_.reset(new EclWriterType(simulator));
@@ -2506,10 +2533,22 @@ private:
             eclWriter_->eclOutputModule().initHysteresisParams(simulator, elemIdx);
             eclWriter_->eclOutputModule().assignToFluidState(elemFluidState, elemIdx);
 
-            if (enableSolvent)
-                 solventSaturation_[elemIdx] = eclWriter_->eclOutputModule().getSolventSaturation(elemIdx);
+            // Note: Function processRestartSaturations_() mutates the
+            // 'ssol' argument--the value from the restart file--if solvent
+            // is enabled.  Then, store the updated solvent saturation into
+            // 'solventSaturation_'.  Otherwise, just pass a dummy value to
+            // the function and discard the unchanged result.  Do not index
+            // into 'solventSaturation_' unless solvent is enabled.
+            {
+                auto ssol = enableSolvent
+                    ? eclWriter_->eclOutputModule().getSolventSaturation(elemIdx)
+                    : Scalar(0);
 
-            processRestartSaturations_(elemFluidState, solventSaturation_[elemIdx]);
+                processRestartSaturations_(elemFluidState, ssol);
+
+                if (enableSolvent)
+                    solventSaturation_[elemIdx] = ssol;
+            }
 
             lastRs_[elemIdx] = elemFluidState.Rs();
             lastRv_[elemIdx] = elemFluidState.Rv();
