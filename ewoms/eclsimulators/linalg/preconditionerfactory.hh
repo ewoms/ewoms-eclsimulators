@@ -35,7 +35,7 @@
 #include <map>
 #include <memory>
 
-namespace Dune
+namespace Ewoms
 {
 
 /// This is an object factory for creating preconditioners.  The

@@ -62,6 +62,7 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/wlistmanager.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/simulationconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/thresholdpressure.hh>
+#include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/aqudims.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/columnschema.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/eqldims.hh>
@@ -210,6 +211,18 @@ std::size_t packSize(const std::tuple<Ts...>& data, Dune::MPIHelper::MPICommunic
 
 template<class T, class H, class KE, class A>
 std::size_t packSize(const std::unordered_set<T,H,KE,A>& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    std::size_t totalSize = packSize(data.size(), comm);
+    for (const auto& entry : data)
+    {
+        totalSize += packSize(entry, comm);
+    }
+    return totalSize;
+}
+
+template<class K, class C, class A>
+std::size_t packSize(const std::set<K,C,A>& data,
                      Dune::MPIHelper::MPICommunicator comm)
 {
     std::size_t totalSize = packSize(data.size(), comm);
@@ -1047,8 +1060,10 @@ std::size_t packSize(const Well::WellInjectionProperties& data,
     return packSize(data.name, comm) +
            packSize(data.surfaceInjectionRate, comm) +
            packSize(data.reservoirInjectionRate, comm) +
-           packSize(data.BHPLimit, comm) +
-           packSize(data.THPLimit, comm) +
+           packSize(data.BHPTarget, comm) +
+           packSize(data.THPTarget, comm) +
+           packSize(data.bhp_hist_limit, comm) +
+           packSize(data.thp_hist_limit, comm) +
            packSize(data.temperature, comm) +
            packSize(data.BHPH, comm) +
            packSize(data.THPH, comm) +
@@ -1097,8 +1112,10 @@ std::size_t packSize(const Well::WellProductionProperties& data,
            packSize(data.GasRate, comm) +
            packSize(data.LiquidRate, comm) +
            packSize(data.ResVRate, comm) +
-           packSize(data.BHPLimit, comm) +
-           packSize(data.THPLimit, comm) +
+           packSize(data.BHPTarget, comm) +
+           packSize(data.THPTarget, comm) +
+           packSize(data.bhp_hist_limit, comm) +
+           packSize(data.thp_hist_limit, comm) +
            packSize(data.BHPH, comm) +
            packSize(data.THPH, comm) +
            packSize(data.VFPTableNumber, comm) +
@@ -1657,6 +1674,26 @@ std::size_t packSize(const Schedule& data,
            packSize(data.getWellGroupEvents(), comm);
 }
 
+std::size_t packSize(const SummaryNode& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.keyword(), comm) +
+           packSize(data.category(), comm) +
+           packSize(data.location(), comm)  +
+           packSize(data.type(), comm) +
+           packSize(data.namedEntity(), comm) +
+           packSize(data.number(), comm) +
+           packSize(data.isUserDefined(), comm);
+}
+
+std::size_t packSize(const SummaryConfig& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.getKwds(), comm) +
+           packSize(data.getShortKwds(), comm) +
+           packSize(data.getSmryKwds(), comm);
+}
+
 ////// pack routines
 
 template<class T>
@@ -1744,6 +1781,19 @@ void pack(const std::vector<T, A>& data, std::vector<char>& buffer, int& positio
 
     for (const auto& entry: data)
         pack(entry, buffer, position, comm);
+}
+
+template<class K, class C, class A>
+void pack(const std::set<K,C,A>& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.size(), buffer, position, comm);
+
+    for (const auto& entry : data)
+    {
+        pack(entry, buffer, position, comm);
+    }
 }
 
 template<class T, class H, class KE, class A>
@@ -2688,8 +2738,10 @@ void pack(const Well::WellInjectionProperties& data,
     pack(data.name, buffer, position, comm);
     pack(data.surfaceInjectionRate, buffer, position, comm);
     pack(data.reservoirInjectionRate, buffer, position, comm);
-    pack(data.BHPLimit, buffer, position, comm);
-    pack(data.THPLimit, buffer, position, comm);
+    pack(data.BHPTarget, buffer, position, comm);
+    pack(data.THPTarget, buffer, position, comm);
+    pack(data.bhp_hist_limit, buffer, position, comm);
+    pack(data.thp_hist_limit, buffer, position, comm);
     pack(data.temperature, buffer, position, comm);
     pack(data.BHPH, buffer, position, comm);
     pack(data.THPH, buffer, position, comm);
@@ -2741,8 +2793,10 @@ void pack(const Well::WellProductionProperties& data,
     pack(data.GasRate, buffer, position, comm);
     pack(data.LiquidRate, buffer, position, comm);
     pack(data.ResVRate, buffer, position, comm);
-    pack(data.BHPLimit, buffer, position, comm);
-    pack(data.THPLimit, buffer, position, comm);
+    pack(data.BHPTarget, buffer, position, comm);
+    pack(data.THPTarget, buffer, position, comm);
+    pack(data.bhp_hist_limit, buffer, position, comm);
+    pack(data.thp_hist_limit, buffer, position, comm);
     pack(data.BHPH, buffer, position, comm);
     pack(data.THPH, buffer, position, comm);
     pack(data.VFPTableNumber, buffer, position, comm);
@@ -3337,6 +3391,28 @@ void pack(const Schedule& data,
     pack(data.getWellGroupEvents(), buffer, position, comm);
 }
 
+void pack(const SummaryNode& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.keyword(), buffer, position, comm);
+    pack(data.category(), buffer, position, comm);
+    pack(data.location(), buffer, position, comm) ;
+    pack(data.type(), buffer, position, comm);
+    pack(data.namedEntity(), buffer, position, comm);
+    pack(data.number(), buffer, position, comm);
+    pack(data.isUserDefined(), buffer, position, comm);
+}
+
+void pack(const SummaryConfig& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.getKwds(), buffer, position, comm);
+    pack(data.getShortKwds(), buffer, position, comm);
+    pack(data.getSmryKwds(), buffer, position, comm);
+}
+
 /// unpack routines
 
 template<class T>
@@ -3461,6 +3537,22 @@ void unpack(std::tuple<Ts...>& data, std::vector<char>& buffer,
             int& position, Dune::MPIHelper::MPICommunicator comm)
 {
     unpack_tuple_entry(data, buffer, position, comm);
+}
+
+template<class K, class C, class A>
+void unpack(std::set<K,C,A>& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    std::size_t size = 0;
+    unpack(size, buffer, position, comm);
+
+    for (;size>0; size--)
+    {
+        K entry;
+        unpack(entry, buffer, position, comm);
+        data.insert(entry);
+    }
 }
 
 template<class T, class H, class KE, class A>
@@ -4751,8 +4843,10 @@ void unpack(Well::WellInjectionProperties& data,
     unpack(data.name, buffer, position, comm);
     unpack(data.surfaceInjectionRate, buffer, position, comm);
     unpack(data.reservoirInjectionRate, buffer, position, comm);
-    unpack(data.BHPLimit, buffer, position, comm);
-    unpack(data.THPLimit, buffer, position, comm);
+    unpack(data.BHPTarget, buffer, position, comm);
+    unpack(data.THPTarget, buffer, position, comm);
+    unpack(data.bhp_hist_limit, buffer, position, comm);
+    unpack(data.thp_hist_limit, buffer, position, comm);
     unpack(data.temperature, buffer, position, comm);
     unpack(data.BHPH, buffer, position, comm);
     unpack(data.THPH, buffer, position, comm);
@@ -4820,7 +4914,8 @@ void unpack(Well::WellProductionProperties& data,
 {
     std::string name;
     UDAValue OilRate, WaterRate, GasRate, LiquidRate, ResVRate;
-    UDAValue BHPLimit, THPLimit;
+    UDAValue BHPTarget, THPTarget;
+    double bhp_hist_limit, thp_hist_limit;
     double BHPH, THPH;
     int VFPTableNumber;
     double ALQValue;
@@ -4834,8 +4929,10 @@ void unpack(Well::WellProductionProperties& data,
     unpack(GasRate, buffer, position, comm);
     unpack(LiquidRate, buffer, position, comm);
     unpack(ResVRate, buffer, position, comm);
-    unpack(BHPLimit, buffer, position, comm);
-    unpack(THPLimit, buffer, position, comm);
+    unpack(BHPTarget, buffer, position, comm);
+    unpack(THPTarget, buffer, position, comm);
+    unpack(bhp_hist_limit, buffer, position, comm);
+    unpack(thp_hist_limit, buffer, position, comm);
     unpack(BHPH, buffer, position, comm);
     unpack(THPH, buffer, position, comm);
     unpack(VFPTableNumber, buffer, position, comm);
@@ -4845,8 +4942,9 @@ void unpack(Well::WellProductionProperties& data,
     unpack(whistctl_cmode, buffer, position, comm);
     unpack(prodCtrls, buffer, position, comm);
     data = Well::WellProductionProperties(name, OilRate, WaterRate, GasRate,
-                                          LiquidRate, ResVRate, BHPLimit,
-                                          THPLimit, BHPH, THPH, VFPTableNumber,
+                                          LiquidRate, ResVRate, BHPTarget,
+                                          THPTarget, bhp_hist_limit, thp_hist_limit,
+                                          BHPH, THPH, VFPTableNumber,
                                           ALQValue, predictionMode, controlMode,
                                           whistctl_cmode, prodCtrls);
 }
@@ -5744,6 +5842,45 @@ void unpack(Schedule& data, std::vector<char>& buffer, int& position,
                     wListManager, udqConfig, udqActive, guideRateConfig,
                     gconSale, gconSump, globalWhistCtlMode, actions,
                     rftConfig, nupCol, wellGroupEvents);
+}
+
+void unpack(SummaryNode& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    std::string keyword;
+    SummaryNode::Category category;
+    Location location;
+    SummaryNode::Type type;
+    std::string namedEntity;
+    int number;
+    bool isUserDefined;
+
+    unpack(keyword, buffer, position, comm);
+    unpack(category, buffer, position, comm);
+    unpack(location, buffer, position, comm) ;
+    unpack(type, buffer, position, comm);
+    unpack(namedEntity, buffer, position, comm);
+    unpack(number, buffer, position, comm);
+    unpack(isUserDefined, buffer, position, comm);
+    data = SummaryNode{keyword, category, location}
+           .parameterType(type)
+           .namedEntity(namedEntity)
+           .number(number)
+           .isUserDefined(isUserDefined);
+}
+
+void unpack(SummaryConfig& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    SummaryConfig::keyword_list kwds;
+    std::set<std::string> shortKwds, smryKwds;
+
+    unpack(kwds, buffer, position, comm);
+    unpack(shortKwds, buffer, position, comm);
+    unpack(smryKwds, buffer, position, comm);
+    data = SummaryConfig(kwds, shortKwds, smryKwds);
 }
 
 #define INSTANTIATE_PACK_VECTOR(T) \

@@ -336,10 +336,19 @@ int main(int argc, char** argv)
 
             eclipseState.reset( new Ewoms::EclipseState(*deck, parseContext, errorGuard ));
             schedule.reset(new Ewoms::Schedule(*deck, *eclipseState, parseContext, errorGuard));
-            summaryConfig.reset( new Ewoms::SummaryConfig(*deck, *schedule, eclipseState->getTableManager(), parseContext, errorGuard));
             if (mpiRank == 0) {
                 setupMessageLimiter(schedule->getMessageLimits(), "STDOUT_LOGGER");
+                summaryConfig.reset( new Ewoms::SummaryConfig(*deck, *schedule, eclipseState->getTableManager(), parseContext, errorGuard));
+#ifdef HAVE_MPI
+                Ewoms::Mpi::packAndSend(*summaryConfig, mpiHelper.getCollectiveCommunication());
+#endif
             }
+#ifdef HAVE_MPI
+            else {
+                summaryConfig.reset(new Ewoms::SummaryConfig);
+                Ewoms::Mpi::receiveAndUnpack(*summaryConfig, mpiHelper.getCollectiveCommunication());
+            }
+#endif
 
             Ewoms::checkConsistentArrayDimensions(*eclipseState, *schedule, parseContext, errorGuard);
 

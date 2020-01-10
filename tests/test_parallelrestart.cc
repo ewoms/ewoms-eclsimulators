@@ -73,6 +73,7 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/wlistmanager.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/simulationconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/thresholdpressure.hh>
+#include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/aqudims.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/columnschema.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/eqldims.hh>
@@ -1147,7 +1148,9 @@ BOOST_AUTO_TEST_CASE(UniformXTabulatedTwoDFunction)
 #ifdef HAVE_MPI
     std::vector<double> xPos{1.0, 2.0};
     std::vector<double> yPos{3.0, 4.0};
-    std::vector<std::vector<std::tuple<double,double,double>>> samples{{{1.0, 2.0, 3.0}}, {{4.0, 5.0, 6.0}}};
+    using SampleType = std::vector<std::vector<std::tuple<double,double,double>>>;
+    SampleType samples{{std::make_tuple(1.0, 2.0, 3.0)},
+                       {std::make_tuple(4.0, 5.0, 6.0)}};
     using FFuncType = Ewoms::UniformXTabulated2DFunction<double>;
     FFuncType val1(xPos, yPos, samples, FFuncType::Vertical);
     auto val2 = PackUnpack(val1);
@@ -1203,7 +1206,7 @@ BOOST_AUTO_TEST_CASE(WetGasPvt)
     std::vector<double> yPos{3.0, 4.0};
     using FFuncType = Ewoms::UniformXTabulated2DFunction<double>;
     using Samples = std::vector<std::vector<FFuncType::SamplePoint>>;
-    Samples samples({{{1.0, 2.0, 3.0}, {3.0, 4.0, 5.0}}});
+    Samples samples({{std::make_tuple(1.0, 2.0, 3.0), std::make_tuple(3.0, 4.0, 5.0)}});
     FFuncType func2(xPos, yPos, samples, FFuncType::Vertical);
     Ewoms::WetGasPvt<double> val1({1.0, 2.0}, {3.0, 4.0},
                                 {func2}, {func}, {func2},
@@ -1246,7 +1249,7 @@ BOOST_AUTO_TEST_CASE(LiveOilPvt)
     std::vector<double> yPos{3.0, 4.0};
     using FFuncType = Ewoms::UniformXTabulated2DFunction<double>;
     using Samples = std::vector<std::vector<FFuncType::SamplePoint>>;
-    Samples samples({{{1.0, 2.0, 3.0}, {3.0, 4.0, 5.0}}});
+    Samples samples({{std::make_tuple(1.0, 2.0, 3.0), std::make_tuple(3.0, 4.0, 5.0)}});
     FFuncType func2(xPos, yPos, samples, FFuncType::Vertical);
     Ewoms::LiveOilPvt<double> val1({1.0, 2.0}, {3.0, 4.0},
                                  {func2}, {func2}, {func2},
@@ -1458,6 +1461,7 @@ BOOST_AUTO_TEST_CASE(WellInjectionProperties)
                                             Ewoms::UDAValue("test"),
                                             Ewoms::UDAValue(2.0),
                                             Ewoms::UDAValue(3.0),
+                                            2.0, 3.0,
                                             4.0, 5.0, 6.0,
                                             7,
                                             true,
@@ -1522,6 +1526,7 @@ BOOST_AUTO_TEST_CASE(WellProductionProperties)
                                              Ewoms::UDAValue(4.0),
                                              Ewoms::UDAValue(5.0),
                                              Ewoms::UDAValue(6.0),
+                                             5.0, 6.0,
                                              7.0, 8.0,
                                              9,
                                              10.0,
@@ -2166,6 +2171,39 @@ BOOST_AUTO_TEST_CASE(Schedule)
                        rftc,
                        {std::vector<int>{1}, 1},
                        {{"test", events}});
+
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(SummaryNode)
+{
+#ifdef HAVE_MPI
+    auto val1 = Ewoms::SummaryNode{"test1", Ewoms::SummaryNode::Category::Region,
+                                 Ewoms::Location{"test2", 1}}
+                                 .parameterType(Ewoms::SummaryNode::Type::Pressure)
+                                 .namedEntity("test3")
+                                 .number(2)
+                                 .isUserDefined(true);
+
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(SummaryConfig)
+{
+#ifdef HAVE_MPI
+    auto node = Ewoms::SummaryNode{"test1", Ewoms::SummaryNode::Category::Region,
+                                 Ewoms::Location{"test2", 1}}
+                                 .parameterType(Ewoms::SummaryNode::Type::Pressure)
+                                 .namedEntity("test3")
+                                 .number(2)
+                                 .isUserDefined(true);
+    Ewoms::SummaryConfig val1({node}, {"test1", "test2"}, {"test3", "test4"});
 
     auto val2 = PackUnpack(val1);
     BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
