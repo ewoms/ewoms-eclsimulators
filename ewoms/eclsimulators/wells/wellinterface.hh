@@ -92,11 +92,13 @@ namespace Ewoms
         // flag for polymer molecular weight related
         static const bool has_polymermw = GET_PROP_VALUE(TypeTag, EnablePolymerMW);
         static const bool has_foam = GET_PROP_VALUE(TypeTag, EnableFoam);
+        static const bool has_brine = GET_PROP_VALUE(TypeTag, EnableBrine);
         static const int contiSolventEqIdx = Indices::contiSolventEqIdx;
         static const int contiPolymerEqIdx = Indices::contiPolymerEqIdx;
         // index for the polymer molecular weight continuity equation
         static const int contiPolymerMWEqIdx = Indices::contiPolymerMWEqIdx;
         static const int contiFoamEqIdx = Indices::contiFoamEqIdx;
+        static const int contiBrineEqIdx = Indices::contiBrineEqIdx;
 
         // For the conversion between the surface volume rate and reservoir voidage rate
         using RateConverterType = RateConverter::
@@ -107,6 +109,7 @@ namespace Ewoms
                                                    has_temperature,
                                                    has_energy,
                                                    compositionSwitchEnabled,
+                                                   has_brine,
                                                    Indices::numPhases >;
         /// Constructor
         WellInterface(const Well& well, const int time_step,
@@ -376,6 +379,8 @@ namespace Ewoms
         double wpolymer() const;
 
         double wfoam() const;
+
+        double wsalt() const;
 
         bool checkRateEconLimits(const WellEconProductionLimits& econ_production_limits,
                                  const WellState& well_state,

@@ -23,6 +23,7 @@
 #include <eflow/eflow_solvent.hh>
 #include <eflow/eflow_polymer.hh>
 #include <eflow/eflow_foam.hh>
+#include <eflow/eflow_brine.hh>
 #include <eflow/eflow_energy.hh>
 #include <eflow/eflow_oilwater_polymer.hh>
 #include <eflow/eflow_oilwater_polymer_injectivity.hh>
@@ -417,6 +418,11 @@ int main(int argc, char** argv)
             Ewoms::eflowFoamSetDeck(externalSetupTimer.elapsed(), *deck, *eclipseState, *schedule, *summaryConfig);
             return Ewoms::eflowFoamMain(argc, argv, outputCout, outputFiles);
         }
+        // Brine case
+        else if ( phases.active( Ewoms::Phase::BRINE ) ) {
+            Ewoms::eflowBrineSetDeck(externalSetupTimer.elapsed(), *deck, *eclipseState, *schedule, *summaryConfig);
+            return Ewoms::eflowBrineMain(argc, argv, outputCout, outputFiles);
+        }
         // Solvent case
         else if ( phases.active( Ewoms::Phase::SOLVENT ) ) {
             Ewoms::eflowSolventSetDeck(externalSetupTimer.elapsed(), *deck, *eclipseState, *schedule, *summaryConfig);
@@ -435,7 +441,7 @@ int main(int argc, char** argv)
         else
         {
             if (outputCout)
-                std::cerr << "No suitable configuration found, valid are Twophase, polymer, foam, solvent, energy, blackoil." << std::endl;
+                std::cerr << "No suitable configuration found, valid are Twophase, polymer, foam, brine, solvent, energy, blackoil." << std::endl;
             return EXIT_FAILURE;
         }
     }

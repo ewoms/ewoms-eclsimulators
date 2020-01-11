@@ -44,14 +44,14 @@ ewoms_add_application(eebos
 
 # eebos variants
 set(MEEBOS_TARGETS "")
-foreach(EXT blackoil solvent polymer foam gasoil oilwater oilwaterpolymer thermal)
+foreach(EXT blackoil solvent polymer foam gasoil oilwater oilwaterpolymer thermal brine)
   add_library(eebos_lib${EXT} OBJECT EXCLUDE_FROM_ALL eebos/eebos_${EXT}.cc)
   target_include_directories(eebos_lib${EXT} PRIVATE ${ecl_INCLUDE_DIRS})
   list(APPEND MEEBOS_TARGETS $<TARGET_OBJECTS:eebos_lib${EXT}>)
 endforeach()
 
 # add specialized eebos simulators with some black-oil extension
-foreach(EXT solvent polymer foam gasoil oilwater oilwaterpolymer thermal )
+foreach(EXT solvent polymer foam gasoil oilwater oilwaterpolymer thermal brine)
   ewoms_add_application(eebos_${EXT}
     DEFAULT_ENABLE_IF ${BUILD_EEBOS_EXTENSIONS}
     SOURCES eebos/eebos_${EXT}_main.cc $<TARGET_OBJECTS:eebos_lib${EXT}>)
@@ -96,6 +96,7 @@ add_dependencies(all_eebos "eebos_foam")
 add_dependencies(all_eebos "eebos_thermal")
 add_dependencies(all_eebos "eebos_oilwater")
 add_dependencies(all_eebos "eebos_gasoil")
+add_dependencies(all_eebos "eebos_brine")
 
 ######
 # eflow (mainly for easier comparison with OPM's 'flow')
@@ -112,8 +113,10 @@ ewoms_add_application(eflow
    eflow/eflow_polymer.cc
    eflow/eflow_solvent.cc
    eflow/eflow_energy.cc
+   eflow/eflow_brine.cc
    eflow/eflow_oilwater_polymer.cc
-   eflow/eflow_oilwater_polymer_injectivity.cc)
+   eflow/eflow_oilwater_polymer_injectivity.cc
+   )
 
 ewoms_add_application(eflow_blackoil_dunecpr
   DEFAULT_ENABLE_IF ${BUILD_EFLOW}

@@ -312,6 +312,8 @@ public:
             cPolymer_.resize(bufferSize, 0.0);
         if (GET_PROP_VALUE(TypeTag, EnableFoam))
             cFoam_.resize(bufferSize, 0.0);
+        if (GET_PROP_VALUE(TypeTag, EnableBrine))
+            cSalt_.resize(bufferSize, 0.0);
 
         if (simulator_.problem().vapparsActive())
             soMax_.resize(bufferSize, 0.0);
@@ -565,6 +567,10 @@ public:
 
             if (cFoam_.size() > 0) {
                 cFoam_[globalDofIdx] = intQuants.foamConcentration().value();
+            }
+
+            if (cSalt_.size() > 0) {
+                cSalt_[globalDofIdx] = fs.saltConcentration().value();
             }
 
             if (bubblePointPressure_.size() > 0) {
@@ -958,6 +964,9 @@ public:
 
         if (cFoam_.size() > 0)
             sol.insert ("FOAM", Ewoms::UnitSystem::measure::identity, std::move(cFoam_), Ewoms::data::TargetType::RESTART_SOLUTION);
+
+        if (cSalt_.size() > 0)
+            sol.insert ("SALT", Ewoms::UnitSystem::measure::identity, std::move(cSalt_), Ewoms::data::TargetType::RESTART_SOLUTION);
 
         if (dewPointPressure_.size() > 0)
             sol.insert ("PDEW", Ewoms::UnitSystem::measure::pressure, std::move(dewPointPressure_), Ewoms::data::TargetType::RESTART_AUXILIARY);
@@ -1516,6 +1525,8 @@ public:
             cPolymer_[elemIdx] = sol.data("POLYMER")[globalDofIndex];
         if (cFoam_.size() > 0 && sol.has("FOAM"))
             cFoam_[elemIdx] = sol.data("FOAM")[globalDofIndex];
+        if (cSalt_.size() > 0 && sol.has("SALT"))
+            cSalt_[elemIdx] = sol.data("SALT")[globalDofIndex];
         if (soMax_.size() > 0 && sol.has("SOMAX"))
             soMax_[elemIdx] = sol.data("SOMAX")[globalDofIndex];
         if (pcSwMdcOw_.size() > 0 &&sol.has("PCSWM_OW"))
@@ -1615,6 +1626,14 @@ public:
     {
         if (cFoam_.size() > elemIdx)
             return cFoam_[elemIdx];
+
+        return 0;
+    }
+
+    Scalar getSaltConcentration(unsigned elemIdx) const
+    {
+        if (cSalt_.size() > elemIdx)
+            return cSalt_[elemIdx];
 
         return 0;
     }
@@ -2095,6 +2114,7 @@ private:
     ScalarBuffer sSol_;
     ScalarBuffer cPolymer_;
     ScalarBuffer cFoam_;
+    ScalarBuffer cSalt_;
     ScalarBuffer soMax_;
     ScalarBuffer pcSwMdcOw_;
     ScalarBuffer krnSwMdcOw_;

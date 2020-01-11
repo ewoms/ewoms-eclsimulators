@@ -76,6 +76,7 @@ SET_BOOL_PROP(EclEFlowProblem, EnableSolvent, false);
 SET_BOOL_PROP(EclEFlowProblem, EnableTemperature, true);
 SET_BOOL_PROP(EclEFlowProblem, EnableEnergy, false);
 SET_BOOL_PROP(EclEFlowProblem, EnableFoam, false);
+SET_BOOL_PROP(EclEFlowProblem, EnableBrine, false);
 
 SET_TYPE_PROP(EclEFlowProblem, EclWellModel, Ewoms::BlackoilWellModel<TypeTag>);
 SET_TAG_PROP(EclEFlowProblem, LinearSolverSplice, EFlowIstlSolver);
@@ -115,11 +116,13 @@ namespace Ewoms {
         static const int contiEnergyEqIdx = Indices::contiEnergyEqIdx;
         static const int contiPolymerMWEqIdx = Indices::contiPolymerMWEqIdx;
         static const int contiFoamEqIdx = Indices::contiFoamEqIdx;
+	static const int contiBrineEqIdx = Indices::contiBrineEqIdx;
         static const int solventSaturationIdx = Indices::solventSaturationIdx;
         static const int polymerConcentrationIdx = Indices::polymerConcentrationIdx;
         static const int polymerMoleWeightIdx = Indices::polymerMoleWeightIdx;
         static const int temperatureIdx = Indices::temperatureIdx;
         static const int foamConcentrationIdx = Indices::foamConcentrationIdx;
+	static const int saltConcentrationIdx = Indices::saltConcentrationIdx;
 
         typedef Dune::FieldVector<Scalar, numEq >        VectorBlockType;
         typedef typename SparseMatrixAdapter::MatrixBlock MatrixBlockType;
@@ -155,6 +158,7 @@ namespace Ewoms {
         , has_polymermw_(GET_PROP_VALUE(TypeTag, EnablePolymerMW))
         , has_energy_(GET_PROP_VALUE(TypeTag, EnableEnergy))
         , has_foam_(GET_PROP_VALUE(TypeTag, EnableFoam))
+        , has_brine_(GET_PROP_VALUE(TypeTag, EnableBrine))
         , param_( param )
         , well_model_ (well_model)
         , terminal_output_ (terminal_output)
@@ -617,6 +621,12 @@ namespace Ewoms {
                     R_sum[ contiFoamEqIdx ] += R2;
                     maxCoeff[ contiFoamEqIdx ] = std::max( maxCoeff[ contiFoamEqIdx ], std::abs( R2 ) / pvValue );
                 }
+                if (has_brine_ ) {
+                    B_avg[ contiBrineEqIdx ] += 1.0 / fs.invB(FluidSystem::gasPhaseIdx).value();
+                    const auto R2 = eebosResid[cell_idx][contiBrineEqIdx];
+                    R_sum[ contiBrineEqIdx ] += R2;
+                    maxCoeff[ contiBrineEqIdx ] = std::max( maxCoeff[ contiBrineEqIdx ], std::abs( R2 ) / pvValue );
+                }
 
                 if (has_polymermw_) {
                     assert(has_polymer_);
@@ -705,6 +715,9 @@ namespace Ewoms {
                 }
                 if (has_foam_) {
                     compNames[foamConcentrationIdx] = "Foam";
+                }
+                if (has_brine_) {
+                    compNames[saltConcentrationIdx] = "Brine";
                 }
             }
 
@@ -857,6 +870,7 @@ namespace Ewoms {
         const bool has_polymermw_;
         const bool has_energy_;
         const bool has_foam_;
+	const bool has_brine_;
 
         ModelParameters                 param_;
         SimulatorReport failureReport_;

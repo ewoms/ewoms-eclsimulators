@@ -26,6 +26,7 @@
 #include <ewoms/numerics/models/blackoil/blackoilpolymermodules.hh>
 #include <ewoms/numerics/models/blackoil/blackoilsolventmodules.hh>
 #include <ewoms/numerics/models/blackoil/blackoilfoammodules.hh>
+#include <ewoms/numerics/models/blackoil/blackoilbrinemodules.hh>
 
 #include <ewoms/common/densead/dynamicevaluation.hh>
 
@@ -63,19 +64,22 @@ namespace Ewoms
         using Base::has_solvent;
         using Base::has_polymer;
         using Base::has_foam;
+        using Base::has_brine;
         using Base::has_energy;
 
         using PolymerModule =  Ewoms::BlackOilPolymerModule<TypeTag>;
         using FoamModule = Ewoms::BlackOilFoamModule<TypeTag>;
+        using BrineModule = Ewoms::BlackOilBrineModule<TypeTag>;
 
         // polymer concentration and temperature are already known by the well, so
         // polymer and energy conservation do not need to be considered explicitly
         static const int numPolymerEq = Indices::numPolymers;
         static const int numEnergyEq = Indices::numEnergy;
         static const int numFoamEq = Indices::numFoam;
+        static const int numBrineEq = Indices::numBrine;
 
         // number of the conservation equations
-        static const int numWellConservationEq = numEq - numPolymerEq - numEnergyEq - numFoamEq;
+        static const int numWellConservationEq = numEq - numPolymerEq - numEnergyEq - numFoamEq - numBrineEq;
         // number of the well control equations
         static const int numWellControlEq = 1;
         // number of the well equations that will always be used
@@ -132,6 +136,7 @@ namespace Ewoms
         using Base::contiSolventEqIdx;
         using Base::contiPolymerEqIdx;
         using Base::contiFoamEqIdx;
+        using Base::contiBrineEqIdx;
         static const int contiEnergyEqIdx = Indices::contiEnergyEqIdx;
 
         StandardWell(const Well& well, const int time_step,
@@ -207,6 +212,7 @@ namespace Ewoms
         using Base::phaseUsage;
         using Base::eflowPhaseToEebosCompIdx;
         using Base::eebosCompIdxToEFlowCompIdx;
+        using Base::wsalt;
         using Base::wsolvent;
         using Base::wpolymer;
         using Base::wfoam;

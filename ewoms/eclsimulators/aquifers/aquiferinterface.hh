@@ -50,6 +50,7 @@ public:
 
     enum { enableTemperature = GET_PROP_VALUE(TypeTag, EnableTemperature) };
     enum { enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy) };
+    enum { enableBrine = GET_PROP_VALUE(TypeTag, EnableBrine) };
 
     static const int numEq = BlackoilIndices::numEq;
     typedef double Scalar;
@@ -61,6 +62,7 @@ public:
                                     enableTemperature,
                                     enableEnergy,
                                     BlackoilIndices::gasEnabled,
+                                    enableBrine,
                                     BlackoilIndices::numPhases>
         FluidState;
 

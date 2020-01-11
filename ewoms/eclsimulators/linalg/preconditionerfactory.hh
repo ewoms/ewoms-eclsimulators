@@ -44,7 +44,7 @@ namespace Ewoms
 /// a user can call the addCreator() static method to add further
 /// preconditioners.
 template <class Operator, class Comm>
-class EclSimulatorsPreconditionerFactory
+class PreconditionerFactory
 {
 public:
     /// Linear algebra types.
@@ -290,14 +290,14 @@ private:
 
     // The method that implements the singleton pattern,
     // using the Meyers singleton technique.
-    static EclSimulatorsPreconditionerFactory& instance()
+    static PreconditionerFactory& instance()
     {
-        static EclSimulatorsPreconditionerFactory singleton;
+        static PreconditionerFactory singleton;
         return singleton;
     }
 
     // Private constructor, to keep users from creating a PreconditionerFactory.
-    EclSimulatorsPreconditionerFactory()
+    PreconditionerFactory()
     {
         Comm* dummy = nullptr;
         addStandardPreconditioners(dummy);

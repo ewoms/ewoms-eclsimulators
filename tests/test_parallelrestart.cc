@@ -258,6 +258,7 @@ Ewoms::Well getFullWell()
                      std::make_shared<Ewoms::WellEconProductionLimits>(),
                      std::make_shared<Ewoms::WellFoamProperties>(),
                      std::make_shared<Ewoms::WellPolymerProperties>(),
+                     std::make_shared<Ewoms::WellBrineProperties>(),
                      std::make_shared<Ewoms::WellTracerProperties>(),
                      std::make_shared<Ewoms::WellConnections>(),
                      std::make_shared<Ewoms::Well::WellProductionProperties>(),
@@ -1101,6 +1102,8 @@ BOOST_AUTO_TEST_CASE(TableManager)
                            Ewoms::RockTable({Ewoms::ROCKRecord{1.0,2.0}}),
                            Ewoms::ViscrefTable({Ewoms::VISCREFRecord{1.0, 2.0}}),
                            Ewoms::WatdentTable({Ewoms::WATDENTRecord{1.0, 2.0, 3.0}}),
+                           {{1.0, 2.0, {1.0, 2.0, 3.0}}},
+                           {{{1.0, 2.0, 3.0}}},
                            {{1, Ewoms::PlymwinjTable({1.0}, {2.0}, 1, {{1.0}, {2.0}})}},
                            {{2, Ewoms::SkprwatTable({1.0}, {2.0}, 1, {{1.0}, {2.0}})}},
                            {{3, Ewoms::SkprpolyTable({1.0}, {2.0}, 1, {{1.0}, {2.0}}, 3.0)}},
@@ -2178,6 +2181,16 @@ BOOST_AUTO_TEST_CASE(Schedule)
 #endif
 }
 
+BOOST_AUTO_TEST_CASE(BrineDensityTable)
+{
+#ifdef HAVE_MPI
+    Ewoms::BrineDensityTable val1({1.0, 2.0, 3.0});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
 BOOST_AUTO_TEST_CASE(SummaryNode)
 {
 #ifdef HAVE_MPI
@@ -2205,6 +2218,26 @@ BOOST_AUTO_TEST_CASE(SummaryConfig)
                                  .isUserDefined(true);
     Ewoms::SummaryConfig val1({node}, {"test1", "test2"}, {"test3", "test4"});
 
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(PvtwsaltTable)
+{
+#ifdef HAVE_MPI
+    Ewoms::PvtwsaltTable val1(1.0, 2.0, {3.0, 4.0, 5.0});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(WellBrineProperties)
+{
+#ifdef HAVE_MPI
+    Ewoms::WellBrineProperties val1{1.0};
     auto val2 = PackUnpack(val1);
     BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
     BOOST_CHECK(val1 == std::get<0>(val2));

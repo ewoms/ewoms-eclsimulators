@@ -34,14 +34,16 @@
 #include <fstream>
 #include <type_traits>
 
-namespace Ewoms
-{
+namespace Ewoms {
 // Circular dependency between PreconditionerFactory [which can make an OwningTwoLevelPreconditioner]
 // and OwningTwoLevelPreconditioner [which uses PreconditionerFactory to choose the fine-level smoother]
 // must be broken, accomplished by forward-declaration here.
 template <class Operator, class Comm = Dune::Amg::SequentialInformation>
 class PreconditionerFactory;
+}
 
+namespace Dune
+{
 // Must forward-declare FlexibleSolver as we want to use it as solver for the pressure system.
 template <class MatrixTypeT, class VectorTypeT>
 class FlexibleSolver;
