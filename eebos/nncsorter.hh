@@ -28,6 +28,8 @@
 #include <ewoms/eclio/opmlog/opmlog.hh>
 
 #include <vector>
+#include <algorithm>
+#include <sstream>
 
 namespace Ewoms
 {

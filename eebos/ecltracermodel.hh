@@ -32,6 +32,8 @@
 
 #include <ewoms/numerics/models/blackoil/blackoilmodel.hh>
 
+#include <ewoms/eclio/parser/eclipsestate/schedule/well/well.hh>
+
 #include <dune/istl/operators.hh>
 #include <dune/istl/solvers.hh>
 #include <dune/istl/preconditioners.hh>

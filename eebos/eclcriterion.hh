@@ -29,10 +29,18 @@
 
 #include <ewoms/numerics/linear/convergencecriterion.hh>
 
+#include <ewoms/common/parametersystem.hh>
+#include <ewoms/common/propertysystem.hh>
+
 #include <iostream>
 
 BEGIN_PROPERTIES
 
+NEW_PROP_TAG(Simulator);
+NEW_PROP_TAG(Model);
+NEW_PROP_TAG(Grid);
+NEW_PROP_TAG(NumEq);
+NEW_PROP_TAG(LinearSolverTolerance);
 NEW_PROP_TAG(UseVolumetricResidual);
 NEW_PROP_TAG(EnableConstraints);
 NEW_PROP_TAG(Indices);

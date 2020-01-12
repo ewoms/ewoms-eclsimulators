@@ -29,16 +29,17 @@
 
 #include <ewoms/numerics/models/blackoil/blackoilproperties.hh>
 
-#include <ewoms/common/propertysystem.hh>
-#include <ewoms/common/parametersystem.hh>
-
-#include <ewoms/common/valgrind.hh>
-
+#include <ewoms/eclio/parser/eclipsestate/schedule/well/well.hh>
 #include <ewoms/eclio/parser/units/units.hh>
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
+#include <ewoms/eclio/parser/eclipsestate/ioconfig/restartconfig.hh>
 #include <ewoms/eclio/output/data/cells.hh>
 #include <ewoms/eclio/output/eclipseio.hh>
 #include <ewoms/eclio/opmlog/opmlog.hh>
+
+#include <ewoms/common/propertysystem.hh>
+#include <ewoms/common/parametersystem.hh>
+#include <ewoms/common/valgrind.hh>
 
 #include <dune/common/fvector.hh>
 

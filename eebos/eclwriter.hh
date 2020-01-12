@@ -66,6 +66,7 @@ BEGIN_PROPERTIES
 NEW_PROP_TAG(EnableEclOutput);
 NEW_PROP_TAG(EnableAsyncEclOutput);
 NEW_PROP_TAG(EclOutputDoublePrecision);
+NEW_PROP_TAG(EquilGrid);
 
 END_PROPERTIES
 
@@ -76,6 +77,9 @@ class EclWriter;
 
 template <class TypeTag>
 class EclOutputBlackOilModule;
+
+template <class TypeTag>
+class EclTransmissibility;
 
 /*!
  * \brief Detect whether two cells are direct vertical neighbours.
