@@ -123,8 +123,8 @@ public:
         }
 
         // internalize the data specified using the EQLNUM keyword
-        const auto& fp = eclState.fieldProps();
-        const auto& equilRegionData = fp.get_global_int("EQLNUM");
+        const auto& fieldProps = eclState.fieldProps();
+        const auto& equilRegionData = fieldProps.get_global_int("EQLNUM");
         elemEquilRegion_.resize(numElements, 0);
         for (unsigned elemIdx = 0; elemIdx < numElements; ++elemIdx) {
             int cartElemIdx = vanguard.cartesianIndex(elemIdx);

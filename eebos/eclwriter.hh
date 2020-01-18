@@ -236,7 +236,7 @@ public:
           The summary data is not evaluated for timestep 0, that is
           implemented with a:
 
-             if (time_step == 0)
+             if (timeStep == 0)
                  return;
 
           check somewhere in the summary code. When the summary code was
@@ -319,12 +319,12 @@ public:
 
         if (collectToIORank_.isParallel()) {
 #ifdef HAVE_MPI
-            unsigned long buffer_size = buffer.size();
-            MPI_Bcast(&buffer_size, 1, MPI_UNSIGNED_LONG, collectToIORank_.ioRank, MPI_COMM_WORLD);
+            unsigned long bufferSize = buffer.size();
+            MPI_Bcast(&bufferSize, 1, MPI_UNSIGNED_LONG, collectToIORank_.ioRank, MPI_COMM_WORLD);
             if (!collectToIORank_.isIORank())
-                buffer.resize( buffer_size );
+                buffer.resize( bufferSize );
 
-            MPI_Bcast(buffer.data(), buffer_size, MPI_CHAR, collectToIORank_.ioRank, MPI_COMM_WORLD);
+            MPI_Bcast(buffer.data(), bufferSize, MPI_CHAR, collectToIORank_.ioRank, MPI_COMM_WORLD);
             if (!collectToIORank_.isIORank()) {
                 Ewoms::SummaryState& st = summaryState();
                 st.deserialize(buffer);

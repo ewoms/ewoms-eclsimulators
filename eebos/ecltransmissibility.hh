@@ -273,7 +273,7 @@ public:
 
                 // local indices of the faces of the inside and
                 // outside elements which contain the intersection
-                int insideFaceIdx  = intersection.indexInInside();
+                int insideFaceIdx = intersection.indexInInside();
                 int outsideFaceIdx = intersection.indexInOutside();
 
                 if (insideFaceIdx == -1) {
@@ -496,13 +496,13 @@ private:
         ElementMapper elemMapper(gridView);
 #endif
 
-        const auto& fp = vanguard_.eclState().fieldProps();
-        const auto& inputTranxData = fp.get_global_double("TRANX");
-        const auto& inputTranyData = fp.get_global_double("TRANY");
-        const auto& inputTranzData = fp.get_global_double("TRANZ");
-        bool tranx_deckAssigned = false;                     // Ohh my ....
-        bool trany_deckAssigned = false;
-        bool tranz_deckAssigned = false;
+        const auto& fieldProps = vanguard_.eclState().fieldProps();
+        const auto& inputTranxData = fieldProps.get_global_double("TRANX");
+        const auto& inputTranyData = fieldProps.get_global_double("TRANY");
+        const auto& inputTranzData = fieldProps.get_global_double("TRANZ");
+        bool tranxIsDeckAssigned = false;                     // Ohh my ....
+        bool tranyIsDeckAssigned = false;
+        bool tranzIsDeckAssigned = false;
         // compute the transmissibilities for all intersections
         auto elemIt = gridView.template begin</*codim=*/ 0>();
         const auto& elemEndIt = gridView.template end</*codim=*/ 0>();
@@ -529,7 +529,7 @@ private:
                 int gc2 = std::max(cartMapper.cartesianIndex(c1), cartMapper.cartesianIndex(c2));
 
                 if (gc2 - gc1 == 1) {
-                    if (tranx_deckAssigned)
+                    if (tranxIsDeckAssigned)
                         // set simulator internal transmissibilities to values from inputTranx
                         trans_[isId] = inputTranxData[gc1];
                     else
@@ -537,7 +537,7 @@ private:
                         trans_[isId] *= inputTranxData[gc1];
                 }
                 else if (gc2 - gc1 == cartDims[0]) {
-                    if (trany_deckAssigned)
+                    if (tranyIsDeckAssigned)
                         // set simulator internal transmissibilities to values from inputTrany
                         trans_[isId] = inputTranyData[gc1];
                     else
@@ -545,7 +545,7 @@ private:
                         trans_[isId] *= inputTranyData[gc1];
                 }
                 else if (gc2 - gc1 == cartDims[0]*cartDims[1]) {
-                    if (tranz_deckAssigned)
+                    if (tranzIsDeckAssigned)
                         // set simulator internal transmissibilities to values from inputTranz
                         trans_[isId] = inputTranzData[gc1];
                     else
@@ -706,17 +706,17 @@ private:
         // provided by eclState are one-per-cell of "uncompressed" grid, whereas the
         // simulation grid might remove a few elements. (e.g. because it is distributed
         // over several processes.)
-        const auto& fp = vanguard_.eclState().fieldProps();
-        if (fp.has_double("PERMX")) {
-            const std::vector<double>& permxData = fp.get_global_double("PERMX");
+        const auto& fieldProps = vanguard_.eclState().fieldProps();
+        if (fieldProps.has_double("PERMX")) {
+            const std::vector<double>& permxData = fieldProps.get_global_double("PERMX");
 
             std::vector<double> permyData(permxData);
-            if (fp.has_double("PERMY"))
-                permyData = fp.get_global_double("PERMY");
+            if (fieldProps.has_double("PERMY"))
+                permyData = fieldProps.get_global_double("PERMY");
 
             std::vector<double> permzData(permxData);
-            if (fp.has_double("PERMZ"))
-                permzData = fp.get_global_double("PERMZ");
+            if (fieldProps.has_double("PERMZ"))
+                permzData = fieldProps.get_global_double("PERMZ");
 
             for (size_t dofIdx = 0; dofIdx < numElem; ++ dofIdx) {
                 unsigned cartesianElemIdx = vanguard_.cartesianIndex(dofIdx);

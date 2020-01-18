@@ -28,26 +28,26 @@ namespace Ewoms {
 class EclMpiSerializer {
 public:
     EclMpiSerializer(Dune::MPIHelper::MPICommunicator comm) :
-        m_comm(comm)
+        comm_(comm)
     {}
 
     template<class T>
     std::size_t packSize(const T& data) {
-        return Mpi::packSize(data, m_comm);
+        return Mpi::packSize(data, comm_);
     }
 
     template<class T>
     void pack(const T& data, std::vector<char>& buffer, int& pos) {
-        Mpi::pack(data, buffer, pos, m_comm);
+        Mpi::pack(data, buffer, pos, comm_);
     }
 
     template<class T>
     void unpack(T& data, std::vector<char>& buffer, int& pos) {
-        Mpi::unpack(data, buffer, pos, m_comm);
+        Mpi::unpack(data, buffer, pos, comm_);
     }
 
 protected:
-    Dune::MPIHelper::MPICommunicator m_comm;
+    Dune::MPIHelper::MPICommunicator comm_;
 };
 
 }

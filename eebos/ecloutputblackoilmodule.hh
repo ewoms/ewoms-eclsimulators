@@ -257,7 +257,7 @@ public:
         // Well RFT data
         if (!substep) {
             const auto& schedule = simulator_.vanguard().schedule();
-            const auto& rft_config = schedule.rftConfig();
+            const auto& rftConfig = schedule.rftConfig();
             for (const auto& well: schedule.getWells(reportStepNum)) {
 
                 // don't bother with wells not on this process
@@ -266,7 +266,7 @@ public:
                     continue;
                 }
 
-                if (!rft_config.active(reportStepNum))
+                if (!rftConfig.active(reportStepNum))
                     continue;
 
                 for (const auto& connection: well.getConnections()) {
@@ -816,7 +816,7 @@ public:
     void addRftDataToWells(Ewoms::data::Wells& wellDatas, size_t reportStepNum)
     {
         const auto& schedule = simulator_.vanguard().schedule();
-        const auto& rft_config = schedule.rftConfig();
+        const auto& rftConfig = schedule.rftConfig();
         for (const auto& well: schedule.getWells(reportStepNum)) {
 
             // don't bother with wells not on this process
@@ -829,7 +829,7 @@ public:
             if (!wellDatas.count(well.name())) {
                 Ewoms::data::Well wellData;
 
-                if (!rft_config.active(reportStepNum))
+                if (!rftConfig.active(reportStepNum))
                     continue;
 
                 wellData.connections.resize(well.getConnections().size());
@@ -1116,9 +1116,9 @@ public:
     {
                 if (!substep) {
 
-                        ScalarBuffer  tmp_values(WellProdDataType::numWPValues, 0.0);
-                        StringBuffer  tmp_names(WellProdDataType::numWPNames, "");
-                        outputProductionReport_(tmp_values, tmp_names, forceDisableProdOutput);
+                        ScalarBuffer  tmpValues(WellProdDataType::numWPValues, 0.0);
+                        StringBuffer  tmpNames(WellProdDataType::numWPNames, "");
+                        outputProductionReport_(tmpValues, tmpNames, forceDisableProdOutput);
 
                         const auto& st = simulator_.vanguard().summaryState();
                         const auto& schedule = simulator_.vanguard().schedule();
@@ -1133,17 +1133,17 @@ public:
                                         return st.has(key) ? st.get(key) : 0.0;
                                 };
 
-                                tmp_names[0] = gname;
+                                tmpNames[0] = gname;
 
-                                tmp_values[2] = get("GOPR"); //WellProdDataType::OilRate
-                                tmp_values[3] = get("GWPR"); //WellProdDataType::WaterRate
-                                tmp_values[4] = get("GGPR"); //WellProdDataType::GasRate
-                                tmp_values[5] = get("GVPR"); //WellProdDataType::FluidResVol
-                                tmp_values[6] = get("GWCT"); //WellProdDataType::WaterCut
-                                tmp_values[7] = get("GGOR"); //WellProdDataType::GasOilRatio
-                                tmp_values[8] = get("GWPR")/get("GGPR"); //WellProdDataType::WaterGasRatio
+                                tmpValues[2] = get("GOPR"); //WellProdDataType::OilRate
+                                tmpValues[3] = get("GWPR"); //WellProdDataType::WaterRate
+                                tmpValues[4] = get("GGPR"); //WellProdDataType::GasRate
+                                tmpValues[5] = get("GVPR"); //WellProdDataType::FluidResVol
+                                tmpValues[6] = get("GWCT"); //WellProdDataType::WaterCut
+                                tmpValues[7] = get("GGOR"); //WellProdDataType::GasOilRatio
+                                tmpValues[8] = get("GWPR")/get("GGPR"); //WellProdDataType::WaterGasRatio
 
-                                outputProductionReport_(tmp_values, tmp_names, forceDisableProdOutput);
+                                outputProductionReport_(tmpValues, tmpNames, forceDisableProdOutput);
                         }
 
                         for (const auto& wname: schedule.wellNames(reportStepNum)) {
@@ -1161,7 +1161,7 @@ public:
                                         continue;
                                 }
 
-                                tmp_names[0] = wname;//WellProdDataType::WellName
+                                tmpNames[0] = wname;//WellProdDataType::WellName
 
                                 auto wName = static_cast<std::string>(wname);
                                 auto get = [&st, &wName](const std::string& vector)
@@ -1193,22 +1193,22 @@ public:
                                         }
                                 };
 
-                                tmp_names[1] = fctl(controls.cmode); //WellProdDataType::CTRLMode
+                                tmpNames[1] = fctl(controls.cmode); //WellProdDataType::CTRLMode
 
-                                tmp_values[0] = well.getHeadI() + 1;//WellProdDataType::WellLocationi
-                                tmp_values[1] = well.getHeadJ() + 1;//WellProdDataType::WellLocationj
-                                tmp_values[2] = get("WOPR"); //WellProdDataType::OilRate
-                                tmp_values[3] = get("WWPR"); //WellProdDataType::WaterRate
-                                tmp_values[4] = get("WGPR"); //WellProdDataType::GasRate
-                                tmp_values[5] = get("WVPR"); //WellProdDataType::FluidResVol
-                                tmp_values[6] = get("WWCT"); //WellProdDataType::WaterCut
-                                tmp_values[7] = get("WGOR"); //WellProdDataType::GasOilRatio
-                                tmp_values[8] = get("WWPR")/get("WGPR"); //WellProdDataType::WaterGasRatio
-                                tmp_values[9] = get("WBHP"); //WellProdDataType::BHP
-                                tmp_values[10] = get("WTHP"); //WellProdDataType::THP
-                                //tmp_values[11] = 0; //WellProdDataType::SteadyStatePI //
+                                tmpValues[0] = well.getHeadI() + 1;//WellProdDataType::WellLocationi
+                                tmpValues[1] = well.getHeadJ() + 1;//WellProdDataType::WellLocationj
+                                tmpValues[2] = get("WOPR"); //WellProdDataType::OilRate
+                                tmpValues[3] = get("WWPR"); //WellProdDataType::WaterRate
+                                tmpValues[4] = get("WGPR"); //WellProdDataType::GasRate
+                                tmpValues[5] = get("WVPR"); //WellProdDataType::FluidResVol
+                                tmpValues[6] = get("WWCT"); //WellProdDataType::WaterCut
+                                tmpValues[7] = get("WGOR"); //WellProdDataType::GasOilRatio
+                                tmpValues[8] = get("WWPR")/get("WGPR"); //WellProdDataType::WaterGasRatio
+                                tmpValues[9] = get("WBHP"); //WellProdDataType::BHP
+                                tmpValues[10] = get("WTHP"); //WellProdDataType::THP
+                                //tmpValues[11] = 0; //WellProdDataType::SteadyStatePI //
 
-                                outputProductionReport_(tmp_values, tmp_names, forceDisableProdOutput);
+                                outputProductionReport_(tmpValues, tmpNames, forceDisableProdOutput);
 
                         }
                 }
@@ -1218,9 +1218,9 @@ public:
     void outputInjLog(size_t reportStepNum, const bool substep, bool forceDisableInjOutput)
     {
                 if (!substep) {
-                        ScalarBuffer  tmp_values(WellInjDataType::numWIValues, 0.0);
-                        StringBuffer  tmp_names(WellInjDataType::numWINames, "");
-                        outputInjectionReport_(tmp_values, tmp_names, forceDisableInjOutput);
+                        ScalarBuffer  tmpValues(WellInjDataType::numWIValues, 0.0);
+                        StringBuffer  tmpNames(WellInjDataType::numWINames, "");
+                        outputInjectionReport_(tmpValues, tmpNames, forceDisableInjOutput);
 
                         const auto& st = simulator_.vanguard().summaryState();
                         const auto& schedule = simulator_.vanguard().schedule();
@@ -1234,14 +1234,14 @@ public:
                                         return st.has(key) ? st.get(key) : 0.0;
                                 };
 
-                                tmp_names[0] = gname;
+                                tmpNames[0] = gname;
 
-                                tmp_values[2] = get("GOIR");//WellInjDataType::OilRate
-                                tmp_values[3] = get("GWIR"); //WellInjDataType::WaterRate
-                                tmp_values[4] = get("GGIR"); //WellInjDataType::GasRate
-                                tmp_values[5] = get("GVIR");//WellInjDataType::FluidResVol
+                                tmpValues[2] = get("GOIR");//WellInjDataType::OilRate
+                                tmpValues[3] = get("GWIR"); //WellInjDataType::WaterRate
+                                tmpValues[4] = get("GGIR"); //WellInjDataType::GasRate
+                                tmpValues[5] = get("GVIR");//WellInjDataType::FluidResVol
 
-                                outputInjectionReport_(tmp_values, tmp_names, forceDisableInjOutput);
+                                outputInjectionReport_(tmpValues, tmpNames, forceDisableInjOutput);
                         }
 
                         for (const auto& wname: schedule.wellNames(reportStepNum)) {
@@ -1259,7 +1259,7 @@ public:
                                         continue;
                                 }
 
-                                tmp_names[0] = wname;   //WellInjDataType::WellName
+                                tmpNames[0] = wname;   //WellInjDataType::WellName
 
                                 auto wName = static_cast<std::string>(wname);
                                 auto get = [&st, &wName](const std::string& vector)
@@ -1308,31 +1308,31 @@ public:
                                 const auto flowctl = fctl(ctlMode);
                                 if(flowtype == "Oil") //WellInjDataType::CTRLModeOil
                                 {
-                                        if (flowctl == "RATE"){ tmp_names[1] = "ORAT"; }
-                                        else { tmp_names[1] =  flowctl; }
+                                        if (flowctl == "RATE"){ tmpNames[1] = "ORAT"; }
+                                        else { tmpNames[1] =  flowctl; }
                                 }
                                 else if (flowtype == "Wat") //WellInjDataType::CTRLModeWat
                                 {
-                                        if (flowctl == "RATE"){ tmp_names[3] = "WRAT"; }
-                                        else { tmp_names[2] =  flowctl; }
+                                        if (flowctl == "RATE"){ tmpNames[3] = "WRAT"; }
+                                        else { tmpNames[2] =  flowctl; }
                                 }
                                 else if (flowtype == "Gas") //WellInjDataType::CTRLModeGas
                                 {
-                                        if (flowctl == "RATE"){ tmp_names[3] = "GRAT"; }
-                                        else { tmp_names[3] =  flowctl; }
+                                        if (flowctl == "RATE"){ tmpNames[3] = "GRAT"; }
+                                        else { tmpNames[3] =  flowctl; }
                                 }
 
-                                tmp_values[0] = well.getHeadI() + 1; //WellInjDataType::wellLocationi
-                                tmp_values[1] = well.getHeadJ() + 1; //WellInjDataType::wellLocationj
-                                tmp_values[2] = get("WOIR"); //WellInjDataType::OilRate
-                                tmp_values[3] = get("WWIR"); //WellInjDataType::WaterRate
-                                tmp_values[4] = get("WGIR"); //WellInjDataType::GasRate
-                                tmp_values[5] = get("WVIR");//WellInjDataType::FluidResVol
-                                tmp_values[6] = get("WBHP"); //WellInjDataType::BHP
-                                tmp_values[7] = get("WTHP"); //WellInjDataType::THP
-                                //tmp_values[8] = 0; //WellInjDataType::SteadyStateII
+                                tmpValues[0] = well.getHeadI() + 1; //WellInjDataType::wellLocationi
+                                tmpValues[1] = well.getHeadJ() + 1; //WellInjDataType::wellLocationj
+                                tmpValues[2] = get("WOIR"); //WellInjDataType::OilRate
+                                tmpValues[3] = get("WWIR"); //WellInjDataType::WaterRate
+                                tmpValues[4] = get("WGIR"); //WellInjDataType::GasRate
+                                tmpValues[5] = get("WVIR");//WellInjDataType::FluidResVol
+                                tmpValues[6] = get("WBHP"); //WellInjDataType::BHP
+                                tmpValues[7] = get("WTHP"); //WellInjDataType::THP
+                                //tmpValues[8] = 0; //WellInjDataType::SteadyStateII
 
-                                outputInjectionReport_(tmp_values, tmp_names, forceDisableInjOutput);
+                                outputInjectionReport_(tmpValues, tmpNames, forceDisableInjOutput);
 
                         }
                 }
@@ -1342,9 +1342,9 @@ public:
     void outputCumLog(size_t reportStepNum, const bool substep, bool forceDisableCumOutput)
     {
                 if (!substep) {
-                        ScalarBuffer  tmp_values(WellCumDataType::numWCValues, 0.0);
-                        StringBuffer  tmp_names(WellCumDataType::numWCNames, "");
-                        outputCumulativeReport_(tmp_values, tmp_names, forceDisableCumOutput);
+                        ScalarBuffer  tmpValues(WellCumDataType::numWCValues, 0.0);
+                        StringBuffer  tmpNames(WellCumDataType::numWCNames, "");
+                        outputCumulativeReport_(tmpValues, tmpNames, forceDisableCumOutput);
 
                         const auto& st = simulator_.vanguard().summaryState();
                         const auto& schedule = simulator_.vanguard().schedule();
@@ -1359,18 +1359,18 @@ public:
                                         return st.has(key) ? st.get(key) : 0.0;
                                 };
 
-                                tmp_names[0] = gname;
+                                tmpNames[0] = gname;
 
-                                tmp_values[2] = get("GOPT"); //WellCumDataType::OilProd
-                                tmp_values[3] = get("GWPT"); //WellCumDataType::WaterProd
-                                tmp_values[4] = get("GGPT"); //WellCumDataType::GasProd
-                                tmp_values[5] = get("GVPT");//WellCumDataType::FluidResVolProd
-                                tmp_values[6] = get("GOIT"); //WellCumDataType::OilInj
-                                tmp_values[7] = get("GWIT"); //WellCumDataType::WaterInj
-                                tmp_values[8] = get("GGIT"); //WellCumDataType::GasInj
-                                tmp_values[9] = get("GVIT");//WellCumDataType::FluidResVolInj
+                                tmpValues[2] = get("GOPT"); //WellCumDataType::OilProd
+                                tmpValues[3] = get("GWPT"); //WellCumDataType::WaterProd
+                                tmpValues[4] = get("GGPT"); //WellCumDataType::GasProd
+                                tmpValues[5] = get("GVPT");//WellCumDataType::FluidResVolProd
+                                tmpValues[6] = get("GOIT"); //WellCumDataType::OilInj
+                                tmpValues[7] = get("GWIT"); //WellCumDataType::WaterInj
+                                tmpValues[8] = get("GGIT"); //WellCumDataType::GasInj
+                                tmpValues[9] = get("GVIT");//WellCumDataType::FluidResVolInj
 
-                                outputCumulativeReport_(tmp_values, tmp_names, forceDisableCumOutput);
+                                outputCumulativeReport_(tmpValues, tmpNames, forceDisableCumOutput);
                         }
 
                         for (const auto& wname : schedule.wellNames(reportStepNum))  {
@@ -1383,7 +1383,7 @@ public:
 
                                 const auto& well = schedule.getWell(wname, reportStepNum);
 
-                                tmp_names[0] = wname; //WellCumDataType::WellName
+                                tmpNames[0] = wname; //WellCumDataType::WellName
 
                                 auto wName = static_cast<std::string>(wname);
                                 auto get = [&st, &wName](const std::string& vector)
@@ -1430,18 +1430,18 @@ public:
                                             }
                                         };
 
-                                       tmp_names[1] = "INJ"; //WellCumDataType::WellType
+                                       tmpNames[1] = "INJ"; //WellCumDataType::WellType
                                        const auto flowctl = fctl(ctlMode);
                                        if (flowctl == "RATE") //WellCumDataType::WellCTRL
                                        {
                                                 const auto flowtype = ftype(injType);
-                                                if(flowtype == "Oil"){ tmp_names[2] = "ORAT"; }
-                                                else if(flowtype == "Wat"){ tmp_names[2] = "WRAT"; }
-                                                else if(flowtype == "Gas"){ tmp_names[2] = "GRAT"; }
+                                                if(flowtype == "Oil"){ tmpNames[2] = "ORAT"; }
+                                                else if(flowtype == "Wat"){ tmpNames[2] = "WRAT"; }
+                                                else if(flowtype == "Gas"){ tmpNames[2] = "GRAT"; }
                                         }
                                         else
                                         {
-                                                tmp_names[2] = flowctl;
+                                                tmpNames[2] = flowctl;
                                         }
 
                                 }
@@ -1468,22 +1468,22 @@ public:
                                                         }
                                                 }
                                         };
-                                        tmp_names[1] = "PROD"; //WellProdDataType::CTRLMode
-                                        tmp_names[2] = fctl(controls.cmode); //WellProdDataType::CTRLMode
+                                        tmpNames[1] = "PROD"; //WellProdDataType::CTRLMode
+                                        tmpNames[2] = fctl(controls.cmode); //WellProdDataType::CTRLMode
                                 }
 
-                                        tmp_values[0] = well.getHeadI() + 1; //WellCumDataType::wellLocationi
-                                        tmp_values[1] = well.getHeadJ() + 1; //WellCumDataType::wellLocationj
-                                        tmp_values[2] = get("WOPT"); //WellCumDataType::OilProd
-                                        tmp_values[3] = get("WWPT"); //WellCumDataType::WaterProd
-                                        tmp_values[4] = get("WGPT"); //WellCumDataType::GasProd
-                                        tmp_values[5] = get("WVPT");//WellCumDataType::FluidResVolProd
-                                        tmp_values[6] = get("WOIT"); //WellCumDataType::OilInj
-                                        tmp_values[7] = get("WWIT"); //WellCumDataType::WaterInj
-                                        tmp_values[8] = get("WGIT"); //WellCumDataType::GasInj
-                                        tmp_values[9] = get("WVIT");//WellCumDataType::FluidResVolInj
+                                        tmpValues[0] = well.getHeadI() + 1; //WellCumDataType::wellLocationi
+                                        tmpValues[1] = well.getHeadJ() + 1; //WellCumDataType::wellLocationj
+                                        tmpValues[2] = get("WOPT"); //WellCumDataType::OilProd
+                                        tmpValues[3] = get("WWPT"); //WellCumDataType::WaterProd
+                                        tmpValues[4] = get("WGPT"); //WellCumDataType::GasProd
+                                        tmpValues[5] = get("WVPT");//WellCumDataType::FluidResVolProd
+                                        tmpValues[6] = get("WOIT"); //WellCumDataType::OilInj
+                                        tmpValues[7] = get("WWIT"); //WellCumDataType::WaterInj
+                                        tmpValues[8] = get("WGIT"); //WellCumDataType::GasInj
+                                        tmpValues[9] = get("WVIT");//WellCumDataType::FluidResVolInj
 
-                                        outputCumulativeReport_(tmp_values, tmp_names, forceDisableCumOutput);
+                                        outputCumulativeReport_(tmpValues, tmpNames, forceDisableCumOutput);
 
                         }
                 }

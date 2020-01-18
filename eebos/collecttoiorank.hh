@@ -534,7 +534,7 @@ public:
                 MessageBufferType buffer;
                 pack(0, buffer);
 
-                // pass a dummy_link to satisfy virtual class
+                // pass a dummy link to satisfy virtual class
                 int dummyLink = -1;
                 unpack(dummyLink, buffer);
             }

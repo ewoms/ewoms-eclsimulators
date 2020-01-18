@@ -494,7 +494,7 @@ public:
         typedef typename GET_PROP(TypeTag, ParameterMetaData) ParamsMeta;
         Dune::ParameterTree& tree = ParamsMeta::tree();
 
-        std::string param  = argv[paramIdx];
+        std::string param = argv[paramIdx];
         size_t i = param.find('=');
         if (i != std::string::npos) {
             std::string oldParamName = param.substr(0, i);
@@ -598,7 +598,8 @@ public:
                 comm.broadcast(buffer.data(), position, 0);
             }
 #endif
-        } else {
+        }
+        else {
 #if HAVE_MPI
             int size;
             comm.broadcast(&size, 1, 0);
@@ -993,12 +994,7 @@ public:
         bool isSubStep = !EWOMS_GET_PARAM(TypeTag, bool, EnableWriteAllSolutions) && !this->simulator().episodeWillBeOver();
         eclWriter_->evalSummaryState(isSubStep);
 
-        auto& schedule = simulator.vanguard().schedule();
-        int episodeIdx = simulator.episodeIndex();
-        this->applyActions(episodeIdx,
-                           simulator.time() + simulator.timeStepSize(),
-                           schedule,
-                           simulator.vanguard().summaryState());
+        this->applyActions();
     }
 
     /*!
@@ -1052,16 +1048,18 @@ public:
             eclWriter_->writeOutput(isSubStep);
     }
 
-    void applyActions(int reportStep,
-                      double sim_time,
-                      Ewoms::Schedule& schedule,
-                      const Ewoms::SummaryState& summaryState) {
+    void applyActions()
+    {
+        Simulator& simulator = this->simulator();
+        int reportStep = simulator.episodeIndex();
+        auto& schedule = simulator.vanguard().schedule();
+        const auto& summaryState = simulator.vanguard().summaryState();
         const auto& actions = schedule.actions(reportStep);
         if (actions.empty())
             return;
 
-        Ewoms::Action::Context context( summaryState );
-        auto now = Ewoms::TimeStampUTC( schedule.getStartTime() ) + std::chrono::duration<double>(sim_time);
+        Ewoms::Action::Context context(summaryState);
+        auto now = Ewoms::TimeStampUTC(simulator.startTime() + simulator.time());
         std::string ts;
         {
             std::ostringstream os;
@@ -1076,17 +1074,18 @@ public:
         for (const auto& action : actions.pending(simTime)) {
             auto actionResult = action->eval(simTime, context);
             if (actionResult) {
-                std::string wells_string;
-                const auto& matching_wells = actionResult.wells();
-                if (matching_wells.size() > 0) {
-                    for (std::size_t iw = 0; iw < matching_wells.size() - 1; iw++)
-                        wells_string += matching_wells[iw] + ", ";
-                    wells_string += matching_wells.back();
+                std::string wellsString;
+                const auto& matchingWells = actionResult.wells();
+                if (matchingWells.size() > 0) {
+                    for (std::size_t iw = 0; iw < matchingWells.size() - 1; iw++)
+                        wellsString += matchingWells[iw] + ", ";
+                    wellsString += matchingWells.back();
                 }
-                std::string msg = "The action: " + action->name() + " evaluated to true at " + ts + " wells: " + wells_string;
+                std::string msg = "The action: " + action->name() + " evaluated to true at " + ts + " wells: " + wellsString;
                 Ewoms::OpmLog::info(msg);
                 schedule.applyAction(reportStep, *action, actionResult);
-            } else {
+            }
+            else {
                 std::string msg = "The action: " + action->name() + " evaluated to false at " + ts;
                 Ewoms::OpmLog::info(msg);
             }
@@ -1480,7 +1479,7 @@ public:
         }
 
         if (nonTrivialBoundaryConditions()) {
-            unsigned indexInInside  = context.intersection(spaceIdx).indexInInside();
+            unsigned indexInInside = context.intersection(spaceIdx).indexInInside();
             unsigned interiorDofIdx = context.interiorScvIndex(spaceIdx, timeIdx);
             unsigned globalDofIdx = context.globalSpaceIndex(interiorDofIdx, timeIdx);
             unsigned pvtRegionIdx = pvtRegionIndex(context, spaceIdx, timeIdx);
@@ -2394,9 +2393,9 @@ private:
 
         referencePorosity_[/*timeIdx=*/0].resize(numDof);
 
-        const auto& fp = eclState.fieldProps();
-        const std::vector<double> porvData = fp.porv(true);
-        const std::vector<int> actnumData = fp.actnum();
+        const auto& fieldProps = eclState.fieldProps();
+        const std::vector<double> porvData = fieldProps.porv(true);
+        const std::vector<int> actnumData = fieldProps.actnum();
         int nx = eclGrid.getNX();
         int ny = eclGrid.getNY();
         for (size_t dofIdx = 0; dofIdx < numDof; ++ dofIdx) {
@@ -2643,28 +2642,28 @@ private:
         const auto& simulator = this->simulator();
         const auto& vanguard = simulator.vanguard();
         const auto& eclState = vanguard.eclState();
-        const auto& fp = eclState.fieldProps();
-        bool has_swat     = fp.has_double("SWAT");
-        bool has_sgas     = fp.has_double("SGAS");
-        bool has_rs       = fp.has_double("RS");
-        bool has_rv       = fp.has_double("RV");
-        bool has_pressure = fp.has_double("PRESSURE");
+        const auto& fieldProps = eclState.fieldProps();
+        bool hasSwat = fieldProps.has_double("SWAT");
+        bool hasSgas = fieldProps.has_double("SGAS");
+        bool hasRs = fieldProps.has_double("RS");
+        bool hasRv = fieldProps.has_double("RV");
+        bool hasPressure = fieldProps.has_double("PRESSURE");
 
         // make sure all required quantities are enables
-        if (FluidSystem::phaseIsActive(waterPhaseIdx) && !has_swat)
+        if (FluidSystem::phaseIsActive(waterPhaseIdx) && !hasSwat)
             throw std::runtime_error("The ECL input file requires the presence of the SWAT keyword if "
                                      "the water phase is active");
-        if (FluidSystem::phaseIsActive(gasPhaseIdx) && !has_sgas)
+        if (FluidSystem::phaseIsActive(gasPhaseIdx) && !hasSgas)
             throw std::runtime_error("The ECL input file requires the presence of the SGAS keyword if "
                                      "the gas phase is active");
 
-        if (!has_pressure)
+        if (!hasPressure)
              throw std::runtime_error("The ECL input file requires the presence of the PRESSURE "
                                       "keyword if the model is initialized explicitly");
-        if (FluidSystem::enableDissolvedGas() && !has_rs)
+        if (FluidSystem::enableDissolvedGas() && !hasRs)
             throw std::runtime_error("The ECL input file requires the RS keyword to be present if"
                                      " dissolved gas is enabled");
-        if (FluidSystem::enableVaporizedOil() && !has_rv)
+        if (FluidSystem::enableVaporizedOil() && !hasRv)
             throw std::runtime_error("The ECL input file requires the RV keyword to be present if"
                                      " vaporized oil is enabled");
 
@@ -2683,24 +2682,24 @@ private:
         std::vector<double> tempiData;
 
         if (FluidSystem::phaseIsActive(waterPhaseIdx))
-            waterSaturationData = fp.get_global_double("SWAT");
+            waterSaturationData = fieldProps.get_global_double("SWAT");
         else
             waterSaturationData.resize(numCartesianCells);
 
         if (FluidSystem::phaseIsActive(gasPhaseIdx))
-            gasSaturationData = fp.get_global_double("SGAS");
+            gasSaturationData = fieldProps.get_global_double("SGAS");
         else
             gasSaturationData.resize(numCartesianCells);
 
-        pressureData = fp.get_global_double("PRESSURE");
+        pressureData = fieldProps.get_global_double("PRESSURE");
         if (FluidSystem::enableDissolvedGas())
-            rsData = fp.get_global_double("RS");
+            rsData = fieldProps.get_global_double("RS");
 
         if (FluidSystem::enableVaporizedOil())
-            rvData = fp.get_global_double("RV");
+            rvData = fieldProps.get_global_double("RV");
 
         // initial reservoir temperature
-        tempiData = fp.get_global_double("TEMPI");
+        tempiData = fieldProps.get_global_double("TEMPI");
 
         // make sure that the size of the data arrays is correct
 #ifndef NDEBUG
@@ -3002,23 +3001,20 @@ private:
                         compIdx = gasCompIdx;
                     else if (compName == "WATER")
                         compIdx = waterCompIdx;
-                    else if (compName == "SOLVENT")
-                    {
+                    else if (compName == "SOLVENT") {
                         if (!enableSolvent)
                             throw std::logic_error("solvent is disabled and you're trying to add solvent to BC");
 
                         compIdx = Indices::solventSaturationIdx;
                     }
-                    else if (compName == "POLYMER")
-                    {
+                    else if (compName == "POLYMER") {
                         if (!enablePolymer)
                             throw std::logic_error("polymer is disabled and you're trying to add polymer to BC");
 
                         compIdx = Indices::polymerConcentrationIdx;
                     }
-                    else if (compName == "NONE")
-                    {
-                        if ( type == "RATE")
+                    else if (compName == "NONE") {
+                        if (type == "RATE")
                             throw std::logic_error("you need to specify the component when RATE type is set in BC");
                     }
                     else
@@ -3060,7 +3056,8 @@ private:
                                 }
                             }
                         }
-                    } else if (type == "FREE") {
+                    }
+                    else if (type == "FREE") {
                         std::vector<bool>* data = 0;
                         if (direction == "X-")
                             data = &freebcXMinus_;
@@ -3092,7 +3089,8 @@ private:
                         if (initconfig.restartRequested()) {
                             throw std::logic_error("restart is not compatible with using free boundary conditions");
                         }
-                    } else {
+                    }
+                    else {
                         throw std::logic_error("invalid type for BC. Use FREE or RATE");
                     }
                 }

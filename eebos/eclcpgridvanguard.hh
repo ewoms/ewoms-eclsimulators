@@ -196,8 +196,7 @@ public:
 
             cartesianIndexMapper_.reset();
 
-            if ( ! equilGrid_ )
-            {
+            if (!equilGrid_) {
                 // for processes that do not hold the global grid we filter here using the local grid.
                 // If we would filter in filterConnection_ our partition would be empty and the connections of all
                 // wells would be removed.
@@ -245,7 +244,7 @@ public:
 
     const EclTransmissibility<TypeTag>& globalTransmissibility() const
     {
-        assert( globalTrans_ != nullptr );
+        assert(globalTrans_ != nullptr);
         return *globalTrans_;
     }
 
@@ -272,27 +271,27 @@ protected:
         // is allergic to distributed grids and the simulation grid is distributed before
         // the initial condition is calculated.
         // After loadbalance grid_ will contain a global and distribute view.
-        // equilGrid_being a shallow copy only the global view.
+        // equilGrid_ being a shallow copy only the global view.
         if (mpiRank == 0)
         {
             equilGrid_.reset(new Dune::CpGrid(*grid_));
             equilCartesianIndexMapper_.reset(new CartesianIndexMapper(*equilGrid_));
         }
         std::vector<int> actnum;
-        unsigned long actnum_size;
+        unsigned long actnumSize;
         if (mpiRank == 0) {
             actnum = Ewoms::UgGridHelpers::createACTNUM(*grid_);
-            actnum_size = actnum.size();
+            actnumSize = actnum.size();
         }
 
-        grid_->comm().broadcast(&actnum_size, 1, 0);
+        grid_->comm().broadcast(&actnumSize, 1, 0);
         if (mpiRank != 0)
-            actnum.resize( actnum_size );
+            actnum.resize( actnumSize );
 
-        grid_->comm().broadcast(actnum.data(), actnum_size, 0);
+        grid_->comm().broadcast(actnum.data(), actnumSize, 0);
 
-        auto & field_props = this->eclState().fieldProps();
-        const_cast<FieldPropsManager&>(field_props).reset_actnum(actnum);
+        auto & fieldProps = this->eclState().fieldProps();
+        const_cast<FieldPropsManager&>(fieldProps).reset_actnum(actnum);
     }
 
     // removing some connection located in inactive grid cells
@@ -302,8 +301,7 @@ protected:
         // is done after load balancing as in the future the other processes
         // will hold an empty partition for the global grid and hence filtering
         // here would remove all well connections.
-        if (equilGrid_)
-        {
+        if (equilGrid_) {
             ActiveGridCells activeCells(equilGrid().logicalCartesianSize(),
                                         equilGrid().globalCell().data(),
                                         equilGrid().size(0));
