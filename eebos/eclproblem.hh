@@ -2151,9 +2151,9 @@ private:
     void readRockParameters_()
     {
         const auto& simulator = this->simulator();
-        const auto& deck = simulator.vanguard().deck();
-        const auto& eclState = simulator.vanguard().eclState();
         const auto& vanguard = simulator.vanguard();
+        const auto& deck = vanguard.deck();
+        auto& eclState = vanguard.eclState();
 
         // read the rock compressibility parameters
         if (deck.hasKeyword("ROCK")) {
@@ -2193,21 +2193,18 @@ private:
 
         // If ROCKCOMP is used and ROCKNUM is specified ROCK2D ROCK2DTR ROCKTAB etc. uses ROCKNUM
         // to give the correct table index.
-        if (deck.hasKeyword("ROCKCOMP") && eclState.get3DProperties().hasDeckIntGridProperty("ROCKNUM"))
+        if (deck.hasKeyword("ROCKCOMP") && eclState.fieldProps().has_int("ROCKNUM"))
             propName = "ROCKNUM";
 
-        // the deck does not specify the selected keyword, so everything uses the first
-        // record of ROCK.
-        if (eclState.get3DProperties().hasDeckIntGridProperty(propName)) {
-            const std::vector<int>& tablenumData =
-                    eclState.get3DProperties().getIntGridProperty(propName).getData();
+        if (eclState.fieldProps().has_int(propName)) {
+            const auto& tmp = eclState.fieldProps().get_global_int(propName);
             unsigned numElem = vanguard.gridView().size(0);
             rockTableIdx_.resize(numElem);
             for (size_t elemIdx = 0; elemIdx < numElem; ++ elemIdx) {
                 unsigned cartElemIdx = vanguard.cartesianIndex(elemIdx);
 
                 // reminder: Eclipse uses FORTRAN-style indices
-                rockTableIdx_[elemIdx] = tablenumData[cartElemIdx] - 1;
+                rockTableIdx_[elemIdx] = tmp[cartElemIdx] - 1;
             }
         }
 
@@ -2392,17 +2389,14 @@ private:
         const auto& vanguard = simulator.vanguard();
         const auto& eclState = vanguard.eclState();
         const auto& eclGrid = eclState.getInputGrid();
-        const auto& props = eclState.get3DProperties();
 
         size_t numDof = this->model().numGridDof();
 
         referencePorosity_[/*timeIdx=*/0].resize(numDof);
 
-        const std::vector<double>& porvData =
-            props.getDoubleGridProperty("PORV").getData();
-        const std::vector<int>& actnumData =
-            props.getIntGridProperty("ACTNUM").getData();
-
+        const auto& fp = eclState.fieldProps();
+        const std::vector<double> porvData = fp.porv(true);
+        const std::vector<int> actnumData = fp.actnum();
         int nx = eclGrid.getNX();
         int ny = eclGrid.getNY();
         for (size_t dofIdx = 0; dofIdx < numDof; ++ dofIdx) {
@@ -2649,23 +2643,28 @@ private:
         const auto& simulator = this->simulator();
         const auto& vanguard = simulator.vanguard();
         const auto& eclState = vanguard.eclState();
-        const auto& eclProps = eclState.get3DProperties();
+        const auto& fp = eclState.fieldProps();
+        bool has_swat     = fp.has_double("SWAT");
+        bool has_sgas     = fp.has_double("SGAS");
+        bool has_rs       = fp.has_double("RS");
+        bool has_rv       = fp.has_double("RV");
+        bool has_pressure = fp.has_double("PRESSURE");
 
         // make sure all required quantities are enables
-        if (FluidSystem::phaseIsActive(waterPhaseIdx) && !eclProps.hasDeckDoubleGridProperty("SWAT"))
+        if (FluidSystem::phaseIsActive(waterPhaseIdx) && !has_swat)
             throw std::runtime_error("The ECL input file requires the presence of the SWAT keyword if "
                                      "the water phase is active");
-        if (FluidSystem::phaseIsActive(gasPhaseIdx) && !eclProps.hasDeckDoubleGridProperty("SGAS"))
+        if (FluidSystem::phaseIsActive(gasPhaseIdx) && !has_sgas)
             throw std::runtime_error("The ECL input file requires the presence of the SGAS keyword if "
                                      "the gas phase is active");
 
-        if (!eclProps.hasDeckDoubleGridProperty("PRESSURE"))
+        if (!has_pressure)
              throw std::runtime_error("The ECL input file requires the presence of the PRESSURE "
                                       "keyword if the model is initialized explicitly");
-        if (FluidSystem::enableDissolvedGas() && !eclProps.hasDeckDoubleGridProperty("RS"))
+        if (FluidSystem::enableDissolvedGas() && !has_rs)
             throw std::runtime_error("The ECL input file requires the RS keyword to be present if"
                                      " dissolved gas is enabled");
-        if (FluidSystem::enableVaporizedOil() && !eclProps.hasDeckDoubleGridProperty("RV"))
+        if (FluidSystem::enableVaporizedOil() && !has_rv)
             throw std::runtime_error("The ECL input file requires the RV keyword to be present if"
                                      " vaporized oil is enabled");
 
@@ -2677,28 +2676,31 @@ private:
         size_t numCartesianCells = cartSize[0] * cartSize[1] * cartSize[2];
 
         std::vector<double> waterSaturationData;
-        if (FluidSystem::phaseIsActive(waterPhaseIdx))
-            waterSaturationData = eclProps.getDoubleGridProperty("SWAT").getData();
-        else
-            waterSaturationData.resize(numCartesianCells, 0.0);
-
         std::vector<double> gasSaturationData;
-        if (FluidSystem::phaseIsActive(gasPhaseIdx))
-            gasSaturationData = eclProps.getDoubleGridProperty("SGAS").getData();
-        else
-            gasSaturationData.resize(numCartesianCells, 0.0);
-
-        const std::vector<double>& pressureData =
-            eclProps.getDoubleGridProperty("PRESSURE").getData();
+        std::vector<double> pressureData;
         std::vector<double> rsData;
-        if (FluidSystem::enableDissolvedGas())
-            rsData = eclProps.getDoubleGridProperty("RS").getData();
         std::vector<double> rvData;
+        std::vector<double> tempiData;
+
+        if (FluidSystem::phaseIsActive(waterPhaseIdx))
+            waterSaturationData = fp.get_global_double("SWAT");
+        else
+            waterSaturationData.resize(numCartesianCells);
+
+        if (FluidSystem::phaseIsActive(gasPhaseIdx))
+            gasSaturationData = fp.get_global_double("SGAS");
+        else
+            gasSaturationData.resize(numCartesianCells);
+
+        pressureData = fp.get_global_double("PRESSURE");
+        if (FluidSystem::enableDissolvedGas())
+            rsData = fp.get_global_double("RS");
+
         if (FluidSystem::enableVaporizedOil())
-            rvData = eclProps.getDoubleGridProperty("RV").getData();
+            rvData = fp.get_global_double("RV");
+
         // initial reservoir temperature
-        const std::vector<double>& tempiData =
-            eclState.get3DProperties().getDoubleGridProperty("TEMPI").getData();
+        tempiData = fp.get_global_double("TEMPI");
 
         // make sure that the size of the data arrays is correct
 #ifndef NDEBUG
@@ -2797,7 +2799,10 @@ private:
         size_t numDof = this->model().numGridDof();
 
         if (enableSolvent) {
-            const std::vector<double>& solventSaturationData = eclState.get3DProperties().getDoubleGridProperty("SSOL").getData();
+            std::vector<double> solventSaturationData(eclState.getInputGrid().getCartesianSize(), 0.0);
+            if (eclState.fieldProps().has_double("SSOL"))
+                solventSaturationData = eclState.fieldProps().get_global_double("SSOL");
+
             solventSaturation_.resize(numDof, 0.0);
             for (size_t dofIdx = 0; dofIdx < numDof; ++dofIdx) {
                 size_t cartesianDofIdx = vanguard.cartesianIndex(dofIdx);
@@ -2808,7 +2813,10 @@ private:
         }
 
         if (enablePolymer) {
-            const std::vector<double>& polyConcentrationData = eclState.get3DProperties().getDoubleGridProperty("SPOLY").getData();
+            std::vector<double> polyConcentrationData(eclState.getInputGrid().getCartesianSize(), 0.0);
+            if (eclState.fieldProps().has_double("SPOLY"))
+                polyConcentrationData = eclState.fieldProps().get_global_double("SPOLY");
+
             polymerConcentration_.resize(numDof, 0.0);
             for (size_t dofIdx = 0; dofIdx < numDof; ++dofIdx) {
                 size_t cartesianDofIdx = vanguard.cartesianIndex(dofIdx);
@@ -2819,7 +2827,9 @@ private:
         }
 
         if (enablePolymerMolarWeight) {
-            const std::vector<double>& polyMoleWeightData = eclState.get3DProperties().getDoubleGridProperty("SPOLYMW").getData();
+            std::vector<double> polyMoleWeightData(eclState.getInputGrid().getCartesianSize(), 0.0);
+            if (eclState.fieldProps().has_double("SPOLYMW"))
+                polyMoleWeightData = eclState.fieldProps().get_global_double("SPOLYMW");
             polymerMoleWeight_.resize(numDof, 0.0);
             for (size_t dofIdx = 0; dofIdx < numDof; ++dofIdx) {
                 const size_t cartesianDofIdx = vanguard.cartesianIndex(dofIdx);
@@ -2877,84 +2887,44 @@ private:
         }
     }
 
-    void updatePvtnum_()
+    template<class T>
+    void updateNum(const std::string& name, std::vector<T>& numbers)
     {
         const auto& simulator = this->simulator();
         const auto& eclState = simulator.vanguard().eclState();
-        const auto& eclProps = eclState.get3DProperties();
 
-        if (!eclProps.hasDeckIntGridProperty("PVTNUM"))
+        if (!eclState.fieldProps().has_int(name))
             return;
 
-        const auto& pvtnumData = eclProps.getIntGridProperty("PVTNUM").getData();
+        const auto& numData = eclState.fieldProps().get_global_int(name);
         const auto& vanguard = simulator.vanguard();
 
         unsigned numElems = vanguard.gridView().size(/*codim=*/0);
-        pvtnum_.resize(numElems);
+        numbers.resize(numElems);
         for (unsigned elemIdx = 0; elemIdx < numElems; ++elemIdx) {
             unsigned cartElemIdx = vanguard.cartesianIndex(elemIdx);
-            pvtnum_[elemIdx] = pvtnumData[cartElemIdx] - 1;
+            numbers[elemIdx] = static_cast<T>(std::max(numData[cartElemIdx], 1) - 1);
         }
+    }
+
+    void updatePvtnum_()
+    {
+        updateNum("PVTNUM", pvtnum_);
     }
 
     void updateSatnum_()
     {
-        const auto& simulator = this->simulator();
-        const auto& eclState = simulator.vanguard().eclState();
-        const auto& eclProps = eclState.get3DProperties();
-
-        if (!eclProps.hasDeckIntGridProperty("SATNUM"))
-            return;
-
-        const auto& satnumData = eclProps.getIntGridProperty("SATNUM").getData();
-        const auto& vanguard = simulator.vanguard();
-
-        unsigned numElems = vanguard.gridView().size(/*codim=*/0);
-        satnum_.resize(numElems);
-        for (unsigned elemIdx = 0; elemIdx < numElems; ++elemIdx) {
-            unsigned cartElemIdx = vanguard.cartesianIndex(elemIdx);
-            satnum_[elemIdx] = satnumData[cartElemIdx] - 1;
-        }
+        updateNum("SATNUM", satnum_);
     }
 
     void updateMiscnum_()
     {
-        const auto& simulator = this->simulator();
-        const auto& eclState = simulator.vanguard().eclState();
-        const auto& eclProps = eclState.get3DProperties();
-
-        if (!eclProps.hasDeckIntGridProperty("MISCNUM"))
-            return;
-
-        const auto& miscnumData = eclProps.getIntGridProperty("MISCNUM").getData();
-        const auto& vanguard = simulator.vanguard();
-
-        unsigned numElems = vanguard.gridView().size(/*codim=*/0);
-        miscnum_.resize(numElems);
-        for (unsigned elemIdx = 0; elemIdx < numElems; ++elemIdx) {
-            unsigned cartElemIdx = vanguard.cartesianIndex(elemIdx);
-            miscnum_[elemIdx] = miscnumData[cartElemIdx] - 1;
-        }
+        updateNum("MISCNUM", miscnum_);
     }
 
     void updatePlmixnum_()
     {
-        const auto& simulator = this->simulator();
-        const auto& eclState = simulator.vanguard().eclState();
-        const auto& eclProps = eclState.get3DProperties();
-
-        if (!eclProps.hasDeckIntGridProperty("PLMIXNUM"))
-            return;
-
-        const auto& plmixnumData = eclProps.getIntGridProperty("PLMIXNUM").getData();
-        const auto& vanguard = simulator.vanguard();
-
-        unsigned numElems = vanguard.gridView().size(/*codim=*/0);
-        plmixnum_.resize(numElems);
-        for (unsigned elemIdx = 0; elemIdx < numElems; ++elemIdx) {
-            unsigned cartElemIdx = vanguard.cartesianIndex(elemIdx);
-            plmixnum_[elemIdx] = plmixnumData[cartElemIdx] - 1;
-        }
+        updateNum("PLMIXNUM", plmixnum_);
     }
 
     struct PffDofData_

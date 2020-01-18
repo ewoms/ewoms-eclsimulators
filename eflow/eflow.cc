@@ -336,18 +336,21 @@ int main(int argc, char** argv)
                 Ewoms::checkDeck(*deck, parser, parseContext, errorGuard);
 
             eclipseState.reset( new Ewoms::EclipseState(*deck, parseContext, errorGuard ));
-            schedule.reset(new Ewoms::Schedule(*deck, *eclipseState, parseContext, errorGuard));
             if (mpiRank == 0) {
+                schedule.reset(new Ewoms::Schedule(*deck, *eclipseState, parseContext, errorGuard));
                 setupMessageLimiter(schedule->getMessageLimits(), "STDOUT_LOGGER");
                 summaryConfig.reset( new Ewoms::SummaryConfig(*deck, *schedule, eclipseState->getTableManager(), parseContext, errorGuard));
 #ifdef HAVE_MPI
                 Ewoms::Mpi::packAndSend(*summaryConfig, mpiHelper.getCollectiveCommunication());
+                Ewoms::Mpi::packAndSend(*schedule, mpiHelper.getCollectiveCommunication());
 #endif
             }
 #ifdef HAVE_MPI
             else {
                 summaryConfig.reset(new Ewoms::SummaryConfig);
+                schedule.reset(new Ewoms::Schedule);
                 Ewoms::Mpi::receiveAndUnpack(*summaryConfig, mpiHelper.getCollectiveCommunication());
+                Ewoms::Mpi::receiveAndUnpack(*schedule, mpiHelper.getCollectiveCommunication());
             }
 #endif
 
@@ -360,7 +363,7 @@ int main(int argc, char** argv)
                 throw std::runtime_error("Unrecoverable errors were encountered while loading input.");
             }
         }
-        const auto& phases = Ewoms::Runspec(*deck).phases();
+        const auto& phases = eclipseState->runspec().phases();
         bool outputFiles = (outputMode != FileOutputMode::OUTPUT_NONE);
         // run the actual simulator
         //

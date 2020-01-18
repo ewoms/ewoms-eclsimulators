@@ -35,6 +35,7 @@
 
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
+#include <ewoms/eclio/parser/eclipsestate/grid/fieldpropsmanager.hh>
 #include <ewoms/eclio/parser/eclipsestate/grid/gridproperty.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/eqldims.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/simulationconfig.hh>
@@ -122,13 +123,11 @@ public:
         }
 
         // internalize the data specified using the EQLNUM keyword
-        const std::vector<int>& equilRegionData =
-            eclState.get3DProperties().getIntGridProperty("EQLNUM").getData();
+        const auto& fp = eclState.fieldProps();
+        const auto& equilRegionData = fp.get_global_int("EQLNUM");
         elemEquilRegion_.resize(numElements, 0);
         for (unsigned elemIdx = 0; elemIdx < numElements; ++elemIdx) {
             int cartElemIdx = vanguard.cartesianIndex(elemIdx);
-
-            // ECL uses Fortran-style indices but we want C-style ones!
             elemEquilRegion_[elemIdx] = equilRegionData[cartElemIdx] - 1;
         }
 

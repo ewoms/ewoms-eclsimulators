@@ -307,7 +307,6 @@ Ewoms::VFPProdTable getVFPProdTable()
 Ewoms::UDQConfig getUDQConfig()
 {
     Ewoms::UDQParams params(true, 1, 2.0, 3.0, 4.0);
-    Ewoms::UDQFunctionTable::FunctionMap map{{"test", std::make_shared<Ewoms::UDQFunction>()}};
     std::shared_ptr<Ewoms::UDQASTNode> n0;
     Ewoms::UDQASTNode n1(Ewoms::UDQVarType::NONE,
                        Ewoms::UDQTokenType::error,
@@ -323,7 +322,7 @@ Ewoms::UDQConfig getUDQConfig()
     omap.insert({"test9", Ewoms::UDQIndex(3, 4, Ewoms::UDQAction::ASSIGN,
                                         Ewoms::UDQVarType::WELL_VAR)});
     return Ewoms::UDQConfig(params,
-                          Ewoms::UDQFunctionTable(params, map),
+                          Ewoms::UDQFunctionTable(params),
                           {{"test1", def}, {"test2", def}},
                           {{"test3", ass}, {"test4", ass}},
                           {{"test5", "test6"}, {"test7", "test8"}},
@@ -1448,7 +1447,8 @@ BOOST_AUTO_TEST_CASE(Connection)
     Ewoms::Connection val1(Ewoms::Connection::Direction::Y,
                          1.0, Ewoms::Connection::State::SHUT,
                          2, 3, 4.0, 5.0, 6.0, 7.0, 8.0,
-                         {9, 10, 11}, 12, 13.0, 14.0, true,
+                         {9, 10, 11}, Ewoms::Connection::CTFKind::Defaulted,
+                         12, 13.0, 14.0, true,
                          15, 16, 17.0);
     auto val2 = PackUnpack(val1);
     BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
@@ -1509,7 +1509,8 @@ BOOST_AUTO_TEST_CASE(WellConnections)
     Ewoms::Connection conn(Ewoms::Connection::Direction::Y,
                          1.0, Ewoms::Connection::State::SHUT,
                          2, 3, 4.0, 5.0, 6.0, 7.0, 8.0,
-                         {9, 10, 11}, 12, 13.0, 14.0, true,
+                         {9, 10, 11}, Ewoms::Connection::CTFKind::Defaulted,
+                         12, 13.0, 14.0, true,
                          15, 16, 17.0);
     Ewoms::WellConnections val1(1, 2, 3, {conn, conn});
     auto val2 = PackUnpack(val1);
@@ -1925,8 +1926,9 @@ BOOST_AUTO_TEST_CASE(RFTConfig)
 {
 #ifdef HAVE_MPI
     Ewoms::RFTConfig val1(getTimeMap(),
+                        std::size_t{1729},
                         {true, 1},
-                        {"test1", "test2"},
+                        {{"test1", 2}, {"test2", 3}},
                         {{"test3", 2}},
                         {{"test1", {{{Ewoms::RFTConfig::RFT::TIMESTEP, 3}}, 4}}},
                         {{"test2", {{{Ewoms::RFTConfig::PLT::REPT, 5}}, 6}}});
@@ -2145,8 +2147,9 @@ BOOST_AUTO_TEST_CASE(Schedule)
     Ewoms::Action::Actions acnts({getActionX()});
 
     Ewoms::RFTConfig rftc(getTimeMap(),
+                        std::size_t{1729},
                         {true, 1},
-                        {"test1", "test2"},
+                        {{"test1", 2}, {"test2", 3}},
                         {{"test3", 2}},
                         {{"test1", {{{Ewoms::RFTConfig::RFT::TIMESTEP, 3}}, 4}}},
                         {{"test2", {{{Ewoms::RFTConfig::PLT::REPT, 5}}, 6}}});

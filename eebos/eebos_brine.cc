@@ -28,7 +28,6 @@
 #include "config.h"
 
 #include "eebos.hh"
-
 #include <ewoms/numerics/utils/start.hh>
 
 BEGIN_PROPERTIES

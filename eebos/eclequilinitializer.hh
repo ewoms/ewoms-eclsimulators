@@ -94,7 +94,7 @@ public:
                                     FluidSystem,
                                     enableTemperature,
                                     enableEnergy,
-                                    /*enableDissolution=*/Indices::gasEnabled,
+                                    Indices::gasEnabled,
                                     enableBrine,
                                     Indices::numPhases
                                     > ScalarFluidState;

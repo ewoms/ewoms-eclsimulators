@@ -27,6 +27,8 @@
 #include <ewoms/eclio/parser/eclipsestate/grid/nnc.hh>
 #include <ewoms/eclio/opmlog/opmlog.hh>
 
+#include <ewoms/eclio/opmlog/opmlog.hh>
+
 #include <vector>
 #include <algorithm>
 #include <sstream>

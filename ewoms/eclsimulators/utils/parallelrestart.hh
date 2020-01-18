@@ -135,6 +135,7 @@ class TableContainer;
 class TableManager;
 class TableSchema;
 class ThresholdPressure;
+class TimeStampUTC;
 class Tuning;
 class UDAValue;
 class UDQASTNode;
@@ -718,6 +719,7 @@ ADD_PACK_PROTOTYPES(TableSchema)
 ADD_PACK_PROTOTYPES(ThresholdPressure)
 ADD_PACK_PROTOTYPES(TimeMap)
 ADD_PACK_PROTOTYPES(TimeMap::StepData)
+ADD_PACK_PROTOTYPES(TimeStampUTC)
 ADD_PACK_PROTOTYPES(Tuning)
 ADD_PACK_PROTOTYPES(UDAValue)
 ADD_PACK_PROTOTYPES(UDQActive)
@@ -761,7 +763,7 @@ ADD_PACK_PROTOTYPES(WListManager)
 template<class T, class C>
 const T& packAndSend(const T& in, const C& comm)
 {
-    if (comm.size() == 0)
+    if (comm.size() == 1)
         return in;
 
     std::size_t size = packSize(in, comm);
