@@ -27,7 +27,7 @@ namespace Ewoms {
 
 class EclMpiSerializer {
 public:
-    EclMpiSerializer(Dune::MPIHelper::MPICommunicator comm) :
+    explicit EclMpiSerializer(Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator> comm) :
         comm_(comm)
     {}
 
@@ -46,8 +46,58 @@ public:
         Mpi::unpack(data, buffer, pos, comm_);
     }
 
+    template<class T>
+    void staticBroadcast()
+    {
+        if (comm_.size() == 1)
+            return;
+
+#if HAVE_MPI
+        if (comm_.rank() == 0) {
+            size_t size = T::packSize(*this);
+            std::vector<char> buffer(size);
+            int position = 0;
+            T::pack(buffer, position, *this);
+            comm_.broadcast(&position, 1, 0);
+            comm_.broadcast(buffer.data(), position, 0);
+        } else {
+            int size;
+            comm_.broadcast(&size, 1, 0);
+            std::vector<char> buffer(size);
+            comm_.broadcast(buffer.data(), size, 0);
+            int position = 0;
+            T::unpack(buffer, position, *this);
+        }
+#endif
+    }
+
+    template<class T>
+    void broadcast(T& data)
+    {
+        if (comm_.size() == 1)
+            return;
+
+#if HAVE_MPI
+        if (comm_.rank() == 0) {
+            size_t size = data.packSize(*this);
+            std::vector<char> buffer(size);
+            int position = 0;
+            data.pack(buffer, position, *this);
+            comm_.broadcast(&position, 1, 0);
+            comm_.broadcast(buffer.data(), position, 0);
+        } else {
+            int size;
+            comm_.broadcast(&size, 1, 0);
+            std::vector<char> buffer(size);
+            comm_.broadcast(buffer.data(), size, 0);
+            int position = 0;
+            data.unpack(buffer, position, *this);
+        }
+#endif
+    }
+
 protected:
-    Dune::MPIHelper::MPICommunicator comm_;
+    Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator> comm_;
 };
 
 }

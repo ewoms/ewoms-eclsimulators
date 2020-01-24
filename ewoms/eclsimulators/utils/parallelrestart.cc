@@ -22,6 +22,9 @@
 
 #include "parallelrestart.hh"
 #include <ewoms/eclio/opmlog/location.hh>
+#include <ewoms/material/fluidmatrixinteractions/eclepsscalingpoints.hh>
+#include <ewoms/material/fluidmatrixinteractions/ecltwophasematerialparams.hh>
+#include <ewoms/material/fluidmatrixinteractions/eclmultiplexermaterialparams.hh>
 #include <ewoms/eclio/parser/eclipsestate/runspec.hh>
 #include <ewoms/eclio/parser/eclipsestate/grid/nnc.hh>
 #include <ewoms/eclio/parser/eclipsestate/initconfig/equil.hh>
@@ -590,6 +593,7 @@ std::size_t packSize(const InitConfig& data, Dune::MPIHelper::MPICommunicator co
     return packSize(data.getEquil(), comm) +
            packSize(data.getFoamConfig(), comm) +
            packSize(data.filleps(), comm) +
+           packSize(data.hasGravity(), comm) +
            packSize(data.restartRequested(), comm) +
            packSize(data.getRestartStep(), comm) +
            packSize(data.getRestartRootName(), comm);
@@ -606,9 +610,7 @@ std::size_t packSize(const SimulationConfig& data, Dune::MPIHelper::MPICommunica
 
 std::size_t packSize(const TimeMap& data, Dune::MPIHelper::MPICommunicator comm)
 {
-    return packSize(data.timeList(), comm) +
-           packSize(data.firstTimeStepMonths(), comm) +
-           packSize(data.firstTimeStepYears(), comm);
+    return packSize(data.timeList(), comm);
 }
 
 std::size_t packSize(const RestartConfig& data, Dune::MPIHelper::MPICommunicator comm)
@@ -629,7 +631,6 @@ std::size_t packSize(const IOConfig& data, Dune::MPIHelper::MPICommunicator comm
            packSize(data.getUNIFOUT(), comm) +
            packSize(data.getFMTIN(), comm) +
            packSize(data.getFMTOUT(), comm) +
-           packSize(data.getFirstRestartStep(), comm) +
            packSize(data.getDeckFileName(), comm) +
            packSize(data.getOutputEnabled(), comm) +
            packSize(data.getOutputDir(), comm) +
@@ -1080,6 +1081,33 @@ std::size_t packSize(const WaterPvtThermal<Scalar>& data,
 template std::size_t packSize(const WaterPvtThermal<double>& data,
                               Dune::MPIHelper::MPICommunicator comm);
 
+template<class Scalar>
+std::size_t packSize(const EclEpsScalingPointsInfo<Scalar>& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.Swl, comm) +
+           packSize(data.Sgl, comm) +
+           packSize(data.Sowl, comm) +
+           packSize(data.Sogl, comm) +
+           packSize(data.krCriticalEps, comm) +
+           packSize(data.Swcr, comm) +
+           packSize(data.Sgcr, comm) +
+           packSize(data.Sowcr, comm) +
+           packSize(data.Sogcr, comm) +
+           packSize(data.Swu, comm) +
+           packSize(data.Sgu, comm) +
+           packSize(data.Sowu, comm) +
+           packSize(data.Sogu, comm) +
+           packSize(data.maxPcow, comm) +
+           packSize(data.maxPcgo, comm) +
+           packSize(data.pcowLeverettFactor, comm) +
+           packSize(data.pcgoLeverettFactor, comm) +
+           packSize(data.maxKrw, comm) +
+           packSize(data.maxKrow, comm) +
+           packSize(data.maxKrog, comm) +
+           packSize(data.maxKrg, comm);
+}
+
 std::size_t packSize(const OilVaporizationProperties& data,
                      Dune::MPIHelper::MPICommunicator comm)
 {
@@ -1321,9 +1349,6 @@ std::size_t packSize(const std::shared_ptr<T>& data,
 
     return size;
 }
-
-template std::size_t packSize(const std::shared_ptr<SpiralICD>& data,
-                              Dune::MPIHelper::MPICommunicator comm);
 
 template<class T>
 std::size_t packSize(const std::unique_ptr<T>& data,
@@ -1893,13 +1918,6 @@ std::size_t packSize(const TimeStampUTC& data,
            packSize(data.microseconds(), comm);
 }
 
-std::size_t packSize(const TimeMap::StepData& data,
-                     Dune::MPIHelper::MPICommunicator comm)
-{
-    return packSize(data.stepnumber, comm) +
-           packSize(data.timestamp, comm);
-}
-
 std::size_t packSize(const EclHysterConfig& data,
                      Dune::MPIHelper::MPICommunicator comm)
 {
@@ -1951,6 +1969,65 @@ std::size_t packSize(const GuideRateConfig::GroupTarget& data,
 {
     return packSize(data.guide_rate, comm) +
            packSize(data.target, comm);
+}
+
+std::size_t packSize(const MULTREGTRecord& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.src_value, comm) +
+           packSize(data.target_value, comm) +
+           packSize(data.trans_mult, comm) +
+           packSize(data.directions, comm) +
+           packSize(data.nnc_behaviour, comm) +
+           packSize(data.region_name, comm);
+}
+
+std::size_t packSize(const MULTREGTScanner& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.getSize(), comm) +
+           packSize(data.getRecords(), comm) +
+           packSize(data.getSearchMap(), comm) +
+           packSize(data.getRegions(), comm) +
+           packSize(data.getDefaultRegion(), comm);
+}
+
+std::size_t packSize(const EclipseConfig& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.init(), comm) +
+           packSize(data.io(), comm) +
+           packSize(data.restart(), comm);
+}
+
+std::size_t packSize(const TransMult& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.getSize(), comm) +
+           packSize(data.getTrans(), comm) +
+           packSize(data.getNames(), comm) +
+           packSize(data.getScanner(), comm);
+}
+
+std::size_t packSize(const FaultFace& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.getIndices(), comm) +
+           packSize(data.getDir(), comm);
+}
+
+std::size_t packSize(const Fault& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.getName(), comm) +
+           packSize(data.getTransMult(), comm) +
+           packSize(data.getFaceList(), comm);
+}
+
+std::size_t packSize(const FaultCollection& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.getFaults(), comm);
 }
 
 ////// pack routines
@@ -2340,6 +2417,7 @@ void pack(const InitConfig& data, std::vector<char>& buffer, int& position,
     pack(data.getEquil(), buffer, position, comm);
     pack(data.getFoamConfig(), buffer, position, comm);
     pack(data.filleps(), buffer, position, comm);
+    pack(data.hasGravity(), buffer, position, comm);
     pack(data.restartRequested(), buffer, position, comm);
     pack(data.getRestartStep(), buffer, position, comm);
     pack(data.getRestartRootName(), buffer, position, comm);
@@ -2359,8 +2437,6 @@ void pack(const TimeMap& data, std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm)
 {
     pack(data.timeList(), buffer, position, comm);
-    pack(data.firstTimeStepMonths(), buffer, position, comm);
-    pack(data.firstTimeStepYears(), buffer, position, comm);
 }
 
 void pack(const RestartConfig& data, std::vector<char>& buffer, int& position,
@@ -2383,7 +2459,6 @@ void pack(const IOConfig& data, std::vector<char>& buffer, int& position,
     pack(data.getUNIFOUT(), buffer, position, comm);
     pack(data.getFMTIN(), buffer, position, comm);
     pack(data.getFMTOUT(), buffer, position, comm);
-    pack(data.getFirstRestartStep(), buffer, position, comm);
     pack(data.getDeckFileName(), buffer, position, comm);
     pack(data.getOutputEnabled(), buffer, position, comm);
     pack(data.getOutputDir(), buffer, position, comm);
@@ -3141,9 +3216,6 @@ void pack(const std::unique_ptr<T>& data, std::vector<char>& buffer, int& positi
         pack(*data, buffer, position, comm);
 }
 
-template void pack(const std::shared_ptr<SpiralICD>& data, std::vector<char>& buffer,
-                   int& position, Dune::MPIHelper::MPICommunicator comm);
-
 void pack(const Dimension& data,
           std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm)
@@ -3744,14 +3816,6 @@ void pack(const TimeStampUTC& data,
     pack(data.microseconds(), buffer, position, comm);
 }
 
-void pack(const TimeMap::StepData& data,
-          std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm)
-{
-    pack(data.stepnumber, buffer, position, comm);
-    pack(data.timestamp, buffer, position, comm);
-}
-
 void pack(const EclHysterConfig& data,
           std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm)
@@ -3809,6 +3873,99 @@ void pack(const GuideRateConfig::GroupTarget& data,
 {
     pack(data.guide_rate, buffer, position, comm);
     pack(data.target, buffer, position, comm);
+}
+
+void pack(const MULTREGTRecord& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.src_value, buffer, position, comm);
+    pack(data.target_value, buffer, position, comm);
+    pack(data.trans_mult, buffer, position, comm);
+    pack(data.directions, buffer, position, comm);
+    pack(data.nnc_behaviour, buffer, position, comm);
+    pack(data.region_name, buffer, position, comm);
+}
+
+void pack(const MULTREGTScanner& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.getSize(), buffer, position, comm);
+    pack(data.getRecords(), buffer, position, comm);
+    pack(data.getSearchMap(), buffer, position, comm);
+    pack(data.getRegions(), buffer, position, comm);
+    pack(data.getDefaultRegion(), buffer, position, comm);
+}
+
+void pack(const EclipseConfig& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.init(), buffer, position, comm);
+    pack(data.io(), buffer, position, comm);
+    pack(data.restart(), buffer, position, comm);
+}
+
+void pack(const TransMult& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.getSize(), buffer, position, comm);
+    pack(data.getTrans(), buffer, position, comm);
+    pack(data.getNames(), buffer, position, comm);
+    pack(data.getScanner(), buffer, position, comm);
+}
+
+void pack(const FaultFace& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.getIndices(), buffer, position, comm);
+    pack(data.getDir(), buffer, position, comm);
+}
+
+void pack(const Fault& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.getName(), buffer, position, comm);
+    pack(data.getTransMult(), buffer, position, comm);
+    pack(data.getFaceList(), buffer, position, comm);
+}
+
+void pack(const FaultCollection& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.getFaults(), buffer, position, comm);
+}
+
+template<class Scalar>
+void pack(const EclEpsScalingPointsInfo<Scalar>& data, std::vector<char>& buffer,
+          int& position, Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.Swl, buffer, position, comm);
+    pack(data.Sgl, buffer, position, comm);
+    pack(data.Sowl, buffer, position, comm);
+    pack(data.Sogl, buffer, position, comm);
+    pack(data.krCriticalEps, buffer, position, comm);
+    pack(data.Swcr, buffer, position, comm);
+    pack(data.Sgcr, buffer, position, comm);
+    pack(data.Sowcr, buffer, position, comm);
+    pack(data.Sogcr, buffer, position, comm);
+    pack(data.Swu, buffer, position, comm);
+    pack(data.Sgu, buffer, position, comm);
+    pack(data.Sowu, buffer, position, comm);
+    pack(data.Sogu, buffer, position, comm);
+    pack(data.maxPcow, buffer, position, comm);
+    pack(data.maxPcgo, buffer, position, comm);
+    pack(data.pcowLeverettFactor, buffer, position, comm);
+    pack(data.pcgoLeverettFactor, buffer, position, comm);
+    pack(data.maxKrw, buffer, position, comm);
+    pack(data.maxKrow, buffer, position, comm);
+    pack(data.maxKrog, buffer, position, comm);
+    pack(data.maxKrg, buffer, position, comm);
 }
 
 /// unpack routines
@@ -4006,6 +4163,33 @@ void unpack(DynamicVector<T>& data, std::vector<char>& buffer, int& position,
     std::vector<T> ddata;
     unpack(ddata, buffer, position, comm);
     data = DynamicVector<T>(ddata);
+}
+
+template<class Scalar>
+void unpack(EclEpsScalingPointsInfo<Scalar>& data, std::vector<char>& buffer,
+            int& position, Dune::MPIHelper::MPICommunicator comm)
+{
+    unpack(data.Swl, buffer, position, comm);
+    unpack(data.Sgl, buffer, position, comm);
+    unpack(data.Sowl, buffer, position, comm);
+    unpack(data.Sogl, buffer, position, comm);
+    unpack(data.krCriticalEps, buffer, position, comm);
+    unpack(data.Swcr, buffer, position, comm);
+    unpack(data.Sgcr, buffer, position, comm);
+    unpack(data.Sowcr, buffer, position, comm);
+    unpack(data.Sogcr, buffer, position, comm);
+    unpack(data.Swu, buffer, position, comm);
+    unpack(data.Sgu, buffer, position, comm);
+    unpack(data.Sowu, buffer, position, comm);
+    unpack(data.Sogu, buffer, position, comm);
+    unpack(data.maxPcow, buffer, position, comm);
+    unpack(data.maxPcgo, buffer, position, comm);
+    unpack(data.pcowLeverettFactor, buffer, position, comm);
+    unpack(data.pcgoLeverettFactor, buffer, position, comm);
+    unpack(data.maxKrw, buffer, position, comm);
+    unpack(data.maxKrow, buffer, position, comm);
+    unpack(data.maxKrog, buffer, position, comm);
+    unpack(data.maxKrg, buffer, position, comm);
 }
 
 void unpack(char* str, std::size_t length, std::vector<char>& buffer, int& position,
@@ -4258,17 +4442,18 @@ void unpack(InitConfig& data, std::vector<char>& buffer, int& position,
 {
     Equil equil;
     FoamConfig foam;
-    bool filleps, restartRequested;
+    bool filleps, hasGravity, restartRequested;
     int restartStep;
     std::string restartRootName;
     unpack(equil, buffer, position, comm);
     unpack(foam, buffer, position, comm);
     unpack(filleps, buffer, position, comm);
+    unpack(hasGravity, buffer, position, comm);
     unpack(restartRequested, buffer, position, comm);
     unpack(restartStep, buffer, position, comm);
     unpack(restartRootName, buffer, position, comm);
-    data = InitConfig(equil, foam, filleps, restartRequested,
-                      restartStep, restartRootName);
+    data = InitConfig(equil, foam, filleps, hasGravity,
+                      restartRequested, restartStep, restartRootName);
 }
 
 void unpack(SimulationConfig& data, std::vector<char>& buffer, int& position,
@@ -4288,13 +4473,9 @@ void unpack(TimeMap& data, std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm)
 {
     std::vector<std::time_t> timeList;
-    std::vector<TimeMap::StepData> firstStepMonths;
-    std::vector<TimeMap::StepData> firstStepYears;
     unpack(timeList, buffer, position, comm);
-    unpack(firstStepMonths, buffer, position, comm);
-    unpack(firstStepYears, buffer, position, comm);
 
-    data = TimeMap(timeList, firstStepMonths, firstStepYears);
+    data = TimeMap(timeList);
 }
 
 void unpack(RestartConfig& data, std::vector<char>& buffer, int& position,
@@ -4320,7 +4501,6 @@ void unpack(IOConfig& data, std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm)
 {
     bool write_init, write_egrid, unifin, unifout, fmtin, fmtout;
-    int firstRestartStep;
     std::string deck_name, output_dir, base_name;
     bool output_enabled, no_sim, ecl_compatible_rst;
 
@@ -4330,7 +4510,6 @@ void unpack(IOConfig& data, std::vector<char>& buffer, int& position,
     unpack(unifout, buffer, position, comm);
     unpack(fmtin, buffer, position, comm);
     unpack(fmtout, buffer, position, comm);
-    unpack(firstRestartStep, buffer, position, comm);
     unpack(deck_name, buffer, position, comm);
     unpack(output_enabled, buffer, position, comm);
     unpack(output_dir, buffer, position, comm);
@@ -4338,7 +4517,7 @@ void unpack(IOConfig& data, std::vector<char>& buffer, int& position,
     unpack(base_name, buffer, position, comm);
     unpack(ecl_compatible_rst, buffer, position, comm);
     data = IOConfig(write_init, write_egrid, unifin, unifout, fmtin, fmtout,
-                    firstRestartStep, deck_name, output_enabled, output_dir,
+                    deck_name, output_enabled, output_dir,
                     no_sim, base_name, ecl_compatible_rst);
 }
 
@@ -4668,11 +4847,11 @@ void unpack(GasPvtMultiplexer<Scalar,enableThermal>& data,
         DryGasPvt<Scalar>* realPvt = new DryGasPvt<Scalar>;
         unpack(*realPvt, buffer, position, comm);
         pvt = realPvt;
-    } else if (data.gasPvtApproach() == PvtApproach::WetGasPvt) {
+    } else if (approach == PvtApproach::WetGasPvt) {
         WetGasPvt<Scalar>* realPvt = new WetGasPvt<Scalar>;
         unpack(*realPvt, buffer, position, comm);
         pvt = realPvt;
-    } else if (data.gasPvtApproach() == PvtApproach::ThermalGasPvt) {
+    } else if (approach == PvtApproach::ThermalGasPvt) {
         GasPvtThermal<Scalar>* realPvt = new GasPvtThermal<Scalar>;
         unpack(*realPvt, buffer, position, comm);
         pvt = realPvt;
@@ -4956,7 +5135,7 @@ void unpack(WaterPvtMultiplexer<Scalar,enableThermal>& data,
         auto* realPvt = new ConstantCompressibilityWaterPvt<Scalar>;
         unpack(*realPvt, buffer, position, comm);
         pvt = realPvt;
-    } else if (data.approach() == PvtApproach::ThermalWaterPvt) {
+    } else if (approach == PvtApproach::ThermalWaterPvt) {
         auto* realPvt = new WaterPvtThermal<Scalar>;
         unpack(*realPvt, buffer, position, comm);
         pvt = realPvt;
@@ -5471,10 +5650,6 @@ void unpack(std::unique_ptr<T>& data, std::vector<char>& buffer, int& position,
         unpack(*data, buffer, position, comm);
     }
 }
-
-template void unpack(std::shared_ptr<SpiralICD>& data,
-                     std::vector<char>& buffer, int& position,
-                     Dune::MPIHelper::MPICommunicator comm);
 
 void unpack(Dimension& data,
             std::vector<char>& buffer, int& position,
@@ -6389,14 +6564,6 @@ void unpack(TimeStampUTC& data,
     data = TimeStampUTC(ymd, hour, minutes, seconds, usec);
 }
 
-void unpack(TimeMap::StepData& data,
-            std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm)
-{
-    unpack(data.stepnumber, buffer, position, comm);
-    unpack(data.timestamp, buffer, position, comm);
-}
-
 void unpack(EclHysterConfig& data,
             std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm)
@@ -6467,37 +6634,159 @@ void unpack(GuideRateConfig::GroupTarget& data,
     unpack(data.target, buffer, position, comm);
 }
 
-#define INSTANTIATE_PACK_VECTOR(T) \
-template std::size_t packSize(const std::vector<T>& data, \
+void unpack(MULTREGTRecord& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    unpack(data.src_value, buffer, position, comm);
+    unpack(data.target_value, buffer, position, comm);
+    unpack(data.trans_mult, buffer, position, comm);
+    unpack(data.directions, buffer, position, comm);
+    unpack(data.nnc_behaviour, buffer, position, comm);
+    unpack(data.region_name, buffer, position, comm);
+}
+
+void unpack(MULTREGTScanner& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    std::array<size_t, 3> size;
+    std::vector<MULTREGTRecord> records;
+    MULTREGTScanner::ExternalSearchMap searchMap;
+    std::map<std::string, std::vector<int>> regions;
+    std::string defaultRegion;
+
+    unpack(size, buffer, position, comm);
+    unpack(records, buffer, position, comm);
+    unpack(searchMap, buffer, position, comm);
+    unpack(regions, buffer, position, comm);
+    unpack(defaultRegion, buffer, position, comm);
+
+    data = MULTREGTScanner(size, records, searchMap, regions, defaultRegion);
+}
+
+void unpack(EclipseConfig& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    InitConfig init;
+    IOConfig io;
+    RestartConfig restart;
+
+    unpack(init, buffer, position, comm);
+    unpack(io, buffer, position, comm);
+    unpack(restart, buffer, position, comm);
+    data = EclipseConfig(io, init, restart);
+}
+
+void unpack(TransMult& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    std::array<size_t, 3> size;
+    std::map<FaceDir::DirEnum, std::vector<double>> trans;
+    std::map<FaceDir::DirEnum, std::string> names;
+    MULTREGTScanner scanner;
+
+    unpack(size, buffer, position, comm);
+    unpack(trans, buffer, position, comm);
+    unpack(names, buffer, position, comm);
+    unpack(scanner, buffer, position, comm);
+    data = TransMult(size, trans, names, scanner);
+}
+
+void unpack(FaultFace& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    std::vector<size_t> indices;
+    FaceDir::DirEnum dir;
+
+    unpack(indices, buffer, position, comm);
+    unpack(dir, buffer, position, comm);
+    data = FaultFace(indices, dir);
+}
+
+void unpack(Fault& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    std::string name;
+    double transMult;
+    std::vector<FaultFace> faceList;
+
+    unpack(name, buffer, position, comm);
+    unpack(transMult, buffer, position, comm);
+    unpack(faceList, buffer, position, comm);
+    data = Fault(name, transMult, faceList);
+}
+
+void unpack(FaultCollection& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    OrderedMap<std::string, Fault> faults;
+
+    unpack(faults, buffer, position, comm);
+    data = FaultCollection(faults);
+}
+
+#define INSTANTIATE_PACK_VECTOR(...) \
+template std::size_t packSize(const std::vector<__VA_ARGS__>& data, \
                               Dune::MPIHelper::MPICommunicator comm); \
-template void pack(const std::vector<T>& data, \
+template void pack(const std::vector<__VA_ARGS__>& data, \
                    std::vector<char>& buffer, int& position, \
                    Dune::MPIHelper::MPICommunicator comm); \
-template void unpack(std::vector<T>& data, \
+template void unpack(std::vector<__VA_ARGS__>& data, \
                      std::vector<char>& buffer, int& position, \
                      Dune::MPIHelper::MPICommunicator comm);
 
-INSTANTIATE_PACK_VECTOR(double);
-INSTANTIATE_PACK_VECTOR(std::vector<double>);
-INSTANTIATE_PACK_VECTOR(bool);
-INSTANTIATE_PACK_VECTOR(char);
-INSTANTIATE_PACK_VECTOR(Ewoms::Tabulated1DFunction<double>);
+INSTANTIATE_PACK_VECTOR(double)
+INSTANTIATE_PACK_VECTOR(std::vector<double>)
+INSTANTIATE_PACK_VECTOR(bool)
+INSTANTIATE_PACK_VECTOR(char)
+INSTANTIATE_PACK_VECTOR(int)
+INSTANTIATE_PACK_VECTOR(Ewoms::Tabulated1DFunction<double>)
+INSTANTIATE_PACK_VECTOR(std::array<double, 3>)
+INSTANTIATE_PACK_VECTOR(EclEpsScalingPointsInfo<double>)
 #undef INSTANTIATE_PACK_VECTOR
 
-#define INSTANTIATE_PACK(T) \
-template std::size_t packSize(const T& data, \
+#define INSTANTIATE_PACK_SHARED_PTR(...) \
+template std::size_t packSize(const std::shared_ptr<__VA_ARGS__>& data, \
                               Dune::MPIHelper::MPICommunicator comm); \
-template void pack(const T& data,                                                     \
+template void pack(const std::shared_ptr<__VA_ARGS__>& data, \
                    std::vector<char>& buffer, int& position, \
                    Dune::MPIHelper::MPICommunicator comm); \
-template void unpack(T& data, \
+template void unpack(std::shared_ptr<__VA_ARGS__>& data, \
                      std::vector<char>& buffer, int& position, \
                      Dune::MPIHelper::MPICommunicator comm);
 
-INSTANTIATE_PACK(double);
-INSTANTIATE_PACK(std::size_t);
-INSTANTIATE_PACK(bool);
-INSTANTIATE_PACK(int);
+INSTANTIATE_PACK_SHARED_PTR(Ewoms::GasPvtMultiplexer<double, true>)
+INSTANTIATE_PACK_SHARED_PTR(Ewoms::OilPvtMultiplexer<double, true>)
+INSTANTIATE_PACK_SHARED_PTR(Ewoms::WaterPvtMultiplexer<double, true>)
+INSTANTIATE_PACK_SHARED_PTR(SpiralICD)
+#undef INSTANTIATE_PACK_SHARED_PTR
+
+#define INSTANTIATE_PACK(...) \
+template std::size_t packSize(const __VA_ARGS__& data, \
+                              Dune::MPIHelper::MPICommunicator comm); \
+template void pack(const __VA_ARGS__& data, \
+                   std::vector<char>& buffer, int& position, \
+                   Dune::MPIHelper::MPICommunicator comm); \
+template void unpack(__VA_ARGS__& data, \
+                     std::vector<char>& buffer, int& position, \
+                     Dune::MPIHelper::MPICommunicator comm);
+
+INSTANTIATE_PACK(double)
+INSTANTIATE_PACK(std::size_t)
+INSTANTIATE_PACK(bool)
+INSTANTIATE_PACK(int)
+INSTANTIATE_PACK(std::array<short,3>)
+INSTANTIATE_PACK(std::array<bool,3>)
+INSTANTIATE_PACK(unsigned char)
+INSTANTIATE_PACK(EclEpsScalingPointsInfo<double>)
+INSTANTIATE_PACK(EclTwoPhaseApproach)
+INSTANTIATE_PACK(EclMultiplexerApproach)
 #undef INSTANTIATE_PACK
 
 } // end namespace Mpi

@@ -83,12 +83,17 @@ class DENSITYRecord;
 class DensityTable;
 class Dimension;
 class EclHysterConfig;
+class EclipseConfig;
 class Eqldims;
+template<class Scalar> struct EclEpsScalingPointsInfo;
 class EDITNNC;
 class EndpointScaling;
 class Equil;
 class EquilRecord;
 class Events;
+class Fault;
+class FaultCollection;
+class FaultFace;
 class FoamConfig;
 class FoamData;
 class InitConfig;
@@ -98,6 +103,8 @@ class JFunc;
 class Location;
 class MessageLimits;
 class MLimits;
+class MULTREGTRecord;
+class MULTREGTScanner;
 class NNC;
 struct NNCdata;
 class OilVaporizationProperties;
@@ -136,6 +143,7 @@ class TableManager;
 class TableSchema;
 class ThresholdPressure;
 class TimeStampUTC;
+class TransMult;
 class Tuning;
 class UDAValue;
 class UDQASTNode;
@@ -296,6 +304,10 @@ std::size_t packSize(const WaterPvtThermal<Scalar>& data, Dune::MPIHelper::MPICo
 template<class T>
 std::size_t packSize(const IOrderSet<T>& data, Dune::MPIHelper::MPICommunicator comm);
 
+template<class Scalar>
+std::size_t packSize(const EclEpsScalingPointsInfo<Scalar>& data,
+                     Dune::MPIHelper::MPICommunicator comm);
+
 ////// pack routines
 
 template<class T>
@@ -453,6 +465,10 @@ void pack(const WaterPvtThermal<Scalar>& data, std::vector<char>& buffer,
 
 template<class T>
 void pack(const IOrderSet<T>& data, std::vector<char>& buffer,
+          int& position, Dune::MPIHelper::MPICommunicator comm);
+
+template<class Scalar>
+void pack(const EclEpsScalingPointsInfo<Scalar>& data, std::vector<char>& buffer,
           int& position, Dune::MPIHelper::MPICommunicator comm);
 
 void pack(const char* str, std::vector<char>& buffer, int& position,
@@ -614,6 +630,10 @@ template<class T>
 void unpack(IOrderSet<T>& data, std::vector<char>& buffer,
             int& position, Dune::MPIHelper::MPICommunicator comm);
 
+template<class Scalar>
+void unpack(EclEpsScalingPointsInfo<Scalar>& data, std::vector<char>& buffer,
+            int& position, Dune::MPIHelper::MPICommunicator comm);
+
 void unpack(char* str, std::size_t length, std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm);
 
@@ -652,12 +672,16 @@ ADD_PACK_PROTOTYPES(DENSITYRecord)
 ADD_PACK_PROTOTYPES(DensityTable)
 ADD_PACK_PROTOTYPES(Dimension)
 ADD_PACK_PROTOTYPES(EclHysterConfig)
+ADD_PACK_PROTOTYPES(EclipseConfig)
 ADD_PACK_PROTOTYPES(EDITNNC)
 ADD_PACK_PROTOTYPES(EndpointScaling)
 ADD_PACK_PROTOTYPES(Equil)
 ADD_PACK_PROTOTYPES(Eqldims)
 ADD_PACK_PROTOTYPES(EquilRecord)
 ADD_PACK_PROTOTYPES(Events)
+ADD_PACK_PROTOTYPES(Fault)
+ADD_PACK_PROTOTYPES(FaultCollection)
+ADD_PACK_PROTOTYPES(FaultFace)
 ADD_PACK_PROTOTYPES(FoamConfig)
 ADD_PACK_PROTOTYPES(FoamData)
 ADD_PACK_PROTOTYPES(GConSale)
@@ -677,6 +701,8 @@ ADD_PACK_PROTOTYPES(JFunc)
 ADD_PACK_PROTOTYPES(Location)
 ADD_PACK_PROTOTYPES(MessageLimits)
 ADD_PACK_PROTOTYPES(MLimits)
+ADD_PACK_PROTOTYPES(MULTREGTRecord)
+ADD_PACK_PROTOTYPES(MULTREGTScanner)
 ADD_PACK_PROTOTYPES(NNC)
 ADD_PACK_PROTOTYPES(NNCdata)
 ADD_PACK_PROTOTYPES(OilVaporizationProperties)
@@ -718,8 +744,8 @@ ADD_PACK_PROTOTYPES(TableManager)
 ADD_PACK_PROTOTYPES(TableSchema)
 ADD_PACK_PROTOTYPES(ThresholdPressure)
 ADD_PACK_PROTOTYPES(TimeMap)
-ADD_PACK_PROTOTYPES(TimeMap::StepData)
 ADD_PACK_PROTOTYPES(TimeStampUTC)
+ADD_PACK_PROTOTYPES(TransMult)
 ADD_PACK_PROTOTYPES(Tuning)
 ADD_PACK_PROTOTYPES(UDAValue)
 ADD_PACK_PROTOTYPES(UDQActive)

@@ -33,7 +33,6 @@
 #include <ewoms/common/propertysystem.hh>
 
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
-#include <ewoms/eclio/parser/eclipsestate/grid/gridproperties.hh>
 #include <ewoms/eclio/parser/eclipsestate/grid/fieldpropsmanager.hh>
 #include <ewoms/eclio/parser/eclipsestate/grid/facedir.hh>
 #include <ewoms/eclio/parser/eclipsestate/grid/transmult.hh>

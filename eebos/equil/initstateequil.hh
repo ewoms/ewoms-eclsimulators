@@ -38,7 +38,6 @@
 
 #include <ewoms/eclio/parser/units/units.hh>
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
-#include <ewoms/eclio/parser/eclipsestate/grid/gridproperty.hh>
 #include <ewoms/eclio/parser/eclipsestate/initconfig/equil.hh>
 #include <ewoms/eclio/parser/eclipsestate/initconfig/initconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/tablecontainer.hh>

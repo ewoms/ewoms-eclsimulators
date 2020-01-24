@@ -583,35 +583,12 @@ public:
             SolventModule::initFromDeck(vanguard.deck(), vanguard.eclState());
             PolymerModule::initFromDeck(vanguard.deck(), vanguard.eclState());
             FoamModule::initFromDeck(vanguard.deck(), vanguard.eclState());
-#if HAVE_MPI
-            if (comm.size() > 1) {
-                EclMpiSerializer ser(comm);
-                size_t size = SolventModule::packSize(ser) +
-                              PolymerModule::packSize(ser) +
-                              FoamModule::packSize(ser);
-                std::vector<char> buffer(size);
-                int position = 0;
-                SolventModule::pack(buffer, position, ser);
-                PolymerModule::pack(buffer, position, ser);
-                FoamModule::pack(buffer, position, ser);
-                comm.broadcast(&position, 1, 0);
-                comm.broadcast(buffer.data(), position, 0);
-            }
-#endif
         }
-        else {
-#if HAVE_MPI
-            int size;
-            comm.broadcast(&size, 1, 0);
-            std::vector<char> buffer(size);
-            comm.broadcast(buffer.data(), size, 0);
-            int position = 0;
-            EclMpiSerializer ser(comm);
-            SolventModule::unpack(buffer, position, ser);
-            PolymerModule::unpack(buffer, position, ser);
-            FoamModule::unpack(buffer, position, ser);
-#endif
-        }
+
+        EclMpiSerializer ser(comm);
+        ser.staticBroadcast<SolventModule>();
+        ser.staticBroadcast<PolymerModule>();
+        ser.staticBroadcast<FoamModule>();
 
         // create the ECL writer
         eclWriter_.reset(new EclWriterType(simulator));
@@ -661,10 +638,9 @@ public:
         // disables gravity, else the standard value of the gravity constant at sea level
         // on earth is used
         this->gravity_ = 0.0;
-        const auto& deck = simulator.vanguard().deck();
         if (EWOMS_GET_PARAM(TypeTag, bool, EnableGravity))
             this->gravity_[dim - 1] = 9.80665;
-        if (deck.hasKeyword("NOGRAV"))
+        if (!eclState.getInitConfig().hasGravity())
             this->gravity_[dim - 1] = 0.0;
 
         if (enableTuning_) {
@@ -2334,6 +2310,7 @@ private:
         const auto& vanguard = simulator.vanguard();
         const auto& deck = vanguard.deck();
         const auto& eclState = vanguard.eclState();
+        const auto& comm = vanguard.gridView().comm();
 
         // the PVT and saturation region numbers
         updatePvtnum_();
@@ -2358,7 +2335,13 @@ private:
             compressedToCartesianElemIdx[elemIdx] = vanguard.cartesianIndex(elemIdx);
 
         materialLawManager_ = std::make_shared<EclMaterialLawManager>();
-        materialLawManager_->initFromDeck(deck, eclState, compressedToCartesianElemIdx);
+        if (comm.rank() == 0)
+            materialLawManager_->initFromDeck(deck, eclState);
+
+        EclMpiSerializer ser(comm);
+        ser.broadcast(*materialLawManager_);
+
+        materialLawManager_->initParamsForElements(eclState, compressedToCartesianElemIdx);
         ////////////////////////////////
     }
 
@@ -2441,20 +2424,25 @@ private:
         const auto& simulator = this->simulator();
         const auto& deck = simulator.vanguard().deck();
         const auto& eclState = simulator.vanguard().eclState();
+        const auto& comm = simulator.gridView().comm();
 
-        FluidSystem::initFromDeck(deck, eclState);
+        if (comm.rank() == 0)
+            FluidSystem::initFromDeck(deck, eclState);
+
+        EclMpiSerializer ser(comm);
+        ser.staticBroadcast<FluidSystem>();
    }
 
     void readInitialCondition_()
     {
         const auto& simulator = this->simulator();
         const auto& vanguard = simulator.vanguard();
+        const auto& eclState = vanguard.eclState();
 
-        const auto& deck = vanguard.deck();
-        if (!deck.hasKeyword("EQUIL"))
-            readExplicitInitialCondition_();
-        else
+        if (eclState.getInitConfig().hasEquil())
             readEquilInitialCondition_();
+        else
+            readExplicitInitialCondition_();
 
         readBlackoilExtentionsInitialConditions_();
 

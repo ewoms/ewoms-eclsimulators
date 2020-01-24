@@ -36,7 +36,6 @@
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
 #include <ewoms/eclio/parser/eclipsestate/grid/fieldpropsmanager.hh>
-#include <ewoms/eclio/parser/eclipsestate/grid/gridproperty.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/eqldims.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/simulationconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/thresholdpressure.hh>

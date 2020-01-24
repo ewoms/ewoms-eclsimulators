@@ -63,7 +63,6 @@ struct SetupTest {
         ecl_state.reset(new Ewoms::EclipseState(deck) );
         {
           const Ewoms::TableManager table ( deck );
-          const Ewoms::Eclipse3DProperties eclipseProperties ( deck , table, ecl_state->getInputGrid());
           const Ewoms::Runspec runspec (deck);
           schedule.reset( new Ewoms::Schedule(deck, *ecl_state));
           summaryState.reset( new Ewoms::SummaryState(std::chrono::system_clock::from_time_t(schedule->getStartTime())));

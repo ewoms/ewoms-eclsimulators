@@ -24,6 +24,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <ewoms/eclio/opmlog/location.hh>
+#include <ewoms/material/fluidmatrixinteractions/eclepsscalingpoints.hh>
 #include <ewoms/material/fluidsystems/blackoilpvt/drygaspvt.hh>
 #include <ewoms/material/fluidsystems/blackoilpvt/solventpvt.hh>
 #include <ewoms/material/fluidsystems/blackoilpvt/wetgaspvt.hh>
@@ -208,9 +209,7 @@ Ewoms::FoamData getFoamData()
 
 Ewoms::TimeMap getTimeMap()
 {
-    return Ewoms::TimeMap({123},
-                        {{1, Ewoms::TimeStampUTC(123)}},
-                        {{2, Ewoms::TimeStampUTC(456)}});
+    return Ewoms::TimeMap({123});
 }
 
 Ewoms::PvtgTable getPvtgTable()
@@ -705,7 +704,7 @@ BOOST_AUTO_TEST_CASE(InitConfig)
 #if HAVE_MPI
     Ewoms::InitConfig val1(Ewoms::Equil({getEquilRecord(), getEquilRecord()}),
                          Ewoms::FoamConfig({getFoamData(), getFoamData()}),
-                         true, true, 20, "test1");
+                         true, true, true, 20, "test1");
     auto val2 = PackUnpack(val1);
     BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
     BOOST_CHECK(val1 == std::get<0>(val2));
@@ -726,16 +725,6 @@ BOOST_AUTO_TEST_CASE(RestartSchedule)
 {
 #if HAVE_MPI
     Ewoms::RestartSchedule val1(1, 2, 3);
-    auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(StepData)
-{
-#if HAVE_MPI
-    Ewoms::TimeMap::StepData val1{1, Ewoms::TimeStampUTC(123456)};
     auto val2 = PackUnpack(val1);
     BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
     BOOST_CHECK(val1 == std::get<0>(val2));
@@ -767,7 +756,7 @@ BOOST_AUTO_TEST_CASE(RestartConfig)
 BOOST_AUTO_TEST_CASE(IOConfig)
 {
 #if HAVE_MPI
-    Ewoms::IOConfig val1(true, false, true, false, false, true, 1, "test1", true,
+    Ewoms::IOConfig val1(true, false, true, false, false, true, "test1", true,
                        "test2", true, "test3", false);
     auto val2 = PackUnpack(val1);
     BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
@@ -2241,6 +2230,123 @@ BOOST_AUTO_TEST_CASE(WellBrineProperties)
 {
 #ifdef HAVE_MPI
     Ewoms::WellBrineProperties val1{1.0};
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(MULTREGTRecord)
+{
+#ifdef HAVE_MPI
+    Ewoms::MULTREGTRecord val1{1, 2, 3.0, 4, Ewoms::MULTREGT::ALL, "test"};
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(MULTREGTScanner)
+{
+#ifdef HAVE_MPI
+    std::vector<Ewoms::MULTREGTRecord> records{{1, 2, 3.0, 4, Ewoms::MULTREGT::ALL, "test1"}};
+    std::map<std::pair<int, int>, int> searchRecord{{{5,6},0}};
+    Ewoms::MULTREGTScanner::ExternalSearchMap searchMap;
+    searchMap.insert({"test2", searchRecord});
+    Ewoms::MULTREGTScanner val1({1, 2, 3},
+                              records,
+                              searchMap,
+                              {{"test3", {7,8}}},
+                              "test4");
+
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(EclipseConfig)
+{
+#ifdef HAVE_MPI
+    Ewoms::IOConfig io(true, false, true, false, false, true, "test1", true,
+                     "test2", true, "test3", false);
+    Ewoms::InitConfig init(Ewoms::Equil({getEquilRecord(), getEquilRecord()}),
+                         Ewoms::FoamConfig({getFoamData(), getFoamData()}),
+                         true, true, true, 20, "test1");
+    Ewoms::DynamicState<Ewoms::RestartSchedule> rsched({Ewoms::RestartSchedule(1, 2, 3)}, 2);
+    Ewoms::DynamicState<std::map<std::string,int>> rkw({{{"test",3}}}, 3);
+    Ewoms::RestartConfig restart(getTimeMap(), 1, true, rsched, rkw, {false, true});
+    Ewoms::EclipseConfig val1{io, init, restart};
+
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(TransMult)
+{
+#ifdef HAVE_MPI
+    std::vector<Ewoms::MULTREGTRecord> records{{1, 2, 3.0, 4, Ewoms::MULTREGT::ALL, "test1"}};
+    std::map<std::pair<int, int>, int> searchRecord{{{5,6},0}};
+    Ewoms::MULTREGTScanner::ExternalSearchMap searchMap;
+    searchMap.insert({"test2", searchRecord});
+    Ewoms::MULTREGTScanner scanner({1, 2, 3},
+                                 records,
+                                 searchMap,
+                                 {{"test3", {7,8}}},
+                                 "test4");
+
+    Ewoms::TransMult val1({1, 2, 3},
+                        {{Ewoms::FaceDir::YPlus, {4.0, 5.0}}},
+                        {{Ewoms::FaceDir::ZPlus, "test1"}},
+                        scanner);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(FaultFace)
+{
+#ifdef HAVE_MPI
+    Ewoms::FaultFace val1({1,2,3,4,5,6}, Ewoms::FaceDir::YPlus);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Fault)
+{
+#ifdef HAVE_MPI
+    Ewoms::Fault val1("test", 1.0, {{{1,2,3,4,5,6}, Ewoms::FaceDir::YPlus}});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(FaultCollection)
+{
+#ifdef HAVE_MPI
+    Ewoms::Fault fault("test", 1.0, {{{1,2,3,4,5,6}, Ewoms::FaceDir::YPlus}});
+    Ewoms::OrderedMap<std::string, Ewoms::Fault> faults;
+    faults.insert({"test2", fault});
+    Ewoms::FaultCollection val1(faults);
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(EclEpsScalingPointsInfo)
+{
+#ifdef HAVE_MPI
+    Ewoms::EclEpsScalingPointsInfo<double> val1{ 1.0,  2.0,  3.0,  4.0,  5.0,
+                                               6.0,  7.0,  8.0,  9.0, 10.0,
+                                              11.0, 12.0, 13.0, 14.0, 15.0,
+                                              16.0, 17.0, 18.0, 19.0, 20.0, 21};
     auto val2 = PackUnpack(val1);
     BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
     BOOST_CHECK(val1 == std::get<0>(val2));
