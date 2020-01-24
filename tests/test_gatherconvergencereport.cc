@@ -34,14 +34,14 @@ struct MPIError
     int errorcode;
 };
 
-void MPI_err_handler(MPI_Comm*, int* err_code, ...)
+void mpiErrorHandler(MPI_Comm*, int* errCode, ...)
 {
-    std::vector<char> err_string(MPI_MAX_ERROR_STRING);
-    int err_length;
-    MPI_Error_string(*err_code, err_string.data(), &err_length);
-    std::string s(err_string.data(), err_length);
+    std::vector<char> errString(MPI_MAX_ERROR_STRING);
+    int errLength;
+    MPI_Error_string(*errCode, errString.data(), &errLength);
+    std::string s(errString.data(), errLength);
     std::cerr << "An MPI Error ocurred:" << std::endl << s << std::endl;
-    throw MPIError(s, *err_code);
+    throw MPIError(s, *errCode);
 }
 #endif
 
@@ -109,7 +109,7 @@ int main(int argc, char** argv)
     // register a throwing error handler to allow for
     // debugging with "catch throw" in gdb
     MPI_Errhandler handler;
-    MPI_Comm_create_errhandler(MPI_err_handler, &handler);
+    MPI_Comm_create_errhandler(mpiErrorHandler, &handler);
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, handler);
 #endif
     return boost::unit_test::unit_test_main(&init_unit_test_func, argc, argv);

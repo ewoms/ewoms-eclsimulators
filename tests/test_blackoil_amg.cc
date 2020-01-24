@@ -41,14 +41,14 @@ public:
     int errorcode;
 };
 
-void MPI_err_handler(MPI_Comm *, int *err_code, ...){
-    char *err_string=new char[MPI_MAX_ERROR_STRING];
-    int err_length;
-    MPI_Error_string(*err_code, err_string, &err_length);
-    std::string s(err_string, err_length);
+void mpiErrorHandler(MPI_Comm *, int *errCode, ...){
+    char *errString=new char[MPI_MAX_ERROR_STRING];
+    int errLength;
+    MPI_Error_string(*errCode, errString, &errLength);
+    std::string s(errString, errLength);
     std::cerr << "An MPI Error ocurred:"<<std::endl<<s<<std::endl;
-    delete[] err_string;
-    throw MPIError(s, *err_code);
+    delete[] errString;
+    throw MPIError(s, *errCode);
 }
 
 typedef Dune::OwnerOverlapCopyAttributeSet GridAttributes;

@@ -51,45 +51,45 @@ namespace
         }
     }
 
-    Ewoms::DeferredLogger::Message unpackSingleMessage(const std::vector<char>& recv_buffer, int& offset)
+    Ewoms::DeferredLogger::Message unpackSingleMessage(const std::vector<char>& recvBuffer, int& offset)
     {
         int64_t flag;
-        auto* data = const_cast<char*>(recv_buffer.data());
-        MPI_Unpack(data, recv_buffer.size(), &offset, &flag, 1, MPI_INT64_T, MPI_COMM_WORLD);
+        auto* data = const_cast<char*>(recvBuffer.data());
+        MPI_Unpack(data, recvBuffer.size(), &offset, &flag, 1, MPI_INT64_T, MPI_COMM_WORLD);
 
         // unpack tag
         unsigned int tagsize;
-        MPI_Unpack(data, recv_buffer.size(), &offset, &tagsize, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
+        MPI_Unpack(data, recvBuffer.size(), &offset, &tagsize, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
         std::string tag;
         if (tagsize>0) {
             std::vector<char> tagchars(tagsize);
-            MPI_Unpack(data, recv_buffer.size(), &offset, tagchars.data(), tagsize, MPI_CHAR, MPI_COMM_WORLD);
+            MPI_Unpack(data, recvBuffer.size(), &offset, tagchars.data(), tagsize, MPI_CHAR, MPI_COMM_WORLD);
             tag = std::string(tagchars.data(), tagsize);
         }
         // unpack text
         unsigned int textsize;
-        MPI_Unpack(data, recv_buffer.size(), &offset, &textsize, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
+        MPI_Unpack(data, recvBuffer.size(), &offset, &textsize, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
         std::string text;
         if (textsize>0) {
             std::vector<char> textchars(textsize);
-            MPI_Unpack(data, recv_buffer.size(), &offset, textchars.data(), textsize, MPI_CHAR, MPI_COMM_WORLD);
+            MPI_Unpack(data, recvBuffer.size(), &offset, textchars.data(), textsize, MPI_CHAR, MPI_COMM_WORLD);
             text = std::string (textchars.data(), textsize);
         }
         return Ewoms::DeferredLogger::Message({flag, tag, text});
     }
 
-    std::vector<Ewoms::DeferredLogger::Message> unpackMessages(const std::vector<char>& recv_buffer, const std::vector<int>& displ)
+    std::vector<Ewoms::DeferredLogger::Message> unpackMessages(const std::vector<char>& recvBuffer, const std::vector<int>& displ)
     {
         std::vector<Ewoms::DeferredLogger::Message> messages;
-        const int num_processes = displ.size() - 1;
-        auto* data = const_cast<char*>(recv_buffer.data());
-        for (int process = 0; process < num_processes; ++process) {
+        const int numProcesses = displ.size() - 1;
+        auto* data = const_cast<char*>(recvBuffer.data());
+        for (int process = 0; process < numProcesses; ++process) {
             int offset = displ[process];
             // unpack number of messages
             unsigned int messagesize;
-            MPI_Unpack(data, recv_buffer.size(), &offset, &messagesize, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
+            MPI_Unpack(data, recvBuffer.size(), &offset, &messagesize, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
             for (unsigned int i=0; i<messagesize; i++) {
-                messages.push_back(unpackSingleMessage(recv_buffer, offset));
+                messages.push_back(unpackSingleMessage(recvBuffer, offset));
             }
             assert(offset == displ[process + 1]);
         }
@@ -107,51 +107,51 @@ namespace Ewoms
 
         int num_messages = local_deferredlogger.messages_.size();
 
-        int int64_mpi_pack_size;
-        MPI_Pack_size(1, MPI_INT64_T, MPI_COMM_WORLD, &int64_mpi_pack_size);
-        int unsigned_int_mpi_pack_size;
-        MPI_Pack_size(1, MPI_UNSIGNED, MPI_COMM_WORLD, &unsigned_int_mpi_pack_size);
+        int int64MpiPackSize;
+        MPI_Pack_size(1, MPI_INT64_T, MPI_COMM_WORLD, &int64MpiPackSize);
+        int unsignedIntMpiPackSize;
+        MPI_Pack_size(1, MPI_UNSIGNED, MPI_COMM_WORLD, &unsignedIntMpiPackSize);
 
         // store number of messages;
-        int message_size = unsigned_int_mpi_pack_size;
+        int messageSize = unsignedIntMpiPackSize;
         // store 1 int64 per message for flag
-        message_size += num_messages*int64_mpi_pack_size;
+        messageSize += num_messages*int64MpiPackSize;
         // store 2 unsigned ints per message for length of tag and length of text
-        message_size += num_messages*2*unsigned_int_mpi_pack_size;
+        messageSize += num_messages*2*unsignedIntMpiPackSize;
 
         for (const auto lm : local_deferredlogger.messages_) {
-            int string_mpi_pack_size;
-            MPI_Pack_size(lm.tag.size(), MPI_CHAR, MPI_COMM_WORLD, &string_mpi_pack_size);
-            message_size += string_mpi_pack_size;
-            MPI_Pack_size(lm.text.size(), MPI_CHAR, MPI_COMM_WORLD, &string_mpi_pack_size);
-            message_size += string_mpi_pack_size;
+            int stringMpiPackSize;
+            MPI_Pack_size(lm.tag.size(), MPI_CHAR, MPI_COMM_WORLD, &stringMpiPackSize);
+            messageSize += stringMpiPackSize;
+            MPI_Pack_size(lm.text.size(), MPI_CHAR, MPI_COMM_WORLD, &stringMpiPackSize);
+            messageSize += stringMpiPackSize;
         }
 
         // Pack local messages.
-        std::vector<char> buffer(message_size);
+        std::vector<char> buffer(messageSize);
 
         int offset = 0;
         packMessages(local_deferredlogger.messages_, buffer, offset);
-        assert(offset == message_size);
+        assert(offset == messageSize);
 
         // Get message sizes and create offset/displacement array for gathering.
-        int num_processes = -1;
-        MPI_Comm_size(MPI_COMM_WORLD, &num_processes);
-        std::vector<int> message_sizes(num_processes);
-        MPI_Allgather(&message_size, 1, MPI_INT, message_sizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
-        std::vector<int> displ(num_processes + 1, 0);
-        std::partial_sum(message_sizes.begin(), message_sizes.end(), displ.begin() + 1);
+        int numProcesses = -1;
+        MPI_Comm_size(MPI_COMM_WORLD, &numProcesses);
+        std::vector<int> messageSizes(numProcesses);
+        MPI_Allgather(&messageSize, 1, MPI_INT, messageSizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
+        std::vector<int> displ(numProcesses + 1, 0);
+        std::partial_sum(messageSizes.begin(), messageSizes.end(), displ.begin() + 1);
 
         // Gather.
-        std::vector<char> recv_buffer(displ.back());
+        std::vector<char> recvBuffer(displ.back());
         MPI_Allgatherv(buffer.data(), buffer.size(), MPI_PACKED,
-                       const_cast<char*>(recv_buffer.data()), message_sizes.data(),
+                       const_cast<char*>(recvBuffer.data()), messageSizes.data(),
                        displ.data(), MPI_PACKED,
                        MPI_COMM_WORLD);
 
         // Unpack.
         Ewoms::DeferredLogger global_deferredlogger;
-        global_deferredlogger.messages_ = unpackMessages(recv_buffer, displ);
+        global_deferredlogger.messages_ = unpackMessages(recvBuffer, displ);
         return global_deferredlogger;
     }
 

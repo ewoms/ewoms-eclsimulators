@@ -334,22 +334,22 @@ std::size_t packSize(const std::vector<bool,A>& data, Dune::MPIHelper::MPICommun
 
 template<std::size_t I = 0, typename Tuple>
 typename std::enable_if<I == std::tuple_size<Tuple>::value, std::size_t>::type
-pack_size_tuple_entry(const Tuple&, Dune::MPIHelper::MPICommunicator)
+packSize_tuple_entry(const Tuple&, Dune::MPIHelper::MPICommunicator)
 {
     return 0;
 }
 
 template<std::size_t I = 0, typename Tuple>
 typename std::enable_if<I != std::tuple_size<Tuple>::value, std::size_t>::type
-pack_size_tuple_entry(const Tuple& tuple, Dune::MPIHelper::MPICommunicator comm)
+packSize_tuple_entry(const Tuple& tuple, Dune::MPIHelper::MPICommunicator comm)
 {
-    return packSize(std::get<I>(tuple), comm) + pack_size_tuple_entry<I+1>(tuple, comm);
+    return packSize(std::get<I>(tuple), comm) + packSize_tuple_entry<I+1>(tuple, comm);
 }
 
 template<class... Ts>
 std::size_t packSize(const std::tuple<Ts...>& data, Dune::MPIHelper::MPICommunicator comm)
 {
-    return pack_size_tuple_entry(data, comm);
+    return packSize_tuple_entry(data, comm);
 }
 
 template<class T, class H, class KE, class A>

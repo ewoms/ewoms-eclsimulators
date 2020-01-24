@@ -3206,11 +3206,11 @@ namespace Ewoms
         if (water_table_id <= 0) {
             EWOMS_DEFLOG_THROW(std::runtime_error, "Unused SKPRWAT table id used for well " << name(), deferred_logger);
         }
-        const auto& water_table_func = PolymerModule::getSkprwatTable(water_table_id);
+        const auto& waterTableFunc = PolymerModule::getSkprwatTable(water_table_id);
         const EvalWell throughput_eval(numWellEq_ + numEq, throughput);
         // the skin pressure when injecting water, which also means the polymer concentration is zero
         EvalWell pskin_water(numWellEq_ + numEq, 0.0);
-        pskin_water = water_table_func.eval(throughput_eval, water_velocity);
+        pskin_water = waterTableFunc.eval(throughput_eval, water_velocity);
         return pskin_water;
     }
 
@@ -3240,7 +3240,7 @@ namespace Ewoms
         const EvalWell throughput_eval(numWellEq_ + numEq, throughput);
         // the skin pressure when injecting water, which also means the polymer concentration is zero
         EvalWell pskin_poly(numWellEq_ + numEq, 0.0);
-        pskin_poly = skprpolytable.table_func.eval(throughput_eval, water_velocity_abs);
+        pskin_poly = skprpolytable.tableFunc.eval(throughput_eval, water_velocity_abs);
         if (poly_inj_conc == reference_concentration) {
             return sign * pskin_poly;
         }
@@ -3262,13 +3262,13 @@ namespace Ewoms
                                           "while injecting polymer molecular weight is requested for well " << name(), deferred_logger);
         }
         const int table_id = well_ecl_.getPolymerProperties().m_plymwinjtable;
-        const auto& table_func = PolymerModule::getPlymwinjTable(table_id);
+        const auto& tableFunc = PolymerModule::getPlymwinjTable(table_id);
         const EvalWell throughput_eval(numWellEq_ + numEq, throughput);
         EvalWell molecular_weight(numWellEq_ + numEq, 0.);
         if (wpolymer() == 0.) { // not injecting polymer
             return molecular_weight;
         }
-        molecular_weight = table_func.eval(throughput_eval, Ewoms::abs(water_velocity));
+        molecular_weight = tableFunc.eval(throughput_eval, Ewoms::abs(water_velocity));
         return molecular_weight;
     }
 

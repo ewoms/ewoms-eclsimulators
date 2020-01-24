@@ -80,44 +80,44 @@ namespace
 
     int messageSize(const ConvergenceReport& local_report)
     {
-        int int_pack_size = 0;
-        MPI_Pack_size(1, MPI_INT, MPI_COMM_WORLD, &int_pack_size);
+        int intPackSize = 0;
+        MPI_Pack_size(1, MPI_INT, MPI_COMM_WORLD, &intPackSize);
         const int num_rf = local_report.reservoirFailures().size();
         const int num_wf = local_report.wellFailures().size();
         int wellnames_length = 0;
         for (const auto f : local_report.wellFailures()) {
             wellnames_length += (f.wellName().size() + 1);
         }
-        return (2 + 3*num_rf + 4*num_wf) * int_pack_size + wellnames_length;
+        return (2 + 3*num_rf + 4*num_wf) * intPackSize + wellnames_length;
     }
 
-    ConvergenceReport::ReservoirFailure unpackReservoirFailure(const std::vector<char>& recv_buffer, int& offset)
+    ConvergenceReport::ReservoirFailure unpackReservoirFailure(const std::vector<char>& recvBuffer, int& offset)
     {
         int type = -1;
         int severity = -1;
         int phase = -1;
-        auto* data = const_cast<char*>(recv_buffer.data());
-        MPI_Unpack(data, recv_buffer.size(), &offset, &type, 1, MPI_INT, MPI_COMM_WORLD);
-        MPI_Unpack(data, recv_buffer.size(), &offset, &severity, 1, MPI_INT, MPI_COMM_WORLD);
-        MPI_Unpack(data, recv_buffer.size(), &offset, &phase, 1, MPI_INT, MPI_COMM_WORLD);
+        auto* data = const_cast<char*>(recvBuffer.data());
+        MPI_Unpack(data, recvBuffer.size(), &offset, &type, 1, MPI_INT, MPI_COMM_WORLD);
+        MPI_Unpack(data, recvBuffer.size(), &offset, &severity, 1, MPI_INT, MPI_COMM_WORLD);
+        MPI_Unpack(data, recvBuffer.size(), &offset, &phase, 1, MPI_INT, MPI_COMM_WORLD);
         return ConvergenceReport::ReservoirFailure(static_cast<ConvergenceReport::ReservoirFailure::Type>(type),
                                                    static_cast<ConvergenceReport::Severity>(severity),
                                                    phase);
     }
 
-    ConvergenceReport::WellFailure unpackWellFailure(const std::vector<char>& recv_buffer, int& offset)
+    ConvergenceReport::WellFailure unpackWellFailure(const std::vector<char>& recvBuffer, int& offset)
     {
         int type = -1;
         int severity = -1;
         int phase = -1;
-        auto* data = const_cast<char*>(recv_buffer.data());
-        MPI_Unpack(data, recv_buffer.size(), &offset, &type, 1, MPI_INT, MPI_COMM_WORLD);
-        MPI_Unpack(data, recv_buffer.size(), &offset, &severity, 1, MPI_INT, MPI_COMM_WORLD);
-        MPI_Unpack(data, recv_buffer.size(), &offset, &phase, 1, MPI_INT, MPI_COMM_WORLD);
+        auto* data = const_cast<char*>(recvBuffer.data());
+        MPI_Unpack(data, recvBuffer.size(), &offset, &type, 1, MPI_INT, MPI_COMM_WORLD);
+        MPI_Unpack(data, recvBuffer.size(), &offset, &severity, 1, MPI_INT, MPI_COMM_WORLD);
+        MPI_Unpack(data, recvBuffer.size(), &offset, &phase, 1, MPI_INT, MPI_COMM_WORLD);
         int name_length = -1;
-        MPI_Unpack(data, recv_buffer.size(), &offset, &name_length, 1, MPI_INT, MPI_COMM_WORLD);
+        MPI_Unpack(data, recvBuffer.size(), &offset, &name_length, 1, MPI_INT, MPI_COMM_WORLD);
         std::vector<char> namechars(name_length);
-        MPI_Unpack(data, recv_buffer.size(), &offset, namechars.data(), name_length, MPI_CHAR, MPI_COMM_WORLD);
+        MPI_Unpack(data, recvBuffer.size(), &offset, namechars.data(), name_length, MPI_CHAR, MPI_COMM_WORLD);
         std::string name(namechars.data());
         return ConvergenceReport::WellFailure(static_cast<ConvergenceReport::WellFailure::Type>(type),
                                               static_cast<ConvergenceReport::Severity>(severity),
@@ -125,33 +125,33 @@ namespace
                                               name);
     }
 
-    ConvergenceReport unpackSingleConvergenceReport(const std::vector<char>& recv_buffer, int& offset)
+    ConvergenceReport unpackSingleConvergenceReport(const std::vector<char>& recvBuffer, int& offset)
     {
         ConvergenceReport cr;
         int num_rf = -1;
-        auto* data = const_cast<char*>(recv_buffer.data());
-        MPI_Unpack(data, recv_buffer.size(), &offset, &num_rf, 1, MPI_INT, MPI_COMM_WORLD);
+        auto* data = const_cast<char*>(recvBuffer.data());
+        MPI_Unpack(data, recvBuffer.size(), &offset, &num_rf, 1, MPI_INT, MPI_COMM_WORLD);
         for (int rf = 0; rf < num_rf; ++rf) {
-            ConvergenceReport::ReservoirFailure f = unpackReservoirFailure(recv_buffer, offset);
+            ConvergenceReport::ReservoirFailure f = unpackReservoirFailure(recvBuffer, offset);
             cr.setReservoirFailed(f);
         }
         int num_wf = -1;
-        MPI_Unpack(data, recv_buffer.size(), &offset, &num_wf, 1, MPI_INT, MPI_COMM_WORLD);
+        MPI_Unpack(data, recvBuffer.size(), &offset, &num_wf, 1, MPI_INT, MPI_COMM_WORLD);
         for (int wf = 0; wf < num_wf; ++wf) {
-            ConvergenceReport::WellFailure f = unpackWellFailure(recv_buffer, offset);
+            ConvergenceReport::WellFailure f = unpackWellFailure(recvBuffer, offset);
             cr.setWellFailed(f);
         }
         return cr;
     }
 
-    ConvergenceReport unpackConvergenceReports(const std::vector<char>& recv_buffer,
+    ConvergenceReport unpackConvergenceReports(const std::vector<char>& recvBuffer,
                                                const std::vector<int>& displ)
     {
         ConvergenceReport cr;
-        const int num_processes = displ.size() - 1;
-        for (int process = 0; process < num_processes; ++process) {
+        const int numProcesses = displ.size() - 1;
+        for (int process = 0; process < numProcesses; ++process) {
             int offset = displ[process];
-            cr += unpackSingleConvergenceReport(recv_buffer, offset);
+            cr += unpackSingleConvergenceReport(recvBuffer, offset);
             assert(offset == displ[process + 1]);
         }
         return cr;
@@ -167,29 +167,29 @@ namespace Ewoms
     ConvergenceReport gatherConvergenceReport(const ConvergenceReport& local_report)
     {
         // Pack local report.
-        int message_size = messageSize(local_report);
-        std::vector<char> buffer(message_size);
+        int messageSize = ::messageSize(local_report);
+        std::vector<char> buffer(messageSize);
         int offset = 0;
         packConvergenceReport(local_report, buffer, offset);
-        assert(offset == message_size);
+        assert(offset == messageSize);
 
         // Get message sizes and create offset/displacement array for gathering.
-        int num_processes = -1;
-        MPI_Comm_size(MPI_COMM_WORLD, &num_processes);
-        std::vector<int> message_sizes(num_processes);
-        MPI_Allgather(&message_size, 1, MPI_INT, message_sizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
-        std::vector<int> displ(num_processes + 1, 0);
-        std::partial_sum(message_sizes.begin(), message_sizes.end(), displ.begin() + 1);
+        int numProcesses = -1;
+        MPI_Comm_size(MPI_COMM_WORLD, &numProcesses);
+        std::vector<int> messageSizes(numProcesses);
+        MPI_Allgather(&messageSize, 1, MPI_INT, messageSizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
+        std::vector<int> displ(numProcesses + 1, 0);
+        std::partial_sum(messageSizes.begin(), messageSizes.end(), displ.begin() + 1);
 
         // Gather.
-        std::vector<char> recv_buffer(displ.back());
+        std::vector<char> recvBuffer(displ.back());
         MPI_Allgatherv(buffer.data(), buffer.size(), MPI_PACKED,
-                       const_cast<char*>(recv_buffer.data()), message_sizes.data(),
+                       const_cast<char*>(recvBuffer.data()), messageSizes.data(),
                        displ.data(), MPI_PACKED,
                        MPI_COMM_WORLD);
 
         // Unpack.
-        ConvergenceReport global_report = unpackConvergenceReports(recv_buffer, displ);
+        ConvergenceReport global_report = unpackConvergenceReports(recvBuffer, displ);
         return global_report;
     }
 
