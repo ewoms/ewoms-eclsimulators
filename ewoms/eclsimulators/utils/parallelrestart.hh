@@ -122,6 +122,7 @@ class Regdims;
 class RestartConfig;
 class RestartSchedule;
 class RFTConfig;
+class RockConfig;
 class ROCKRecord;
 class RockTable;
 class Rock2dTable;
@@ -290,8 +291,8 @@ std::size_t packSize(const LiveOilPvt<Scalar>& data,
 template<class Scalar>
 std::size_t packSize(const OilPvtThermal<Scalar>& data, Dune::MPIHelper::MPICommunicator comm);
 
-template<class Scalar, bool enableThermal>
-std::size_t packSize(const WaterPvtMultiplexer<Scalar,enableThermal>& data,
+template<class Scalar, bool enableThermal, bool enableBrine>
+std::size_t packSize(const WaterPvtMultiplexer<Scalar,enableThermal,enableBrine>& data,
                      Dune::MPIHelper::MPICommunicator comm);
 
 template<class Scalar>
@@ -449,8 +450,8 @@ template<class Scalar>
 void pack(const OilPvtThermal<Scalar>& data, std::vector<char>& buffer,
           int& position, Dune::MPIHelper::MPICommunicator comm);
 
-template<class Scalar, bool enableThermal>
-void pack(const WaterPvtMultiplexer<Scalar,enableThermal>& data,
+template<class Scalar, bool enableThermal, bool enableBrine>
+void pack(const WaterPvtMultiplexer<Scalar,enableThermal,enableBrine>& data,
           const std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm);
 
@@ -613,8 +614,8 @@ template<class Scalar>
 void unpack(OilPvtThermal<Scalar>& data, std::vector<char>& buffer,
             int& position, Dune::MPIHelper::MPICommunicator comm);
 
-template<class Scalar, bool enableThermal>
-void unpack(WaterPvtMultiplexer<Scalar,enableThermal>& data,
+template<class Scalar, bool enableThermal, bool enableBrine>
+void unpack(WaterPvtMultiplexer<Scalar,enableThermal,enableBrine>& data,
             const std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm);
 
@@ -654,6 +655,8 @@ ADD_PACK_PROTOTYPES(Action::ASTNode)
 ADD_PACK_PROTOTYPES(Action::Condition)
 ADD_PACK_PROTOTYPES(Action::Quantity)
 ADD_PACK_PROTOTYPES(Aqudims)
+ADD_PACK_PROTOTYPES(BCConfig)
+ADD_PACK_PROTOTYPES(BCConfig::BCFace)
 ADD_PACK_PROTOTYPES(BrineDensityTable)
 ADD_PACK_PROTOTYPES(ColumnSchema)
 ADD_PACK_PROTOTYPES(Connection)
@@ -722,6 +725,8 @@ ADD_PACK_PROTOTYPES(RestartKey)
 ADD_PACK_PROTOTYPES(RestartSchedule)
 ADD_PACK_PROTOTYPES(RestartValue)
 ADD_PACK_PROTOTYPES(RFTConfig)
+ADD_PACK_PROTOTYPES(RockConfig)
+ADD_PACK_PROTOTYPES(RockConfig::RockComp)
 ADD_PACK_PROTOTYPES(ROCKRecord)
 ADD_PACK_PROTOTYPES(RockTable)
 ADD_PACK_PROTOTYPES(Rock2dTable)

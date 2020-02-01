@@ -72,6 +72,8 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/well.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/wlist.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/wlistmanager.hh>
+#include <ewoms/eclio/parser/eclipsestate/simulationconfig/bcconfig.hh>
+#include <ewoms/eclio/parser/eclipsestate/simulationconfig/rockconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/simulationconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/thresholdpressure.hh>
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
@@ -172,6 +174,16 @@ Ewoms::ThresholdPressure getThresholdPressure()
 {
     return Ewoms::ThresholdPressure(false, true, {{true, 1.0}, {false, 2.0}},
                                   {{{1,2},{false,3.0}},{{2,3},{true,4.0}}});
+}
+
+Ewoms::RockConfig getRockConfig()
+{
+    return Ewoms::RockConfig(true, {{100, 0.25}, {200, 0.30}}, "ROCKNUM", 10, false, Ewoms::RockConfig::Hysteresis::HYSTER);
+}
+
+Ewoms::BCConfig getBCConfig()
+{
+    return Ewoms::BCConfig({{10,11,12,13,14,15,Ewoms::BCType::RATE,Ewoms::FaceDir::XPlus, Ewoms::BCComponent::GAS, 100.0}});
 }
 
 Ewoms::TableSchema getTableSchema()
@@ -453,87 +465,83 @@ std::tuple<T,int,int> PackUnpack(const T& in)
     return std::make_tuple(out, pos1, pos2);
 }
 
+#define DO_CHECKS(TYPE_NAME) \
+    BOOST_CHECK_MESSAGE(std::get<1>(val2) == std::get<2>(val2), "Packed size differ from unpack size for " #TYPE_NAME);  \
+    BOOST_CHECK_MESSAGE(val1 == std::get<0>(val2), "Deserialized " #TYPE_NAME " differ");
+
 BOOST_AUTO_TEST_CASE(Solution)
 {
 #if HAVE_MPI
-    Ewoms::data::Solution sol1 = getSolution();
-    auto sol2 = PackUnpack(sol1);
-    BOOST_CHECK(std::get<1>(sol2) == std::get<2>(sol2));
-    BOOST_CHECK(sol1 == std::get<0>(sol2));
+    Ewoms::data::Solution val1 = getSolution();
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(data::Solution)
 #endif
 }
 
 BOOST_AUTO_TEST_CASE(Rates)
 {
 #if HAVE_MPI
-    Ewoms::data::Rates rat1 = getRates();
-    auto rat2 = PackUnpack(rat1);
-    BOOST_CHECK(std::get<1>(rat2) == std::get<2>(rat2));
-    BOOST_CHECK(rat1 == std::get<0>(rat2));
+    Ewoms::data::Rates val1 = getRates();
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(data::Rates)
 #endif
 }
 
 BOOST_AUTO_TEST_CASE(dataConnection)
 {
 #if HAVE_MPI
-    Ewoms::data::Connection con1 = getConnection();
-    auto con2 = PackUnpack(con1);
-    BOOST_CHECK(std::get<1>(con2) == std::get<2>(con2));
-    BOOST_CHECK(con1 == std::get<0>(con2));
+    Ewoms::data::Connection val1 = getConnection();
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(data::Connection)
 #endif
 }
 
 BOOST_AUTO_TEST_CASE(dataSegment)
 {
 #if HAVE_MPI
-    Ewoms::data::Segment seg1 = getSegment();
-    auto seg2 = PackUnpack(seg1);
-    BOOST_CHECK(std::get<1>(seg2) == std::get<2>(seg2));
-    BOOST_CHECK(seg1 == std::get<0>(seg2));
+    Ewoms::data::Segment val1 = getSegment();
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(data::Segment)
 #endif
 }
 
 BOOST_AUTO_TEST_CASE(dataWell)
 {
 #if HAVE_MPI
-    Ewoms::data::Well well1 = getWell();
-    auto well2 = PackUnpack(well1);
-    BOOST_CHECK(std::get<1>(well2) == std::get<2>(well2));
-    BOOST_CHECK(well1 == std::get<0>(well2));
+    Ewoms::data::Well val1 = getWell();
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(data::Well)
 #endif
 }
 
 BOOST_AUTO_TEST_CASE(WellRates)
 {
 #if HAVE_MPI
-    Ewoms::data::WellRates wells1;
-    wells1.insert({"test_well", getWell()});
-    auto wells2 = PackUnpack(wells1);
-    BOOST_CHECK(std::get<1>(wells2) == std::get<2>(wells2));
-    BOOST_CHECK(wells1 == std::get<0>(wells2));
+    Ewoms::data::WellRates val1;
+    val1.insert({"test_well", getWell()});
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(data::WellRates)
 #endif
 }
 
 BOOST_AUTO_TEST_CASE(CellData)
 {
 #if HAVE_MPI
-    Ewoms::data::CellData data1;
-    data1.dim = Ewoms::UnitSystem::measure::length;
-    data1.data = {1.0, 2.0, 3.0};
-    data1.target = Ewoms::data::TargetType::RESTART_SOLUTION;
-    auto data2 = PackUnpack(data1);
-    BOOST_CHECK(std::get<1>(data2) == std::get<2>(data2));
-    BOOST_CHECK(data1 == std::get<0>(data2));
+    Ewoms::data::CellData val1;
+    val1.dim = Ewoms::UnitSystem::measure::length;
+    val1.data = {1.0, 2.0, 3.0};
+    val1.target = Ewoms::data::TargetType::RESTART_SOLUTION;
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(data::cellData)
 #endif
 }
 
 BOOST_AUTO_TEST_CASE(RestartKey)
 {
 #if HAVE_MPI
-    Ewoms::RestartKey key1("key", Ewoms::UnitSystem::measure::length, true);
-    auto key2 = PackUnpack(key1);
-    BOOST_CHECK(std::get<1>(key2) == std::get<2>(key2));
-    BOOST_CHECK(key1 == std::get<0>(key2));
+    Ewoms::RestartKey val1("key", Ewoms::UnitSystem::measure::length, true);
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(RestartKey)
 #endif
 }
 
@@ -544,8 +552,7 @@ BOOST_AUTO_TEST_CASE(RestartValue)
     wells1.insert({"test_well", getWell()});
     Ewoms::RestartValue val1(getSolution(), wells1);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(RestartValue)
 #endif
 }
 
@@ -554,8 +561,16 @@ BOOST_AUTO_TEST_CASE(ThresholdPressure)
 #if HAVE_MPI
     Ewoms::ThresholdPressure val1 = getThresholdPressure();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(ThresholdPressure)
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(RockConfig)
+{
+#if HAVE_MPI
+    Ewoms::RockConfig val1 = getRockConfig();
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(RockConfig)
 #endif
 }
 
@@ -564,8 +579,7 @@ BOOST_AUTO_TEST_CASE(EDITNNC)
 #if HAVE_MPI
     Ewoms::EDITNNC val1({{1,2,1.0},{2,3,2.0}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(EDITNNC)
 #endif
 }
 
@@ -574,8 +588,7 @@ BOOST_AUTO_TEST_CASE(NNC)
 #if HAVE_MPI
     Ewoms::NNC val1({{1,2,1.0},{2,3,2.0}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(NNC)
 #endif
 }
 
@@ -584,8 +597,7 @@ BOOST_AUTO_TEST_CASE(Rock2dTable)
 #if HAVE_MPI
     Ewoms::Rock2dTable val1({{1.0,2.0},{3.0,4.0}}, {1.0, 2.0, 3.0});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Rock2dTable)
 #endif
 }
 
@@ -594,8 +606,7 @@ BOOST_AUTO_TEST_CASE(Rock2dtrTable)
 #if HAVE_MPI
     Ewoms::Rock2dtrTable val1({{1.0,2.0},{3.0,4.0}}, {1.0, 2.0, 3.0});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Rock2dtrTable)
 #endif
 }
 
@@ -605,12 +616,10 @@ BOOST_AUTO_TEST_CASE(ColumnSchema)
     Ewoms::ColumnSchema val1("test1", Ewoms::Table::INCREASING,
                            Ewoms::Table::DEFAULT_LINEAR);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
-    Ewoms::ColumnSchema val3("test2", Ewoms::Table::DECREASING, 1.0);
-    val2 = PackUnpack(val3);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val3 == std::get<0>(val2));
+    DO_CHECKS(ColumnSchema)
+    val1 = Ewoms::ColumnSchema("test2", Ewoms::Table::DECREASING, 1.0);
+    val2 = PackUnpack(val1);
+    DO_CHECKS(ColumnSchema)
 #endif
 }
 
@@ -619,8 +628,7 @@ BOOST_AUTO_TEST_CASE(TableSchema)
 #if HAVE_MPI
     Ewoms::TableSchema val1 = getTableSchema();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(TableSchema)
 #endif
 }
 
@@ -629,8 +637,7 @@ BOOST_AUTO_TEST_CASE(TableColumn)
 #if HAVE_MPI
     Ewoms::TableColumn val1 = getTableColumn();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(TableColumn)
 #endif
 }
 
@@ -639,8 +646,7 @@ BOOST_AUTO_TEST_CASE(SimpleTable)
 #if HAVE_MPI
     Ewoms::SimpleTable val1 = getSimpleTable();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(SimpleTable)
 #endif
 }
 
@@ -654,8 +660,7 @@ BOOST_AUTO_TEST_CASE(TableContainer)
     val1.addTable(0, std::make_shared<const Ewoms::SimpleTable>(tab1));
     val1.addTable(1, std::make_shared<const Ewoms::SimpleTable>(tab1));
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(TableContainer)
 #endif
 }
 
@@ -664,8 +669,7 @@ BOOST_AUTO_TEST_CASE(EquilRecord)
 #if HAVE_MPI
     Ewoms::EquilRecord val1 = getEquilRecord();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(EquilRecord)
 #endif
 }
 
@@ -674,8 +678,7 @@ BOOST_AUTO_TEST_CASE(Equil)
 #if HAVE_MPI
     Ewoms::Equil val1({getEquilRecord(), getEquilRecord()});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Equil)
 #endif
 }
 
@@ -684,8 +687,7 @@ BOOST_AUTO_TEST_CASE(FoamData)
 #if HAVE_MPI
     Ewoms::FoamData val1 = getFoamData();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(FoamData)
 #endif
 }
 
@@ -694,8 +696,7 @@ BOOST_AUTO_TEST_CASE(FoamConfig)
 #if HAVE_MPI
     Ewoms::FoamConfig val1({getFoamData(), getFoamData()});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(FoamConfig)
 #endif
 }
 
@@ -706,18 +707,25 @@ BOOST_AUTO_TEST_CASE(InitConfig)
                          Ewoms::FoamConfig({getFoamData(), getFoamData()}),
                          true, true, true, 20, "test1");
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(InitConfig)
 #endif
 }
 
 BOOST_AUTO_TEST_CASE(SimulationConfig)
 {
 #if HAVE_MPI
-    Ewoms::SimulationConfig val1(getThresholdPressure(), false, true, false, true);
+    Ewoms::SimulationConfig val1(getThresholdPressure(), getBCConfig(), getRockConfig(), false, true, false, true);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(SimulationConfig)
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(BCConfig)
+{
+#if HAVE_MPI
+    Ewoms::BCConfig val1({{10,11,12,13,14,15,Ewoms::BCType::RATE, Ewoms::FaceDir::XPlus, Ewoms::BCComponent::GAS, 100}});
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(BCConfig)
 #endif
 }
 
@@ -726,8 +734,7 @@ BOOST_AUTO_TEST_CASE(RestartSchedule)
 #if HAVE_MPI
     Ewoms::RestartSchedule val1(1, 2, 3);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(RestartSchedule)
 #endif
 }
 
@@ -736,8 +743,7 @@ BOOST_AUTO_TEST_CASE(TimeMap)
 #if HAVE_MPI
     Ewoms::TimeMap val1 = getTimeMap();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(TimeMap)
 #endif
 }
 
@@ -746,10 +752,11 @@ BOOST_AUTO_TEST_CASE(RestartConfig)
 #if HAVE_MPI
     Ewoms::DynamicState<Ewoms::RestartSchedule> rsched({Ewoms::RestartSchedule(1, 2, 3)}, 2);
     Ewoms::DynamicState<std::map<std::string,int>> rkw({{{"test",3}}}, 3);
-    Ewoms::RestartConfig val1(getTimeMap(), 1, true, rsched, rkw, {false, true});
+    Ewoms::IOConfig io(true, false, true, false, false, true, "test1", true,
+                     "test2", true, "test3", false);
+    Ewoms::RestartConfig val1(io, getTimeMap(), 1, true, rsched, rkw, {false, true});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(RestartConfig)
 #endif
 }
 
@@ -759,8 +766,7 @@ BOOST_AUTO_TEST_CASE(IOConfig)
     Ewoms::IOConfig val1(true, false, true, false, false, true, "test1", true,
                        "test2", true, "test3", false);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(IOConfig)
 #endif
 }
 
@@ -769,8 +775,7 @@ BOOST_AUTO_TEST_CASE(Phases)
 #if HAVE_MPI
     Ewoms::Phases val1(true, true, true, false, true, false, true, false);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Phases)
 #endif
 }
 
@@ -779,8 +784,7 @@ BOOST_AUTO_TEST_CASE(Tabdims)
 #if HAVE_MPI
     Ewoms::Tabdims val1(1,2,3,4,5,6);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Tabdims)
 #endif
 }
 
@@ -789,8 +793,7 @@ BOOST_AUTO_TEST_CASE(EndpointScaling)
 #if HAVE_MPI
     Ewoms::EndpointScaling val1(std::bitset<4>(13));
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(EndpointScaling)
 #endif
 }
 
@@ -799,8 +802,7 @@ BOOST_AUTO_TEST_CASE(Welldims)
 #if HAVE_MPI
     Ewoms::Welldims val1(1,2,3,4);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Welldims)
 #endif
 }
 
@@ -809,8 +811,7 @@ BOOST_AUTO_TEST_CASE(WellSegmentDims)
 #if HAVE_MPI
     Ewoms::WellSegmentDims val1(1,2,3);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WellSegmentDims)
 #endif
 }
 
@@ -819,8 +820,7 @@ BOOST_AUTO_TEST_CASE(UDQParams)
 #if HAVE_MPI
     Ewoms::UDQParams val1(true, 1, 2.0, 3.0, 4.0);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(UDQParams)
 #endif
 }
 
@@ -829,8 +829,7 @@ BOOST_AUTO_TEST_CASE(EclHysterConfig)
 #if HAVE_MPI
     Ewoms::EclHysterConfig val1(true, 1, 2);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(EclHysterConfig)
 #endif
 }
 
@@ -839,8 +838,7 @@ BOOST_AUTO_TEST_CASE(Actdims)
 #if HAVE_MPI
     Ewoms::Actdims val1(1,2,3,4);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Actdims)
 #endif
 }
 
@@ -854,11 +852,11 @@ BOOST_AUTO_TEST_CASE(Runspec)
                       Ewoms::WellSegmentDims(1,2,3),
                       Ewoms::UDQParams(true, 1, 2.0, 3.0, 4.0),
                       Ewoms::EclHysterConfig(true, 1, 2),
-                      Ewoms::Actdims(1,2,3,4));
+                      Ewoms::Actdims(1,2,3,4),
+                      Ewoms::SatFuncControls(5.0e-7));
 
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Runspec)
 #endif
 }
 
@@ -867,8 +865,7 @@ BOOST_AUTO_TEST_CASE(PvtgTable)
 #if HAVE_MPI
     Ewoms::PvtgTable val1 = getPvtgTable();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(PvtgTable)
 #endif
 }
 
@@ -877,8 +874,7 @@ BOOST_AUTO_TEST_CASE(PvtoTable)
 #if HAVE_MPI
     Ewoms::PvtoTable val1 = getPvtoTable();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(PvtoTable)
 #endif
 }
 
@@ -888,8 +884,7 @@ BOOST_AUTO_TEST_CASE(JFunc)
     Ewoms::JFunc val1(Ewoms::JFunc::Flag::BOTH, 1.0, 2.0,
                     3.0, 4.0, Ewoms::JFunc::Direction::XY);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(JFunc)
 #endif
 }
 
@@ -898,8 +893,7 @@ BOOST_AUTO_TEST_CASE(PVTWRecord)
 #if HAVE_MPI
     Ewoms::PVTWRecord val1{1.0, 2.0, 3.0, 4.0, 5.0};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(PVTWRecord)
 #endif
 }
 
@@ -908,8 +902,7 @@ BOOST_AUTO_TEST_CASE(PvtwTable)
 #if HAVE_MPI
     Ewoms::PvtwTable val1({Ewoms::PVTWRecord{1.0, 2.0, 3.0, 4.0, 5.0}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(PvtwTable)
 #endif
 }
 
@@ -918,8 +911,7 @@ BOOST_AUTO_TEST_CASE(PVCDORecord)
 #if HAVE_MPI
     Ewoms::PVTWRecord val1{1.0, 2.0, 3.0, 4.0, 5.0};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(PVTWRecord)
 #endif
 }
 
@@ -928,8 +920,7 @@ BOOST_AUTO_TEST_CASE(PvcdoTable)
 #if HAVE_MPI
     Ewoms::PvcdoTable val1({Ewoms::PVCDORecord{1.0, 2.0, 3.0, 4.0, 5.0}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(PvcdoTable)
 #endif
 }
 
@@ -938,8 +929,7 @@ BOOST_AUTO_TEST_CASE(DENSITYRecord)
 #if HAVE_MPI
     Ewoms::DENSITYRecord val1{1.0, 2.0, 3.0};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(DENSITYRecord)
 #endif
 }
 
@@ -948,8 +938,7 @@ BOOST_AUTO_TEST_CASE(DensityTable)
 #if HAVE_MPI
     Ewoms::DensityTable val1({Ewoms::DENSITYRecord{1.0, 2.0, 3.0}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(DensityTable)
 #endif
 }
 
@@ -958,8 +947,7 @@ BOOST_AUTO_TEST_CASE(VISCREFRecord)
 #if HAVE_MPI
     Ewoms::VISCREFRecord val1{1.0, 2.0};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(VISCREFRecord)
 #endif
 }
 
@@ -968,8 +956,7 @@ BOOST_AUTO_TEST_CASE(ViscrefTable)
 #if HAVE_MPI
     Ewoms::ViscrefTable val1({Ewoms::VISCREFRecord{1.0, 2.0}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(ViscrefTable)
 #endif
 }
 
@@ -978,8 +965,7 @@ BOOST_AUTO_TEST_CASE(WATDENTRecord)
 #if HAVE_MPI
     Ewoms::WATDENTRecord val1{1.0, 2.0, 3.0};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WATDENTRecord)
 #endif
 }
 
@@ -988,8 +974,7 @@ BOOST_AUTO_TEST_CASE(WatdentTable)
 #if HAVE_MPI
     Ewoms::WatdentTable val1({Ewoms::WATDENTRecord{1.0, 2.0, 3.0}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WatdentTable)
 #endif
 }
 
@@ -998,8 +983,7 @@ BOOST_AUTO_TEST_CASE(PlymwinjTable)
 #if HAVE_MPI
     Ewoms::PlymwinjTable val1({1.0}, {2.0}, 1, {{1.0}, {2.0}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(PlymwinjTable)
 #endif
 }
 
@@ -1008,8 +992,7 @@ BOOST_AUTO_TEST_CASE(SkprpolyTable)
 #if HAVE_MPI
     Ewoms::SkprpolyTable val1({1.0}, {2.0}, 1, {{1.0}, {2.0}}, 3.0);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(SkprpolyTable)
 #endif
 }
 
@@ -1018,8 +1001,7 @@ BOOST_AUTO_TEST_CASE(SkprwatTable)
 #if HAVE_MPI
     Ewoms::SkprwatTable val1({1.0}, {2.0}, 1, {{1.0}, {2.0}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(SkprwatTable)
 #endif
 }
 
@@ -1028,8 +1010,7 @@ BOOST_AUTO_TEST_CASE(Regdims)
 #if HAVE_MPI
     Ewoms::Regdims val1(1,2,3,4,5);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Regdims)
 #endif
 }
 
@@ -1038,8 +1019,7 @@ BOOST_AUTO_TEST_CASE(Eqldims)
 #if HAVE_MPI
     Ewoms::Eqldims val1(1,2,3,4,5);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Eqldims)
 #endif
 }
 
@@ -1048,8 +1028,7 @@ BOOST_AUTO_TEST_CASE(Aqudims)
 #if HAVE_MPI
     Ewoms::Aqudims val1(1,2,3,4,5,6,7,8);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Aqudims)
 #endif
 }
 
@@ -1058,8 +1037,7 @@ BOOST_AUTO_TEST_CASE(ROCKRecord)
 #if HAVE_MPI
     Ewoms::ROCKRecord val1{1.0,2.0};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(ROCKRecord)
 #endif
 }
 
@@ -1068,8 +1046,7 @@ BOOST_AUTO_TEST_CASE(RockTable)
 #if HAVE_MPI
     Ewoms::RockTable val1({Ewoms::ROCKRecord{1.0,2.0}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(RockTable)
 #endif
 }
 
@@ -1105,8 +1082,7 @@ BOOST_AUTO_TEST_CASE(TableManager)
                            jfunc,
                            1.0);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(TableManager)
 #endif
 }
 
@@ -1116,8 +1092,7 @@ BOOST_AUTO_TEST_CASE(TabulatedOneDFunction)
     Ewoms::Tabulated1DFunction<double> val1(2, std::vector<double>{1.0, 2.0},
                                              std::vector<double>{3.0, 4.0});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Tabulated1DFunction<double>)
 #endif
 }
 
@@ -1129,8 +1104,7 @@ BOOST_AUTO_TEST_CASE(IntervalTabulatedTwoDFunction)
     std::vector<std::vector<double>> samples{{1.0, 2.0}, {3.0, 4.0}};
     Ewoms::IntervalTabulated2DFunction<double> val1(xPos, yPos, samples, true, true);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(IntervalTabulated2DFunction<double>)
 #endif
 }
 
@@ -1145,8 +1119,7 @@ BOOST_AUTO_TEST_CASE(UniformXTabulatedTwoDFunction)
     using FFuncType = Ewoms::UniformXTabulated2DFunction<double>;
     FFuncType val1(xPos, yPos, samples, FFuncType::Vertical);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(UniformXTabulated2DFunction<double>)
 #endif
 }
 
@@ -1157,8 +1130,7 @@ BOOST_AUTO_TEST_CASE(SolventPvt)
                                              std::vector<double>{3.0, 4.0});
     Ewoms::SolventPvt<double> val1({1.0, 2.0}, {func}, {func}, {func});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(SolventPvt<double>)
 #endif
 }
 
@@ -1169,8 +1141,7 @@ BOOST_AUTO_TEST_CASE(DryGasPvt)
                                              std::vector<double>{3.0, 4.0});
     Ewoms::DryGasPvt<double> val1({1.0, 2.0}, {func}, {func}, {func});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(DryGasPvt<double>)
 #endif
 }
 
@@ -1183,8 +1154,7 @@ BOOST_AUTO_TEST_CASE(GasPvtThermal)
     Ewoms::GasPvtThermal<double> val1(pvt, {func}, {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
                                     {func}, true, true, false);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(GasPvtThermal<double>)
 #endif
 }
 
@@ -1203,8 +1173,7 @@ BOOST_AUTO_TEST_CASE(WetGasPvt)
                                 {func2}, {func}, {func2},
                                 {func2}, {func}, {func}, {func}, 5.0);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WetGasPvt<double>)
 #endif
 }
 
@@ -1214,8 +1183,7 @@ BOOST_AUTO_TEST_CASE(ConstantCompressibilityOilPvt)
     Ewoms::ConstantCompressibilityOilPvt<double> val1({1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
                                                     {7.0, 8.0}, {9.0, 10.0}, {11.0, 12.0});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(ConstantCompressibilityOilPvt<double>)
 #endif
 }
 
@@ -1226,8 +1194,7 @@ BOOST_AUTO_TEST_CASE(DeadOilPvt)
                                              std::vector<double>{3.0, 4.0});
     Ewoms::DeadOilPvt<double> val1({1.0, 2.0}, {func}, {func}, {func});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(DeadOilPvt<double>)
 #endif
 }
 
@@ -1246,8 +1213,7 @@ BOOST_AUTO_TEST_CASE(LiveOilPvt)
                                  {func2}, {func2}, {func2},
                                  {func}, {func}, {func}, {func}, {func}, 5.0);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(LiveOilPvt<double>)
 #endif
 }
 
@@ -1261,8 +1227,7 @@ BOOST_AUTO_TEST_CASE(OilPvtThermal)
                                     {7.0, 8.0}, {9.0, 10.0}, {11.0, 12.0},
                                     {func}, true, true, false);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(OilPvtThermal<double>)
 #endif
 }
 
@@ -1272,8 +1237,7 @@ BOOST_AUTO_TEST_CASE(ConstantCompressibilityWaterPvt)
     Ewoms::ConstantCompressibilityWaterPvt<double> val1({1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
                                                       {7.0, 8.0}, {9.0, 10.0}, {11.0, 12.0});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(ConstantCompressibilityWaterPvt<double>)
 #endif
 }
 
@@ -1288,8 +1252,7 @@ BOOST_AUTO_TEST_CASE(WaterPvtThermal)
                                       {13.0, 14.0}, {15.0, 16.0}, {17.0, 18.0},
                                       {func}, {func}, true, true, false);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WaterPvtThermal<double>)
 #endif
 }
 
@@ -1301,14 +1264,12 @@ BOOST_AUTO_TEST_CASE(OilVaporizationProperties)
                                         {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
                                         {false, true}, {7.0, 8.0});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(OilVaporizationProperties)
     val1 = Ewoms::OilVaporizationProperties(VapType::DRDT,
                                           {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
                                           {false, true}, {7.0, 8.0});
     val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(OilVaporizationProperties)
 #endif
 }
 
@@ -1317,8 +1278,7 @@ BOOST_AUTO_TEST_CASE(Events)
 #ifdef HAVE_MPI
     Ewoms::Events val1(Ewoms::DynamicVector<uint64_t>({1,2,3,4,5}));
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Events)
 #endif
 }
 
@@ -1327,8 +1287,7 @@ BOOST_AUTO_TEST_CASE(MLimits)
 #ifdef HAVE_MPI
     Ewoms::MLimits val1{1,2,3,4,5,6,7,8,9,10,11,12};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(MLimits)
 #endif
 }
 
@@ -1338,8 +1297,7 @@ BOOST_AUTO_TEST_CASE(MessageLimits)
     std::vector<Ewoms::MLimits> limits{Ewoms::MLimits{1,2,3,4,5,6,7,8,9,10,11,12}};
     Ewoms::MessageLimits val1(Ewoms::DynamicState<Ewoms::MLimits>(limits,2));
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(MessageLimits)
 #endif
 }
 
@@ -1348,8 +1306,7 @@ BOOST_AUTO_TEST_CASE(VFPInjTable)
 #ifdef HAVE_MPI
     Ewoms::VFPInjTable val1 = getVFPInjTable();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(VFPInjTable)
 #endif
 }
 
@@ -1358,8 +1315,7 @@ BOOST_AUTO_TEST_CASE(VFPProdTable)
 #ifdef HAVE_MPI
     Ewoms::VFPProdTable val1 = getVFPProdTable();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(VFPProdTable)
 #endif
 }
 
@@ -1369,8 +1325,7 @@ BOOST_AUTO_TEST_CASE(WTESTWell)
     Ewoms::WellTestConfig::WTESTWell val1{"test", Ewoms::WellTestConfig::ECONOMIC,
                                          1.0, 2, 3.0, 4};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WellTestConfig::WTESTWell)
 #endif
 }
 
@@ -1381,8 +1336,7 @@ BOOST_AUTO_TEST_CASE(WellTestConfig)
                                          1.0, 2, 3.0, 4};
     Ewoms::WellTestConfig val1({tw, tw, tw});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WellTestConfig)
 #endif
 }
 
@@ -1391,8 +1345,7 @@ BOOST_AUTO_TEST_CASE(WellPolymerProperties)
 #ifdef HAVE_MPI
     Ewoms::WellPolymerProperties val1{1.0, 2.0, 3, 4, 5};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WellPolymerProperties)
 #endif
 }
 
@@ -1401,8 +1354,7 @@ BOOST_AUTO_TEST_CASE(WellFoamProperties)
 #ifdef HAVE_MPI
     Ewoms::WellFoamProperties val1{1.0};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WellFoamProperties)
 #endif
 }
 
@@ -1411,8 +1363,7 @@ BOOST_AUTO_TEST_CASE(WellTracerProperties)
 #ifdef HAVE_MPI
     Ewoms::WellTracerProperties val1({{"test", 1.0}, {"test2", 2.0}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WellTracerProperties)
 #endif
 }
 
@@ -1421,12 +1372,10 @@ BOOST_AUTO_TEST_CASE(UDAValue)
 #ifdef HAVE_MPI
     Ewoms::UDAValue val1("test");
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(UDAValue)
     val1 = Ewoms::UDAValue(1.0);
-    auto val22 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val22) == std::get<2>(val22));
-    BOOST_CHECK(val1 == std::get<0>(val22));
+    val2 = PackUnpack(val1);
+    DO_CHECKS(UDAValue)
 #endif
 }
 
@@ -1440,8 +1389,7 @@ BOOST_AUTO_TEST_CASE(Connection)
                          12, 13.0, 14.0, true,
                          15, 16, 17.0);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Connection)
 #endif
 }
 
@@ -1461,8 +1409,7 @@ BOOST_AUTO_TEST_CASE(WellInjectionProperties)
                                             Ewoms::Well::InjectorType::OIL,
                                             Ewoms::Well::InjectorCMode::BHP);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Well::WellInjectionProperties)
 #endif
 }
 
@@ -1477,8 +1424,7 @@ BOOST_AUTO_TEST_CASE(WellEconProductionLimits)
                                        Ewoms::WellEconProductionLimits::EconWorkover::WELL,
                                        7.0, 8.0, 9.0, 10.0);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WellEconProductionLimits)
 #endif
 }
 
@@ -1487,8 +1433,7 @@ BOOST_AUTO_TEST_CASE(WellGuideRate)
 #ifdef HAVE_MPI
     Ewoms::Well::WellGuideRate val1{true, 1.0, Ewoms::Well::GuideRateTarget::COMB, 2.0};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Well::WellGuideRate)
 #endif
 }
 
@@ -1503,8 +1448,7 @@ BOOST_AUTO_TEST_CASE(WellConnections)
                          15, 16, 17.0);
     Ewoms::WellConnections val1(1, 2, 3, {conn, conn});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WellConnections)
 #endif
 }
 
@@ -1527,8 +1471,7 @@ BOOST_AUTO_TEST_CASE(WellProductionProperties)
                                              Ewoms::Well::ProducerCMode::CRAT,
                                              Ewoms::Well::ProducerCMode::BHP, 11);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Well::WellProductionProperties)
 #endif
 }
 
@@ -1538,8 +1481,7 @@ BOOST_AUTO_TEST_CASE(SpiralICD)
     Ewoms::SpiralICD val1(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8, 9.0,
                         Ewoms::SpiralICD::Status::OPEN, 10.0);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(SpiralICD)
 #endif
 }
 
@@ -1548,8 +1490,7 @@ BOOST_AUTO_TEST_CASE(Valve)
 #ifdef HAVE_MPI
     Ewoms::Valve val1(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, Ewoms::Valve::Status::OPEN);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Valve)
 #endif
 }
 
@@ -1561,8 +1502,7 @@ BOOST_AUTO_TEST_CASE(Segment)
                       std::make_shared<Ewoms::SpiralICD>(),
                       std::make_shared<Ewoms::Valve>());
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Segment)
 #endif
 }
 
@@ -1571,8 +1511,7 @@ BOOST_AUTO_TEST_CASE(Dimension)
 #ifdef HAVE_MPI
     Ewoms::Dimension val1("test", 1.0, 2.0);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Dimension)
 #endif
 }
 
@@ -1581,8 +1520,7 @@ BOOST_AUTO_TEST_CASE(UnitSystem)
 #ifdef HAVE_MPI
     Ewoms::UnitSystem val1(Ewoms::UnitSystem::UnitType::UNIT_TYPE_METRIC);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(UnitSystem)
 #endif
 }
 
@@ -1600,8 +1538,7 @@ BOOST_AUTO_TEST_CASE(WellSegments)
                            {seg, seg}, {{1,2},{3,4}});
 
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WellSegments)
 #endif
 }
 
@@ -1610,8 +1547,7 @@ BOOST_AUTO_TEST_CASE(Well)
 #ifdef HAVE_MPI
     Ewoms::Well val1 = getFullWell();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Well)
 #endif
 }
 
@@ -1627,8 +1563,7 @@ BOOST_AUTO_TEST_CASE(GroupInjectionProperties)
                                               "test1", "test2", 5};
 
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Group::GroupInjectionProperties)
 #endif
 }
 
@@ -1645,8 +1580,7 @@ BOOST_AUTO_TEST_CASE(GroupProductionProperties)
                                                6.0, 7};
 
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Group::GroupProductionProperties)
 #endif
 }
 
@@ -1663,8 +1597,7 @@ BOOST_AUTO_TEST_CASE(Group)
                     Ewoms::Group::GroupProductionProperties());
 
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Group)
 #endif
 }
 
@@ -1673,8 +1606,7 @@ BOOST_AUTO_TEST_CASE(WList)
 #ifdef HAVE_MPI
     Ewoms::WList val1({"test1", "test2", "test3"});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WList)
 #endif
 }
 
@@ -1685,8 +1617,7 @@ BOOST_AUTO_TEST_CASE(WListManager)
     std::map<std::string,Ewoms::WList> data{{"test", wl}, {"test2", wl}};
     Ewoms::WListManager val1(data);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WListManager)
 #endif
 }
 
@@ -1695,8 +1626,7 @@ BOOST_AUTO_TEST_CASE(UDQFunction)
 #ifdef HAVE_MPI
     Ewoms::UDQFunction val1("test", Ewoms::UDQTokenType::binary_op_add);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(UDQFunction)
 #endif
 }
 
@@ -1707,8 +1637,7 @@ BOOST_AUTO_TEST_CASE(UDQFunctionTable)
                                             std::make_shared<Ewoms::UDQFunction>()}};
     Ewoms::UDQFunctionTable val1(Ewoms::UDQParams(true, 1, 2.0, 3.0, 4.0), map);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(UDQFunctionTable)
 #endif
 }
 
@@ -1724,8 +1653,7 @@ BOOST_AUTO_TEST_CASE(UDQASTNode)
                          Ewoms::UDQTokenType::error,
                          "test", 1.0, {"test3"}, n1, n1);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(UDQASTNode)
 #endif
 }
 
@@ -1739,8 +1667,7 @@ BOOST_AUTO_TEST_CASE(UDQDefine)
     Ewoms::UDQDefine val1("test", std::make_shared<Ewoms::UDQASTNode>(n1),
                         Ewoms::UDQVarType::NONE, "test2");
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(UDQDefine)
 #endif
 }
 
@@ -1751,8 +1678,7 @@ BOOST_AUTO_TEST_CASE(UDQAssign)
                         {Ewoms::UDQAssign::AssignRecord{{"test1"}, 1.0},
                          Ewoms::UDQAssign::AssignRecord{{"test2"}, 2.0}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(UDQAssign)
 #endif
 }
 
@@ -1761,8 +1687,7 @@ BOOST_AUTO_TEST_CASE(UDQIndex)
 #ifdef HAVE_MPI
     Ewoms::UDQIndex val1(1, 2, Ewoms::UDQAction::ASSIGN, Ewoms::UDQVarType::WELL_VAR);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(UDQIndex)
 #endif
 }
 
@@ -1771,8 +1696,7 @@ BOOST_AUTO_TEST_CASE(UDQConfig)
 #ifdef HAVE_MPI
     Ewoms::UDQConfig val1 = getUDQConfig();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(UDQConfig)
 #endif
 }
 
@@ -1782,8 +1706,7 @@ BOOST_AUTO_TEST_CASE(UDQActiveInputRecord)
     Ewoms::UDQActive::InputRecord val1(1, "test1", "test2",
                                      Ewoms::UDAControl::WCONPROD_ORAT);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(UDQActive::InputRecord)
 #endif
 }
 
@@ -1793,8 +1716,7 @@ BOOST_AUTO_TEST_CASE(UDQActiveRecord)
     Ewoms::UDQActive::Record val1("test1", 1, 2, "test2",
                                 Ewoms::UDAControl::WCONPROD_ORAT);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(UDQActive::Record)
 #endif
 }
 
@@ -1807,8 +1729,7 @@ BOOST_AUTO_TEST_CASE(UDQActive)
                                                   Ewoms::UDAControl::WCONPROD_ORAT)},
                         {{"test1", 1}}, {{"test2", 2}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(UDQActive)
 #endif
 }
 
@@ -1817,8 +1738,7 @@ BOOST_AUTO_TEST_CASE(GuideRateModel)
 #ifdef HAVE_MPI
     Ewoms::GuideRateModel val1 = getGuideRateModel();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(GuideRateModel)
 #endif
 }
 
@@ -1827,8 +1747,7 @@ BOOST_AUTO_TEST_CASE(GuideRateConfigGroup)
 #ifdef HAVE_MPI
     Ewoms::GuideRateConfig::GroupTarget val1 = getGuideRateConfigGroup();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(GuideRateConfig::GroupTarget)
 #endif
 }
 
@@ -1837,8 +1756,7 @@ BOOST_AUTO_TEST_CASE(GuideRateConfigWell)
 #ifdef HAVE_MPI
     Ewoms::GuideRateConfig::WellTarget val1 = getGuideRateConfigWell();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(GuideRateConfig::WellTarget)
 #endif
 }
 
@@ -1850,8 +1768,7 @@ BOOST_AUTO_TEST_CASE(GuideRateConfig)
                               {{"test1", getGuideRateConfigWell()}},
                               {{"test2", getGuideRateConfigGroup()}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(GuideRateConfig)
 #endif
 }
 
@@ -1864,8 +1781,7 @@ BOOST_AUTO_TEST_CASE(GConSaleGroup)
                                       Ewoms::GConSale::MaxProcedure::PLUG,
                                       4.0, Ewoms::UnitSystem()};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(GConSale::GCONSALEGroup)
 #endif
 }
 
@@ -1879,8 +1795,7 @@ BOOST_AUTO_TEST_CASE(GConSale)
                                        4.0, Ewoms::UnitSystem()};
     Ewoms::GConSale val1({{"test1", group}, {"test2", group}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(GConSale)
 #endif
 }
 
@@ -1892,8 +1807,7 @@ BOOST_AUTO_TEST_CASE(GConSumpGroup)
                                       "test",
                                       3.0, Ewoms::UnitSystem()};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(GConSump::GCONSUMPGroup)
 #endif
 }
 
@@ -1906,8 +1820,7 @@ BOOST_AUTO_TEST_CASE(GConSump)
                                        3.0, Ewoms::UnitSystem()};
     Ewoms::GConSump val1({{"test1", group}, {"test2", group}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(GConSump)
 #endif
 }
 
@@ -1922,8 +1835,7 @@ BOOST_AUTO_TEST_CASE(RFTConfig)
                         {{"test1", {{{Ewoms::RFTConfig::RFT::TIMESTEP, 3}}, 4}}},
                         {{"test2", {{{Ewoms::RFTConfig::PLT::REPT, 5}}, 6}}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(RFTConfig)
 #endif
 }
 
@@ -1938,8 +1850,7 @@ BOOST_AUTO_TEST_CASE(DeckItem)
                        {Ewoms::Dimension("Metric", 10.0, 11.0)});
 
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(DeckItem)
 #endif
 }
 
@@ -1948,8 +1859,7 @@ BOOST_AUTO_TEST_CASE(DeckRecord)
 #ifdef HAVE_MPI
     Ewoms::DeckRecord val1 = getDeckRecord();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(DeckRecord)
 #endif
 }
 
@@ -1958,8 +1868,7 @@ BOOST_AUTO_TEST_CASE(Location)
 #ifdef HAVE_MPI
     Ewoms::Location val1{"test", 1};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Location)
 #endif
 }
 
@@ -1969,8 +1878,7 @@ BOOST_AUTO_TEST_CASE(DeckKeyword)
     Ewoms::DeckKeyword val1("test", {"test",1},
                           {getDeckRecord(), getDeckRecord()}, true, false);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(DeckKeyword)
 #endif
 }
 
@@ -1983,8 +1891,7 @@ BOOST_AUTO_TEST_CASE(Deck)
                    Ewoms::UnitSystem(), unitSys.get(),
                    "test2", "test3", 2);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Deck)
 #endif
 }
 
@@ -1993,8 +1900,7 @@ BOOST_AUTO_TEST_CASE(Tuning)
 #ifdef HAVE_MPI
     Ewoms::Tuning val1 = getTuning();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Tuning)
 #endif
 }
 
@@ -2004,8 +1910,7 @@ BOOST_AUTO_TEST_CASE(ASTNode)
     Ewoms::Action::ASTNode child(number, FuncType::field, "test3", {"test2"}, 2.0, {});
     Ewoms::Action::ASTNode val1(number, FuncType::field, "test1", {"test2"}, 1.0, {child});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Action::ASTNode)
 #endif
 }
 
@@ -2017,8 +1922,7 @@ BOOST_AUTO_TEST_CASE(AST)
                                         "test1", {"test2"}, 1.0, {}));
     Ewoms::Action::AST val1(node);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Action::AST)
 #endif
 }
 
@@ -2029,8 +1933,7 @@ BOOST_AUTO_TEST_CASE(Quantity)
     val1.quantity = "test1";
     val1.args = {"test2", "test3"};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Action::Quantity)
 #endif
 }
 
@@ -2039,8 +1942,7 @@ BOOST_AUTO_TEST_CASE(Condition)
 #ifdef HAVE_MPI
     Ewoms::Action::Condition val1 = getCondition();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Action::Condition)
 #endif
 }
 
@@ -2049,8 +1951,7 @@ BOOST_AUTO_TEST_CASE(ActionX)
 #ifdef HAVE_MPI
     Ewoms::Action::ActionX val1 = getActionX();
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Action::ActionX)
 #endif
 }
 
@@ -2059,8 +1960,7 @@ BOOST_AUTO_TEST_CASE(Actions)
 #ifdef HAVE_MPI
     Ewoms::Action::Actions val1({getActionX()});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Action::Actions)
 #endif
 }
 
@@ -2098,7 +1998,8 @@ BOOST_AUTO_TEST_CASE(Schedule)
                          Ewoms::WellSegmentDims(1,2,3),
                          Ewoms::UDQParams(true, 1, 2.0, 3.0, 4.0),
                          Ewoms::EclHysterConfig(true, 1, 2),
-                         Ewoms::Actdims(1,2,3,4));
+                         Ewoms::Actdims(1,2,3,4),
+                         Ewoms::SatFuncControls(5.6e-7));
     Ewoms::Schedule::VFPProdMap vfpProd {{1, {{std::make_shared<Ewoms::VFPProdTable>(getVFPProdTable())},1}}};
     Ewoms::Schedule::VFPInjMap vfpIn{{1, {{std::make_shared<Ewoms::VFPInjTable>(getVFPInjTable())},1}}};
     Ewoms::WellTestConfig::WTESTWell tw{"test", Ewoms::WellTestConfig::ECONOMIC,
@@ -2168,8 +2069,7 @@ BOOST_AUTO_TEST_CASE(Schedule)
                        {{"test", events}});
 
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Schedule)
 #endif
 }
 
@@ -2178,8 +2078,7 @@ BOOST_AUTO_TEST_CASE(BrineDensityTable)
 #ifdef HAVE_MPI
     Ewoms::BrineDensityTable val1({1.0, 2.0, 3.0});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(BrineDensityTable)
 #endif
 }
 
@@ -2194,8 +2093,7 @@ BOOST_AUTO_TEST_CASE(SummaryNode)
                                  .isUserDefined(true);
 
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(SummaryNode)
 #endif
 }
 
@@ -2211,8 +2109,7 @@ BOOST_AUTO_TEST_CASE(SummaryConfig)
     Ewoms::SummaryConfig val1({node}, {"test1", "test2"}, {"test3", "test4"});
 
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(SummaryConfig)
 #endif
 }
 
@@ -2221,8 +2118,7 @@ BOOST_AUTO_TEST_CASE(PvtwsaltTable)
 #ifdef HAVE_MPI
     Ewoms::PvtwsaltTable val1(1.0, 2.0, {3.0, 4.0, 5.0});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(PvtwsaltTable)
 #endif
 }
 
@@ -2231,8 +2127,7 @@ BOOST_AUTO_TEST_CASE(WellBrineProperties)
 #ifdef HAVE_MPI
     Ewoms::WellBrineProperties val1{1.0};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(WellBrineProperties)
 #endif
 }
 
@@ -2241,8 +2136,7 @@ BOOST_AUTO_TEST_CASE(MULTREGTRecord)
 #ifdef HAVE_MPI
     Ewoms::MULTREGTRecord val1{1, 2, 3.0, 4, Ewoms::MULTREGT::ALL, "test"};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(MULTREGTRecord)
 #endif
 }
 
@@ -2260,8 +2154,7 @@ BOOST_AUTO_TEST_CASE(MULTREGTScanner)
                               "test4");
 
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(MULTREGTScanner)
 #endif
 }
 
@@ -2275,12 +2168,11 @@ BOOST_AUTO_TEST_CASE(EclipseConfig)
                          true, true, true, 20, "test1");
     Ewoms::DynamicState<Ewoms::RestartSchedule> rsched({Ewoms::RestartSchedule(1, 2, 3)}, 2);
     Ewoms::DynamicState<std::map<std::string,int>> rkw({{{"test",3}}}, 3);
-    Ewoms::RestartConfig restart(getTimeMap(), 1, true, rsched, rkw, {false, true});
-    Ewoms::EclipseConfig val1{io, init, restart};
+    Ewoms::RestartConfig restart(io, getTimeMap(), 1, true, rsched, rkw, {false, true});
+    Ewoms::EclipseConfig val1{init, restart};
 
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(EclipseConfig)
 #endif
 }
 
@@ -2302,8 +2194,7 @@ BOOST_AUTO_TEST_CASE(TransMult)
                         {{Ewoms::FaceDir::ZPlus, "test1"}},
                         scanner);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(TransMult)
 #endif
 }
 
@@ -2312,8 +2203,7 @@ BOOST_AUTO_TEST_CASE(FaultFace)
 #ifdef HAVE_MPI
     Ewoms::FaultFace val1({1,2,3,4,5,6}, Ewoms::FaceDir::YPlus);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(FaultFace)
 #endif
 }
 
@@ -2322,8 +2212,7 @@ BOOST_AUTO_TEST_CASE(Fault)
 #ifdef HAVE_MPI
     Ewoms::Fault val1("test", 1.0, {{{1,2,3,4,5,6}, Ewoms::FaceDir::YPlus}});
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(Fault)
 #endif
 }
 
@@ -2335,8 +2224,7 @@ BOOST_AUTO_TEST_CASE(FaultCollection)
     faults.insert({"test2", fault});
     Ewoms::FaultCollection val1(faults);
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(FaultCollection)
 #endif
 }
 
@@ -2348,8 +2236,7 @@ BOOST_AUTO_TEST_CASE(EclEpsScalingPointsInfo)
                                               11.0, 12.0, 13.0, 14.0, 15.0,
                                               16.0, 17.0, 18.0, 19.0, 20.0, 21};
     auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
+    DO_CHECKS(EclEpsScalingPointsInfo<double>)
 #endif
 }
 

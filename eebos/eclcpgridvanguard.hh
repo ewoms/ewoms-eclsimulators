@@ -256,14 +256,15 @@ public:
 protected:
     void createGrids_()
     {
-        const auto& porv = this->eclState().fieldProps().porv(true);
 
         grid_.reset(new Dune::CpGrid());
-        grid_->processEclipseFormat(&(this->eclState().getInputGrid()),
+        grid_->processEclipseFormat(mpiRank == 0 ? &this->eclState().getInputGrid()
+                                                 : nullptr,
                                     /*isPeriodic=*/false,
                                     /*flipNormals=*/false,
                                     /*clipZ=*/false,
-                                    porv,
+                                    mpiRank == 0 ? this->eclState().fieldProps().porv(true)
+                                                 : std::vector<double>(),
                                     this->eclState().getInputNNC());
 
         // we use separate grid objects: one for the calculation of the initial condition
@@ -276,22 +277,11 @@ protected:
         {
             equilGrid_.reset(new Dune::CpGrid(*grid_));
             equilCartesianIndexMapper_.reset(new CartesianIndexMapper(*equilGrid_));
+
+            std::vector<int> actnum = Ewoms::UgGridHelpers::createACTNUM(*grid_);
+            auto &fieldProps = this->eclState().fieldProps();
+            const_cast<FieldPropsManager&>(fieldProps).reset_actnum(actnum);
         }
-        std::vector<int> actnum;
-        unsigned long actnumSize;
-        if (mpiRank == 0) {
-            actnum = Ewoms::UgGridHelpers::createACTNUM(*grid_);
-            actnumSize = actnum.size();
-        }
-
-        grid_->comm().broadcast(&actnumSize, 1, 0);
-        if (mpiRank != 0)
-            actnum.resize( actnumSize );
-
-        grid_->comm().broadcast(actnum.data(), actnumSize, 0);
-
-        auto & fieldProps = this->eclState().fieldProps();
-        const_cast<FieldPropsManager&>(fieldProps).reset_actnum(actnum);
     }
 
     // removing some connection located in inactive grid cells

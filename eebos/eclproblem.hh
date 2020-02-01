@@ -65,6 +65,7 @@
 #include <ewoms/common/valgrind.hh>
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
+#include <ewoms/eclio/parser/eclipsestate/simulationconfig/rockconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/eqldims.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/action/actioncontext.hh>
@@ -2127,71 +2128,34 @@ private:
     {
         const auto& simulator = this->simulator();
         const auto& vanguard = simulator.vanguard();
-        const auto& deck = vanguard.deck();
-        auto& eclState = vanguard.eclState();
+        const auto& eclState = vanguard.eclState();
+        const auto& rockConfig = eclState.getSimulationConfig().rock_config();
 
         // read the rock compressibility parameters
-        if (deck.hasKeyword("ROCK")) {
-            const auto& rockKeyword = deck.getKeyword("ROCK");
-            rockParams_.resize(rockKeyword.size());
-            for (size_t rockRecordIdx = 0; rockRecordIdx < rockKeyword.size(); ++ rockRecordIdx) {
-                const auto& rockRecord = rockKeyword.getRecord(rockRecordIdx);
-                rockParams_[rockRecordIdx].referencePressure =
-                        rockRecord.getItem("PREF").getSIDouble(0);
-                rockParams_[rockRecordIdx].compressibility =
-                        rockRecord.getItem("COMPRESSIBILITY").getSIDouble(0);
-            }
+        {
+            const auto& comp = rockConfig.comp();
+            rockParams_.clear();
+            for (const auto& c : comp)
+                rockParams_.push_back( { c.pref, c.compressibility } );
         }
 
         // read the parameters for water-induced rock compaction
         readRockCompactionParameters_();
 
-        // check the kind of region which is supposed to be used by checking the ROCKOPTS
-        // keyword. note that for some funny reason, the ROCK keyword uses PVTNUM by
-        // default, *not* ROCKNUM!
-        std::string propName = "PVTNUM";
-        if (deck.hasKeyword("ROCKOPTS")) {
-            const auto& rockoptsKeyword = deck.getKeyword("ROCKOPTS");
-            std::string rockTableType =
-                rockoptsKeyword.getRecord(0).getItem("TABLE_TYPE").getTrimmedString(0);
-            if (rockTableType == "PVTNUM")
-                propName = "PVTNUM";
-            else if (rockTableType == "SATNUM")
-                propName = "SATNUM";
-            else if (rockTableType == "ROCKNUM")
-                propName = "ROCKNUM";
-            else {
-                throw std::runtime_error("Unknown table type '"+rockTableType
-                                         +" for the ROCKOPTS keyword given");
-            }
-        }
+        const auto& num = eclState.fieldProps().get_global_int(rockConfig.rocknum_property());
+        unsigned numElem = vanguard.gridView().size(0);
+        rockTableIdx_.resize(numElem);
+        for (size_t elemIdx = 0; elemIdx < numElem; ++ elemIdx) {
+            unsigned cartElemIdx = vanguard.cartesianIndex(elemIdx);
 
-        // If ROCKCOMP is used and ROCKNUM is specified ROCK2D ROCK2DTR ROCKTAB etc. uses ROCKNUM
-        // to give the correct table index.
-        if (deck.hasKeyword("ROCKCOMP") && eclState.fieldProps().has_int("ROCKNUM"))
-            propName = "ROCKNUM";
-
-        if (eclState.fieldProps().has_int(propName)) {
-            const auto& tmp = eclState.fieldProps().get_global_int(propName);
-            unsigned numElem = vanguard.gridView().size(0);
-            rockTableIdx_.resize(numElem);
-            for (size_t elemIdx = 0; elemIdx < numElem; ++ elemIdx) {
-                unsigned cartElemIdx = vanguard.cartesianIndex(elemIdx);
-
-                // reminder: Eclipse uses FORTRAN-style indices
-                rockTableIdx_[elemIdx] = tmp[cartElemIdx] - 1;
-            }
+            rockTableIdx_[elemIdx] = num[cartElemIdx] - 1;
         }
 
         // Store overburden pressure pr element
         const auto& overburdTables = eclState.getTableManager().getOverburdTables();
         if (!overburdTables.empty()) {
-            unsigned numElem = vanguard.gridView().size(0);
             overburdenPressure_.resize(numElem,0.0);
-
-            const auto& rockcomp = deck.getKeyword("ROCKCOMP");
-            const auto& rockcompRecord = rockcomp.getRecord(0);
-            size_t numRocktabTables = rockcompRecord.getItem("NTROCC").template get< int >(0);
+            size_t numRocktabTables = rockConfig.num_rock_tables();
 
             if (overburdTables.size() != numRocktabTables)
                 throw std::runtime_error(std::to_string(numRocktabTables) +" OVERBURD tables is expected, but " + std::to_string(overburdTables.size()) +" is provided");
@@ -2216,47 +2180,36 @@ private:
     void readRockCompactionParameters_()
     {
         const auto& vanguard = this->simulator().vanguard();
-        const auto& deck = vanguard.deck();
         const auto& eclState = vanguard.eclState();
+        const auto& rockConfig = eclState.getSimulationConfig().rock_config();
 
-        if (!deck.hasKeyword("ROCKCOMP"))
+        if (!rockConfig.active())
             return; // deck does not enable rock compaction
 
-        const auto& rockcomp = deck.getKeyword("ROCKCOMP");
-        //for (size_t rockRecordIdx = 0; rockRecordIdx < rockcomp.size(); ++ rockRecordIdx) {
-        assert(rockcomp.size() == 1);
-        const auto& rockcompRecord = rockcomp.getRecord(0);
-        const auto& option = rockcompRecord.getItem("HYSTERESIS").getTrimmedString(0);
-        if (option == "REVERS") {
-            // interpolate the porv volume multiplier using the pressure in the cell
-        }
-        else if (option == "IRREVERS") {
+        unsigned numElem = vanguard.gridView().size(0);
+        switch (rockConfig.hysteresis_mode()) {
+        case RockConfig::Hysteresis::REVERS:
+            break;
+        case RockConfig::Hysteresis::IRREVERS:
             // interpolate the porv volume multiplier using the minimum pressure in the cell
             // i.e. don't allow re-inflation.
-            unsigned numElem = vanguard.gridView().size(0);
             minOilPressure_.resize(numElem, 1e99);
+            break;
+        default:
+            throw std::runtime_error("Not support ROCKOMP hysteresis option ");
         }
-        else if (option == "NO")
-            // rock compaction turned on but disabled by ROCKCOMP option
-            return;
-        else
-            throw std::runtime_error("ROCKCOMP option " + option + " not supported for item 1");
 
-        size_t numRocktabTables = rockcompRecord.getItem("NTROCC").template get<int>(0);
-        const auto& waterCompactionItem = rockcompRecord.getItem("WATER_COMPACTION").getTrimmedString(0);
-        bool waterCompaction = false;
-        if (waterCompactionItem == "YES") {
-            waterCompaction = true;
-            unsigned numElem = vanguard.gridView().size(0);
-            maxWaterSaturation_.resize(numElem, 0.0);
-        }
-        else
-            throw std::runtime_error("ROCKCOMP option " + waterCompactionItem + " not supported for item 3. Only YES is supported");
+        size_t numRocktabTables = rockConfig.num_rock_tables();
+        bool waterCompaction = rockConfig.water_compaction();
+
+        if (!waterCompaction)
+            throw std::runtime_error("Only water compatction allowed");
 
         if (waterCompaction) {
             const auto& rock2dTables = eclState.getTableManager().getRock2dTables();
             const auto& rock2dtrTables = eclState.getTableManager().getRock2dtrTables();
             const auto& rockwnodTables = eclState.getTableManager().getRockwnodTables();
+            maxWaterSaturation_.resize(numElem, 0.0);
 
             if (rock2dTables.size() != numRocktabTables)
                 throw std::runtime_error("Water compation option is selected in ROCKCOMP." + std::to_string(numRocktabTables)
@@ -2352,7 +2305,6 @@ private:
 
         const auto& simulator = this->simulator();
         const auto& vanguard = simulator.vanguard();
-        const auto& deck = vanguard.deck();
         const auto& eclState = vanguard.eclState();
 
         // fluid-matrix interactions (saturation functions; relperm/capillary pressure)
@@ -2362,7 +2314,7 @@ private:
             compressedToCartesianElemIdx[elemIdx] = vanguard.cartesianIndex(elemIdx);
 
         thermalLawManager_ = std::make_shared<EclThermalLawManager>();
-        thermalLawManager_->initFromDeck(deck, eclState, compressedToCartesianElemIdx);
+        thermalLawManager_->initParamsForElements(eclState, compressedToCartesianElemIdx);
     }
 
     void updateReferencePorosity_()
@@ -2949,13 +2901,13 @@ private:
         nonTrivialBoundaryConditions_ = false;
         const auto& simulator = this->simulator();
         const auto& vanguard = simulator.vanguard();
-
-        if (vanguard.deck().hasKeyword("BC")) {
+        const auto& bcconfig = vanguard.eclState().getSimulationConfig().bcconfig();
+        if (bcconfig.size() > 0) {
             nonTrivialBoundaryConditions_ = true;
 
             size_t numCartDof = vanguard.cartesianSize();
             unsigned numElems = vanguard.gridView().size(/*codim=*/0);
-            std::vector<int> cartesianToCompressedElemIdx(numCartDof);
+            std::vector<int> cartesianToCompressedElemIdx(numCartDof, -1);
 
             for (unsigned elemIdx = 0; elemIdx < numElems; ++elemIdx)
                 cartesianToCompressedElemIdx[vanguard.cartesianIndex(elemIdx)] = elemIdx;
@@ -2973,114 +2925,113 @@ private:
             freebcZ_.resize(numElems, false);
             freebcZMinus_.resize(numElems, false);
 
-            const auto& bcs = vanguard.deck().getKeywordList("BC");
-            for (size_t listIdx = 0; listIdx < bcs.size(); ++listIdx) {
-                const auto& bc = *bcs[listIdx];
+            for (const auto& bcface : bcconfig) {
+                const auto& type = bcface.bctype;
+                if (type == BCType::RATE) {
+                    int compIdx = 0; // default initialize to avoid -Wmaybe-uninitialized warning
 
-                for (size_t record = 0; record < bc.size(); ++record) {
-
-                    std::string type = bc.getRecord(record).getItem("TYPE").getTrimmedString(0);
-                    std::string compName = bc.getRecord(record).getItem("COMPONENT").getTrimmedString(0);
-                    int compIdx = -999;
-
-                    if (compName == "OIL")
+                    switch (bcface.component) {
+                    case BCComponent::OIL:
                         compIdx = oilCompIdx;
-                    else if (compName == "GAS")
+                        break;
+                    case BCComponent::GAS:
                         compIdx = gasCompIdx;
-                    else if (compName == "WATER")
+                        break;
+                    case BCComponent::WATER:
                         compIdx = waterCompIdx;
-                    else if (compName == "SOLVENT") {
+                        break;
+                    case BCComponent::SOLVENT:
                         if (!enableSolvent)
                             throw std::logic_error("solvent is disabled and you're trying to add solvent to BC");
 
                         compIdx = Indices::solventSaturationIdx;
-                    }
-                    else if (compName == "POLYMER") {
+                        break;
+                    case BCComponent::POLYMER:
                         if (!enablePolymer)
                             throw std::logic_error("polymer is disabled and you're trying to add polymer to BC");
 
                         compIdx = Indices::polymerConcentrationIdx;
+                        break;
+                    case BCComponent::NONE:
+                        throw std::logic_error("you need to specify the component when RATE type is set in BC");
+                        break;
                     }
-                    else if (compName == "NONE") {
-                        if (type == "RATE")
-                            throw std::logic_error("you need to specify the component when RATE type is set in BC");
+
+                    std::vector<RateVector>* data = nullptr;
+                    switch (bcface.dir) {
+                    case FaceDir::XMinus:
+                        data = &massratebcXMinus_;
+                        break;
+                    case FaceDir::XPlus:
+                        data = &massratebcX_;
+                        break;
+                    case FaceDir::YMinus:
+                        data = &massratebcYMinus_;
+                        break;
+                    case FaceDir::YPlus:
+                        data = &massratebcY_;
+                        break;
+                    case FaceDir::ZMinus:
+                        data = &massratebcZMinus_;
+                        break;
+                    case FaceDir::ZPlus:
+                        data = &massratebcZ_;
+                        break;
                     }
-                    else
-                        throw std::logic_error("invalid component name for BC");
 
-                    int i1 = bc.getRecord(record).getItem("I1").template get< int >(0) - 1;
-                    int i2 = bc.getRecord(record).getItem("I2").template get< int >(0) - 1;
-                    int j1 = bc.getRecord(record).getItem("J1").template get< int >(0) - 1;
-                    int j2 = bc.getRecord(record).getItem("J2").template get< int >(0) - 1;
-                    int k1 = bc.getRecord(record).getItem("K1").template get< int >(0) - 1;
-                    int k2 = bc.getRecord(record).getItem("K2").template get< int >(0) - 1;
-                    std::string direction = bc.getRecord(record).getItem("DIRECTION").getTrimmedString(0);
-
-                    if (type == "RATE") {
-                        assert(compIdx >= 0);
-                        std::vector<RateVector>* data = 0;
-                        if (direction == "X-")
-                            data = &massratebcXMinus_;
-                        else if (direction == "X")
-                            data = &massratebcX_;
-                        else if (direction == "Y-")
-                            data = &massratebcYMinus_;
-                        else if (direction == "Y")
-                            data = &massratebcY_;
-                        else if (direction == "Z-")
-                            data = &massratebcZMinus_;
-                        else if (direction == "Z")
-                            data = &massratebcZ_;
-                        else
-                            throw std::logic_error("invalid direction for BC");
-
-                        const Evaluation rate = bc.getRecord(record).getItem("RATE").getSIDouble(0);
-                        for (int i = i1; i <= i2; ++i) {
-                            for (int j = j1; j <= j2; ++j) {
-                                for (int k = k1; k <= k2; ++k) {
-                                    std::array<int, 3> tmp = {i,j,k};
-                                    size_t elemIdx = cartesianToCompressedElemIdx[vanguard.cartesianIndex(tmp)];
+                    const Evaluation rate = bcface.rate;
+                    for (int i = bcface.i1; i <= bcface.i2; ++i) {
+                        for (int j = bcface.j1; j <= bcface.j2; ++j) {
+                            for (int k = bcface.k1; k <= bcface.k2; ++k) {
+                                std::array<int, 3> tmp = {i,j,k};
+                                auto elemIdx = cartesianToCompressedElemIdx[vanguard.cartesianIndex(tmp)];
+                                if (elemIdx >= 0)
                                     (*data)[elemIdx][compIdx] = rate;
-                                }
                             }
                         }
                     }
-                    else if (type == "FREE") {
-                        std::vector<bool>* data = 0;
-                        if (direction == "X-")
-                            data = &freebcXMinus_;
-                        else if (direction == "X")
-                            data = &freebcX_;
-                        else if (direction == "Y-")
-                            data = &freebcYMinus_;
-                        else if (direction == "Y")
-                            data = &freebcY_;
-                        else if (direction == "Z-")
-                            data = &freebcZMinus_;
-                        else if (direction == "Z")
-                            data = &freebcZ_;
-                        else
-                            throw std::logic_error("invalid direction for BC");
+                } else if (type == BCType::FREE) {
+                    std::vector<bool>* data = nullptr;
+                    switch (bcface.dir) {
+                    case FaceDir::XMinus:
+                        data = &freebcXMinus_;
+                        break;
+                    case FaceDir::XPlus:
+                        data = &freebcX_;
+                        break;
+                    case FaceDir::YMinus:
+                        data = &freebcYMinus_;
+                        break;
+                    case FaceDir::YPlus:
+                        data = &freebcY_;
+                        break;
+                    case FaceDir::ZMinus:
+                        data = &freebcZMinus_;
+                        break;
+                    case FaceDir::ZPlus:
+                        data = &freebcZ_;
+                        break;
+                    }
 
-                        for (int i = i1; i <= i2; ++i) {
-                            for (int j = j1; j <= j2; ++j) {
-                                for (int k = k1; k <= k2; ++k) {
-                                    std::array<int, 3> tmp = {i,j,k};
-                                    size_t elemIdx = cartesianToCompressedElemIdx[vanguard.cartesianIndex(tmp)];
+                    for (int i = bcface.i1; i <= bcface.i2; ++i) {
+                        for (int j = bcface.j1; j <= bcface.j2; ++j) {
+                            for (int k = bcface.k1; k <= bcface.k2; ++k) {
+                                std::array<int, 3> tmp = {i,j,k};
+                                auto elemIdx = cartesianToCompressedElemIdx[vanguard.cartesianIndex(tmp)];
+                                if (elemIdx >= 0)
                                     (*data)[elemIdx] = true;
-                                }
                             }
                         }
-                        // TODO: either the real initial solution needs to be computed or read from the restart file
-                        const auto& eclState = simulator.vanguard().eclState();
-                        const auto& initconfig = eclState.getInitConfig();
-                        if (initconfig.restartRequested()) {
-                            throw std::logic_error("restart is not compatible with using free boundary conditions");
-                        }
                     }
-                    else {
-                        throw std::logic_error("invalid type for BC. Use FREE or RATE");
+
+                    // TODO: either the real initial solution needs to be computed or read from the restart file
+                    const auto& eclState = simulator.vanguard().eclState();
+                    const auto& initconfig = eclState.getInitConfig();
+                    if (initconfig.restartRequested()) {
+                        throw std::logic_error("restart is not compatible with using free boundary conditions");
                     }
+                } else {
+                    throw std::logic_error("invalid type for BC. Use FREE or RATE");
                 }
             }
         }
