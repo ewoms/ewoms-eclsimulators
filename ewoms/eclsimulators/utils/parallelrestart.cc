@@ -448,6 +448,7 @@ HANDLE_AS_POD(Actdims)
 HANDLE_AS_POD(Aqudims)
 HANDLE_AS_POD(BCConfig::BCFace)
 HANDLE_AS_POD(data::Connection)
+HANDLE_AS_POD(data::CurrentControl)
 HANDLE_AS_POD(data::Rates)
 HANDLE_AS_POD(data::Segment)
 HANDLE_AS_POD(DENSITYRecord)
@@ -461,6 +462,7 @@ HANDLE_AS_POD(ROCKRecord)
 HANDLE_AS_POD(SatFuncControls)
 HANDLE_AS_POD(Tabdims)
 HANDLE_AS_POD(TimeStampUTC::YMD)
+HANDLE_AS_POD(Tuning)
 HANDLE_AS_POD(VISCREFRecord)
 HANDLE_AS_POD(WATDENTRecord)
 HANDLE_AS_POD(WellBrineProperties)
@@ -476,6 +478,7 @@ std::size_t packSize(const data::Well& data, Dune::MPIHelper::MPICommunicator co
     size += packSize(data.control, comm);
     size += packSize(data.connections, comm);
     size += packSize(data.segments, comm);
+    size += packSize(data.current_control, comm);
     return size;
 }
 
@@ -1681,48 +1684,6 @@ std::size_t packSize(const Deck& data,
            packSize(data.unitSystemAccessCount(), comm);
 }
 
-std::size_t packSize(const Tuning& data,
-                     Dune::MPIHelper::MPICommunicator comm)
-{
-    return packSize(data.getTSINIT(), comm) +
-           packSize(data.getTSMAXZ(), comm) +
-           packSize(data.getTSMINZ(), comm) +
-           packSize(data.getTSMCHP(), comm) +
-           packSize(data.getTSFMAX(), comm) +
-           packSize(data.getTSFMIN(), comm) +
-           packSize(data.getTSFCNV(), comm) +
-           packSize(data.getTFDIFF(), comm) +
-           packSize(data.getTHRUPT(), comm) +
-           packSize(data.getTMAXWC(), comm) +
-           packSize(data.getTMAXWC_has_value(), comm) +
-           packSize(data.getTRGTTE(), comm) +
-           packSize(data.getTRGCNV(), comm) +
-           packSize(data.getTRGMBE(), comm) +
-           packSize(data.getTRGLCV(), comm) +
-           packSize(data.getXXXTTE(), comm) +
-           packSize(data.getXXXCNV(), comm) +
-           packSize(data.getXXXMBE(), comm) +
-           packSize(data.getXXXLCV(), comm) +
-           packSize(data.getXXXWFL(), comm) +
-           packSize(data.getTRGFIP(), comm) +
-           packSize(data.getTRGSFT(), comm) +
-           packSize(data.getTRGSFT_has_value(), comm) +
-           packSize(data.getTHIONX(), comm) +
-           packSize(data.getTRWGHT(), comm) +
-           packSize(data.getNEWTMX(), comm) +
-           packSize(data.getNEWTMN(), comm) +
-           packSize(data.getLITMAX(), comm) +
-           packSize(data.getLITMIN(), comm) +
-           packSize(data.getMXWSIT(), comm) +
-           packSize(data.getMXWPIT(), comm) +
-           packSize(data.getDDPLIM(), comm) +
-           packSize(data.getDDSLIM(), comm) +
-           packSize(data.getTRGDPR(), comm) +
-           packSize(data.getXXXDPR(), comm) +
-           packSize(data.getXXXDPR_has_value(), comm) +
-           packSize(data.getResetValues(), comm);
-}
-
 std::size_t packSize(const Action::ASTNode& data,
                      Dune::MPIHelper::MPICommunicator comm)
 {
@@ -2233,6 +2194,7 @@ void pack(const data::Well& data, std::vector<char>& buffer, int& position,
     pack(data.control, buffer, position, comm);
     pack(data.connections, buffer, position, comm);
     pack(data.segments, buffer, position, comm);
+    pack(data.current_control, buffer, position, comm);
 }
 
 void pack(const RestartKey& data, std::vector<char>& buffer, int& position,
@@ -3506,49 +3468,6 @@ void pack(const Deck& data,
     pack(data.unitSystemAccessCount(), buffer, position, comm);
 }
 
-void pack(const Tuning& data,
-          std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm)
-{
-    pack(data.getTSINIT(), buffer, position, comm);
-    pack(data.getTSMAXZ(), buffer, position, comm);
-    pack(data.getTSMINZ(), buffer, position, comm);
-    pack(data.getTSMCHP(), buffer, position, comm);
-    pack(data.getTSFMAX(), buffer, position, comm);
-    pack(data.getTSFMIN(), buffer, position, comm);
-    pack(data.getTSFCNV(), buffer, position, comm);
-    pack(data.getTFDIFF(), buffer, position, comm);
-    pack(data.getTHRUPT(), buffer, position, comm);
-    pack(data.getTMAXWC(), buffer, position, comm);
-    pack(data.getTMAXWC_has_value(), buffer, position, comm);
-    pack(data.getTRGTTE(), buffer, position, comm);
-    pack(data.getTRGCNV(), buffer, position, comm);
-    pack(data.getTRGMBE(), buffer, position, comm);
-    pack(data.getTRGLCV(), buffer, position, comm);
-    pack(data.getXXXTTE(), buffer, position, comm);
-    pack(data.getXXXCNV(), buffer, position, comm);
-    pack(data.getXXXMBE(), buffer, position, comm);
-    pack(data.getXXXLCV(), buffer, position, comm);
-    pack(data.getXXXWFL(), buffer, position, comm);
-    pack(data.getTRGFIP(), buffer, position, comm);
-    pack(data.getTRGSFT(), buffer, position, comm);
-    pack(data.getTRGSFT_has_value(), buffer, position, comm);
-    pack(data.getTHIONX(), buffer, position, comm);
-    pack(data.getTRWGHT(), buffer, position, comm);
-    pack(data.getNEWTMX(), buffer, position, comm);
-    pack(data.getNEWTMN(), buffer, position, comm);
-    pack(data.getLITMAX(), buffer, position, comm);
-    pack(data.getLITMIN(), buffer, position, comm);
-    pack(data.getMXWSIT(), buffer, position, comm);
-    pack(data.getMXWPIT(), buffer, position, comm);
-    pack(data.getDDPLIM(), buffer, position, comm);
-    pack(data.getDDSLIM(), buffer, position, comm);
-    pack(data.getTRGDPR(), buffer, position, comm);
-    pack(data.getXXXDPR(), buffer, position, comm);
-    pack(data.getXXXDPR_has_value(), buffer, position, comm);
-    pack(data.getResetValues(), buffer, position, comm);
-}
-
 void pack(const Action::ASTNode& data,
           std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm)
@@ -4164,6 +4083,7 @@ void unpack(data::Well& data, std::vector<char>& buffer, int& position,
     unpack(data.control, buffer, position, comm);
     unpack(data.connections, buffer, position, comm);
     unpack(data.segments, buffer, position, comm);
+    unpack(data.current_control, buffer, position, comm);
 }
 
 void unpack(RestartKey& data, std::vector<char>& buffer, int& position,
@@ -6077,93 +5997,6 @@ void unpack(Deck& data, std::vector<char>& buffer, int& position,
                 activeUnitSystem.get(), dataFile, inputPath, accessCount);
 }
 
-void unpack(Tuning& data, std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm)
-{
-    DynamicState<double> TSINIT;
-    DynamicState<double> TSMAXZ;
-    DynamicState<double> TSMINZ;
-    DynamicState<double> TSMCHP;
-    DynamicState<double> TSFMAX;
-    DynamicState<double> TSFMIN;
-    DynamicState<double> TSFCNV;
-    DynamicState<double> TFDIFF;
-    DynamicState<double> THRUPT;
-    DynamicState<double> TMAXWC;
-    DynamicState<int>    TMAXWC_has_value;
-    DynamicState<double> TRGTTE;
-    DynamicState<double> TRGCNV;
-    DynamicState<double> TRGMBE;
-    DynamicState<double> TRGLCV;
-    DynamicState<double> XXXTTE;
-    DynamicState<double> XXXCNV;
-    DynamicState<double> XXXMBE;
-    DynamicState<double> XXXLCV;
-    DynamicState<double> XXXWFL;
-    DynamicState<double> TRGFIP;
-    DynamicState<double> TRGSFT;
-    DynamicState<int>    TRGSFT_has_value;
-    DynamicState<double> THIONX;
-    DynamicState<int>    TRWGHT;
-    DynamicState<int>    NEWTMX;
-    DynamicState<int>    NEWTMN;
-    DynamicState<int>    LITMAX;
-    DynamicState<int>    LITMIN;
-    DynamicState<int>    MXWSIT;
-    DynamicState<int>    MXWPIT;
-    DynamicState<double> DDPLIM;
-    DynamicState<double> DDSLIM;
-    DynamicState<double> TRGDPR;
-    DynamicState<double> XXXDPR;
-    DynamicState<int>    XXXDPR_has_value;
-    std::map<std::string, bool> ResetValue;
-
-    unpack(TSINIT, buffer, position, comm);
-    unpack(TSMAXZ, buffer, position, comm);
-    unpack(TSMINZ, buffer, position, comm);
-    unpack(TSMCHP, buffer, position, comm);
-    unpack(TSFMAX, buffer, position, comm);
-    unpack(TSFMIN, buffer, position, comm);
-    unpack(TSFCNV, buffer, position, comm);
-    unpack(TFDIFF, buffer, position, comm);
-    unpack(THRUPT, buffer, position, comm);
-    unpack(TMAXWC, buffer, position, comm);
-    unpack(TMAXWC_has_value, buffer, position, comm);
-    unpack(TRGTTE, buffer, position, comm);
-    unpack(TRGCNV, buffer, position, comm);
-    unpack(TRGMBE, buffer, position, comm);
-    unpack(TRGLCV, buffer, position, comm);
-    unpack(XXXTTE, buffer, position, comm);
-    unpack(XXXCNV, buffer, position, comm);
-    unpack(XXXMBE, buffer, position, comm);
-    unpack(XXXLCV, buffer, position, comm);
-    unpack(XXXWFL, buffer, position, comm);
-    unpack(TRGFIP, buffer, position, comm);
-    unpack(TRGSFT, buffer, position, comm);
-    unpack(TRGSFT_has_value, buffer, position, comm);
-    unpack(THIONX, buffer, position, comm);
-    unpack(TRWGHT, buffer, position, comm);
-    unpack(NEWTMX, buffer, position, comm);
-    unpack(NEWTMN, buffer, position, comm);
-    unpack(LITMAX, buffer, position, comm);
-    unpack(LITMIN, buffer, position, comm);
-    unpack(MXWSIT, buffer, position, comm);
-    unpack(MXWPIT, buffer, position, comm);
-    unpack(DDPLIM, buffer, position, comm);
-    unpack(DDSLIM, buffer, position, comm);
-    unpack(TRGDPR, buffer, position, comm);
-    unpack(XXXDPR, buffer, position, comm);
-    unpack(XXXDPR_has_value, buffer, position, comm);
-    unpack(ResetValue, buffer, position, comm);
-
-    data = Tuning(TSINIT, TSMAXZ, TSMINZ, TSMCHP, TSFMAX, TSFMIN, TSFCNV,
-                  TFDIFF, THRUPT, TMAXWC, TMAXWC_has_value, TRGTTE,
-                  TRGCNV, TRGMBE, TRGLCV, XXXTTE, XXXCNV, XXXMBE, XXXLCV,
-                  XXXWFL, TRGFIP, TRGSFT, TRGSFT_has_value, THIONX, TRWGHT,
-                  NEWTMX, NEWTMN, LITMAX, LITMIN, MXWSIT, MXWPIT, DDPLIM,
-                  DDSLIM, TRGDPR, XXXDPR, XXXDPR_has_value, ResetValue);
-}
-
 void unpack(Action::ASTNode& data, std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm)
 {
@@ -6251,7 +6084,7 @@ void unpack(Schedule& data, std::vector<char>& buffer, int& position,
     DynamicState<OilVaporizationProperties> oilVapProps;
     Events events;
     DynamicVector<Deck> modifierDeck;
-    Tuning tuning;
+    DynamicState<Tuning> tuning;
     MessageLimits messageLimits;
     Runspec runspec;
     Schedule::VFPProdMap vfpProdTables;

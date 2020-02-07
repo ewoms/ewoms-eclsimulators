@@ -16,8 +16,8 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EWOMS_BLACKOILMODELEEBOS_HH
-#define EWOMS_BLACKOILMODELEEBOS_HH
+#ifndef EWOMS_EFLOWBLACKOILMODEL_HH
+#define EWOMS_EFLOWBLACKOILMODEL_HH
 
 #include <eebos/eclproblem.hh>
 #include <ewoms/numerics/utils/start.hh>

@@ -157,6 +157,14 @@ Ewoms::data::Segment getSegment()
     return seg1;
 }
 
+Ewoms::data::CurrentControl getCurrentControl()
+{
+    Ewoms::data::CurrentControl curr;
+    curr.isProducer = true;
+    curr.prod = ::Ewoms::Well::ProducerCMode::CRAT;
+    return curr;
+}
+
 Ewoms::data::Well getWell()
 {
     Ewoms::data::Well well1;
@@ -167,6 +175,7 @@ Ewoms::data::Well getWell()
     well1.control = 4;
     well1.connections.push_back(getConnection());
     well1.segments.insert({0, getSegment()});
+    well1.current_control = getCurrentControl();
     return well1;
 }
 
@@ -382,43 +391,10 @@ Ewoms::DeckRecord getDeckRecord()
 
 Ewoms::Tuning getTuning()
 {
-    return Ewoms::Tuning(Ewoms::DynamicState<double>(std::vector<double>{1.0}, 1),  //TSINIT
-                       Ewoms::DynamicState<double>(std::vector<double>{2.0}, 1),  //TSMAXZ
-                       Ewoms::DynamicState<double>(std::vector<double>{3.0}, 1),  //TSMINZ
-                       Ewoms::DynamicState<double>(std::vector<double>{4.0}, 1),  //TSMCHP
-                       Ewoms::DynamicState<double>(std::vector<double>{5.0}, 1),  //TSFMAX
-                       Ewoms::DynamicState<double>(std::vector<double>{6.0}, 1),  //TSFMIN
-                       Ewoms::DynamicState<double>(std::vector<double>{7.0}, 1),  //TSFCNV
-                       Ewoms::DynamicState<double>(std::vector<double>{8.0}, 1),  //TFDIFF
-                       Ewoms::DynamicState<double>(std::vector<double>{9.0}, 1),  //THRUPT
-                       Ewoms::DynamicState<double>(std::vector<double>{10.0}, 1), //TMAXWC
-                       Ewoms::DynamicState<int>(std::vector<int>{1}, 1),       //TMAXWC_has_value
-                       Ewoms::DynamicState<double>(std::vector<double>{11.0}, 1), //TRGTTE
-                       Ewoms::DynamicState<double>(std::vector<double>{12.0}, 1), //TRGCNV
-                       Ewoms::DynamicState<double>(std::vector<double>{13.0}, 1), //TRGMBE
-                       Ewoms::DynamicState<double>(std::vector<double>{14.0}, 1), //TRGLCV
-                       Ewoms::DynamicState<double>(std::vector<double>{15.0}, 1), //XXXTTE
-                       Ewoms::DynamicState<double>(std::vector<double>{16.0}, 1), //XXXCNV
-                       Ewoms::DynamicState<double>(std::vector<double>{17.0}, 1), //XXXMBE
-                       Ewoms::DynamicState<double>(std::vector<double>{18.0}, 1), //XXXLCV
-                       Ewoms::DynamicState<double>(std::vector<double>{19.0}, 1), //XXXWFL
-                       Ewoms::DynamicState<double>(std::vector<double>{20.0}, 1), ///TRGFIP
-                       Ewoms::DynamicState<double>(std::vector<double>{21.0}, 1), //TRGSFT
-                       Ewoms::DynamicState<int>(std::vector<int>{2}, 1),       //TRGSFT_has_value
-                       Ewoms::DynamicState<double>(std::vector<double>{22.0}, 1), // THIONX
-                       Ewoms::DynamicState<int>(std::vector<int>{3}, 1),       //TRWGHT
-                       Ewoms::DynamicState<int>(std::vector<int>{4}, 1),       //NEWTMX
-                       Ewoms::DynamicState<int>(std::vector<int>{5}, 1),       //NEWTMN
-                       Ewoms::DynamicState<int>(std::vector<int>{6}, 1),       //LITMAX
-                       Ewoms::DynamicState<int>(std::vector<int>{7}, 1),       //LITMIN
-                       Ewoms::DynamicState<int>(std::vector<int>{8}, 1),       //MXWSIT
-                       Ewoms::DynamicState<int>(std::vector<int>{9}, 1),       //MXWPIT
-                       Ewoms::DynamicState<double>(std::vector<double>{23.0}, 1), //DDPLIM
-                       Ewoms::DynamicState<double>(std::vector<double>{24.0}, 1), //DDSLIM
-                       Ewoms::DynamicState<double>(std::vector<double>{25.0}, 1), //TGRDPR
-                       Ewoms::DynamicState<double>(std::vector<double>{26.0}, 1), //XXXDPR
-                       Ewoms::DynamicState<int>(std::vector<int>{10}, 1),      //XXDPR_has_value
-                       std::map<std::string,bool>{{"test", false}}); // resetValue
+    return Ewoms::Tuning{1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, true,
+                       11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0,
+                       20.0, 21.0, false, 22.0, 3, 4, 5, 6, 7, 8, 9, 23.0, 24.0,
+                       25.0, 26.0, true};
 }
 
 Ewoms::Action::Condition getCondition()
@@ -493,6 +469,16 @@ BOOST_AUTO_TEST_CASE(dataConnection)
     Ewoms::data::Connection val1 = getConnection();
     auto val2 = PackUnpack(val1);
     DO_CHECKS(data::Connection)
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(dataCurrentControl)
+{
+#if HAVE_MPI
+    Ewoms::data::CurrentControl cur1 = getCurrentControl();
+    auto cur2 = PackUnpack(cur1);
+    BOOST_CHECK(std::get<1>(cur2) == std::get<2>(cur2));
+    BOOST_CHECK(cur1 == std::get<0>(cur2));
 #endif
 }
 
@@ -2050,7 +2036,7 @@ BOOST_AUTO_TEST_CASE(Schedule)
                        oilvap,
                        events,
                        modifierDeck,
-                       getTuning(),
+                       Ewoms::DynamicState<Ewoms::Tuning>({getTuning()}, 1),
                        messageLimits,
                        runspec,
                        vfpProd,
