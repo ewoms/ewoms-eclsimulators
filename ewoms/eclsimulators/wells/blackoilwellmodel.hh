@@ -261,6 +261,7 @@ namespace Ewoms {
             double gravity_;
             std::vector<double> depth_;
             bool initial_step_;
+            bool report_step_starts_;
 
             std::unique_ptr<RateConverterType> rateConverter_;
             std::unique_ptr<VFPProperties<VFPInjProperties,VFPProdProperties>> vfp_properties_;
@@ -297,7 +298,7 @@ namespace Ewoms {
             // xw to update Well State
             void recoverWellSolutionAndUpdateWellState(const BVector& x);
 
-            void updateWellControls(Ewoms::DeferredLogger& deferred_logger, const bool checkGroupControl);
+            void updateWellControls(Ewoms::DeferredLogger& deferred_logger, const bool checkGroupControl, const bool checkCurrentGroupControl);
 
             // setting the well_solutions_ based on well_state.
             void updatePrimaryVariables(Ewoms::DeferredLogger& deferred_logger);
@@ -369,7 +370,7 @@ namespace Ewoms {
 
             const Well& getWellEcl(const std::string& well_name) const;
 
-            void checkGroupConstraints(const Group& group, Ewoms::DeferredLogger& deferred_logger);
+            void checkGroupConstraints(const Group& group, const bool checkCurrentControl, Ewoms::DeferredLogger& deferred_logger);
 
             void actionOnBrokenConstraints(const Group& group, const Group::ExceedAction& exceed_action, const Group::ProductionCMode& newControl, const int reportStepIdx, Ewoms::DeferredLogger& deferred_logger);
 
