@@ -679,13 +679,8 @@ private:
                 std::swap(low, high);
 
             auto candidate = trans_.find(isId_(low, high));
-            if (candidate == trans_.end()) {
-                std::ostringstream sstr;
-                sstr << "Cannot edit NNC from " << c1 << " to " << c2
-                     << " as it does not exist";
-                Ewoms::OpmLog::warning(sstr.str());
+            if (candidate == trans_.end())
                 ++nnc;
-            }
             else {
                 // NNC exists
                 while (nnc!= end && c1==nnc->cell1 && c2==nnc->cell2) {

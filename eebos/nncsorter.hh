@@ -41,9 +41,11 @@ namespace Ewoms
 /// \return A lexicographically sorted vector of the scaled NNC data.
 ///         For each entry entry.cell1<entry.cell2 will hold for convenience.
 inline std::vector<Ewoms::NNCdata> sortNncAndApplyEditnnc(const std::vector<Ewoms::NNCdata>& nncDataIn,
-                                                        std::vector<Ewoms::NNCdata> editnncData,
-                                                        bool log = true)
+                                                          std::vector<Ewoms::NNCdata> editnncData,
+                                                          int numPrintMax = 20)
 {
+    int numPrinted = 0;
+
     auto nncLess =
         [](const Ewoms::NNCdata& d1, const Ewoms::NNCdata& d2) {
             return
@@ -70,20 +72,23 @@ inline std::vector<Ewoms::NNCdata> sortNncAndApplyEditnnc(const std::vector<Ewom
 
     for (const auto& edit: editnncData) {
         auto printNncWarning =
-            [](int c1, int c2) {
-                std::ostringstream sstr;
-                sstr << "Cannot edit NNC from " << c1 << " to " << c2
-                     << " as it does not exist";
-                Ewoms::OpmLog::warning(sstr.str());
+            [&numPrinted, numPrintMax](int c1, int c2) {
+                if (numPrinted < numPrintMax) {
+                    std::ostringstream sstr;
+                    sstr << "Cannot edit nnc from " << c1 << " to " << c2
+                         << " as it does not exist";
+                    Ewoms::OpmLog::warning(sstr.str());
+                    ++numPrinted;
+                }
             };
-        if (candidate == nncData.end() && log) {
+        if (candidate == nncData.end()) {
             // no more NNCs left
             printNncWarning(edit.cell1, edit.cell2);
             continue;
         }
         if (candidate->cell1 != edit.cell1 || candidate->cell2 != edit.cell2) {
             candidate = std::lower_bound(nncData.begin(), nncData.end(), Ewoms::NNCdata(edit.cell1, edit.cell2, 0), nncLess);
-            if (candidate == nncData.end() && log) {
+            if (candidate == nncData.end()) {
                 // no more NNCs left
                 printNncWarning(edit.cell1, edit.cell2);
                 continue;
