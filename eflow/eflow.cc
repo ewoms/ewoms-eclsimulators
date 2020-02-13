@@ -18,6 +18,8 @@
 #include "config.h"
 
 #include <eflow/eflow_blackoil.hh>
+
+#ifndef FLOW_BLACKOIL_ONLY
 #include <eflow/eflow_gasoil.hh>
 #include <eflow/eflow_oilwater.hh>
 #include <eflow/eflow_solvent.hh>
@@ -27,6 +29,7 @@
 #include <eflow/eflow_energy.hh>
 #include <eflow/eflow_oilwater_polymer.hh>
 #include <eflow/eflow_oilwater_polymer_injectivity.hh>
+#endif
 
 #include <ewoms/eclsimulators/eflow/simulatorfullyimplicitblackoil.hh>
 #include <ewoms/eclsimulators/eflow/eflowmain.hh>
@@ -370,8 +373,10 @@ int main(int argc, char** argv)
         // TODO: make sure that no illegal combinations like thermal and twophase are
         //       requested.
 
+        if ( false ) {}
+#ifndef FLOW_BLACKOIL_ONLY
         // Twophase cases
-        if( phases.size() == 2 ) {
+        else if( phases.size() == 2 ) {
             // oil-gas
             if (phases.active( Ewoms::Phase::GAS ))
             {
@@ -436,6 +441,7 @@ int main(int argc, char** argv)
             Ewoms::eflowEnergySetDeck(externalSetupTimer.elapsed(), *deck, *eclipseState, *schedule, *summaryConfig);
             return Ewoms::eflowEnergyMain(argc, argv, outputCout, outputFiles);
         }
+#endif // FLOW_BLACKOIL_ONLY
         // Blackoil case
         else if( phases.size() == 3 ) {
             Ewoms::eflowBlackoilSetDeck(externalSetupTimer.elapsed(), *deck, *eclipseState, *schedule, *summaryConfig);

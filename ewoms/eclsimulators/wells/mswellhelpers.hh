@@ -85,7 +85,7 @@ namespace mswellhelpers
         Dune::MatrixAdapter<MatrixType, VectorType, VectorType> linearOperator(D);
 
         // Sequential incomplete LU decomposition as the preconditioner
-#if DUNE_VERSION_NEWER(DUNE_ISTL, 2,7)
+#if DUNE_VERSION_NEWER(DUNE_ISTL, 2, 7)
         Dune::SeqILU<MatrixType, VectorType, VectorType> preconditioner(D, 1.0);
 #else
         Dune::SeqILU0<MatrixType, VectorType, VectorType> preconditioner(D, 1.0);

@@ -48,6 +48,7 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/group/group.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/group/guideratemodel.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/messagelimits.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/msw/icd.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/msw/spiralicd.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/msw/valve.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/oilvaporizationproperties.hh>
@@ -1465,7 +1466,7 @@ BOOST_AUTO_TEST_CASE(SpiralICD)
 {
 #ifdef HAVE_MPI
     Ewoms::SpiralICD val1(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8, 9.0,
-                        Ewoms::SpiralICD::Status::OPEN, 10.0);
+                        Ewoms::ICDStatus::OPEN, 10.0);
     auto val2 = PackUnpack(val1);
     DO_CHECKS(SpiralICD)
 #endif
@@ -1474,7 +1475,7 @@ BOOST_AUTO_TEST_CASE(SpiralICD)
 BOOST_AUTO_TEST_CASE(Valve)
 {
 #ifdef HAVE_MPI
-    Ewoms::Valve val1(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, Ewoms::Valve::Status::OPEN);
+    Ewoms::Valve val1(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, Ewoms::ICDStatus::OPEN);
     auto val2 = PackUnpack(val1);
     DO_CHECKS(Valve)
 #endif

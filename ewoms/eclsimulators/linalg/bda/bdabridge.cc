@@ -215,6 +215,10 @@ Dune::BlockVector<Dune::FieldVector<double, 4>, std::allocator<Dune::FieldVector
     InverseOperatorResult &res);
 
 template void BdaBridge::get_result< \
+Dune::BlockVector<Dune::FieldVector<double, 1>, std::allocator<Dune::FieldVector<double, 1> > > > \
+(Dune::BlockVector<Dune::FieldVector<double, 1>, std::allocator<Dune::FieldVector<double, 1> > > &x);
+
+template void BdaBridge::get_result< \
 Dune::BlockVector<Dune::FieldVector<double, 2>, std::allocator<Dune::FieldVector<double, 2> > > > \
 (Dune::BlockVector<Dune::FieldVector<double, 2>, std::allocator<Dune::FieldVector<double, 2> > > &x);
 

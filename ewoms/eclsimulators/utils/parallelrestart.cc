@@ -41,6 +41,7 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/events.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/group/guiderateconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/messagelimits.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/msw/icd.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/msw/spiralicd.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/msw/valve.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/oilvaporizationproperties.hh>
@@ -5333,7 +5334,7 @@ void unpack(SpiralICD& data,
            widthTransitionRegion, maxViscosityRatio;
     int methodFlowScaling;
     double maxAbsoluteRate;
-    SpiralICD::Status status;
+    ICDStatus status;
     double scalingFactor;
 
     unpack(strength, buffer, position, comm);
@@ -5366,7 +5367,7 @@ void unpack(Valve& data,
     double pipeDiameter;
     double pipeRoughness;
     double pipeCrossArea;
-    Valve::Status status;
+    ICDStatus status;
 
     unpack(conEFlowCoefficient, buffer, position, comm);
     unpack(conCrossArea, buffer, position, comm);

@@ -77,6 +77,9 @@ public:
         , eebos_simulator_(eebosSimulator)
         , cartesian_to_compressed_(cartesian_to_compressed)
     {
+        assert(this->connection_.influx_coeff.size() == this->connection_.global_index.size());
+        assert(this->connection_.influx_coeff.size() == this->connection_.influx_multiplier.size());
+        assert(this->connection_.influx_multiplier.size() == this->connection_.reservoir_face_dir.size());
     }
 
     // Deconstructor
@@ -105,7 +108,7 @@ public:
 
     void initialSolutionApplied()
     {
-        initQuantities(connection_);
+        initQuantities();
     }
 
     void beginTimeStep()
@@ -155,7 +158,7 @@ protected:
         return eebos_simulator_.problem().gravity()[2];
     }
 
-    inline void initQuantities(const Aquancon::AquanconOutput& connection)
+    inline void initQuantities()
     {
         // We reset the cumulative flux at the start of any simulation, so, W_flux = 0
         if (!this->solution_set_from_restart_) {
@@ -164,7 +167,7 @@ protected:
 
         // We next get our connections to the aquifer and initialize these quantities using the initialize_connections
         // function
-        initializeConnections(connection);
+        initializeConnections();
         calculateAquiferCondition();
         calculateAquiferConstants();
 
@@ -197,8 +200,7 @@ protected:
     inline double getFaceArea(const faceCellType& faceCells,
                               const ugridType& ugrid,
                               const int faceIdx,
-                              const int idx,
-                              const Aquancon::AquanconOutput& connection) const
+                              const int idx) const
     {
         // Check now if the face is outside of the reservoir, or if it adjoins an inactive cell
         // Do not make the connection if the product of the two cellIdx > 0. This is because the
@@ -209,7 +211,7 @@ protected:
         const auto cellNeighbour1 = faceCells(faceIdx, 1);
         const auto defaultFaceArea = Ewoms::UgGridHelpers::faceArea(ugrid, faceIdx);
         const auto calculatedFaceArea
-            = (!connection.influx_coeff.at(idx)) ? defaultFaceArea : *(connection.influx_coeff.at(idx));
+            = (!this->connection_.influx_coeff.at(idx)) ? defaultFaceArea : *(this->connection_.influx_coeff.at(idx));
         faceArea = (cellNeighbour0 * cellNeighbour1 > 0) ? 0. : calculatedFaceArea;
         if (cellNeighbour1 == 0) {
             faceArea = (cellNeighbour0 < 0) ? faceArea : 0.;
@@ -244,7 +246,7 @@ protected:
 
     bool solution_set_from_restart_ {false};
 
-    virtual void initializeConnections(const Aquancon::AquanconOutput& connection) = 0;
+    virtual void initializeConnections() = 0;
 
     virtual void assignRestartData(const data::AquiferData& xaq) = 0;
 
