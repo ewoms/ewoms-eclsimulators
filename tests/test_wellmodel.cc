@@ -23,7 +23,6 @@
 #include <chrono>
 
 #include <boost/test/unit_test.hpp>
-#include <boost/filesystem.hpp>
 
 #include <ewoms/eclio/parser/parser.hh>
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>

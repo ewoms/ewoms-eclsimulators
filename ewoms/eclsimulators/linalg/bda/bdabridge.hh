@@ -40,8 +40,8 @@ class BdaBridge
 private:
 #if HAVE_CUDA
     std::unique_ptr<cusparseSolverBackend> backend;
-#endif
     bool use_gpu;
+#endif
 
 public:
     /// Construct a BdaBridge

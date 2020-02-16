@@ -831,6 +831,10 @@ std::size_t packSize(const IntervalTabulated2DFunction<Scalar>& data,
            packSize(data.yExtrapolate(), comm);
 }
 
+template
+std::size_t packSize(const std::map<Phase,Group::GroupInjectionProperties>& data,
+                     Dune::MPIHelper::MPICommunicator comm);
+
 template<class Scalar>
 std::size_t packSize(const UniformXTabulated2DFunction<Scalar>& data,
                      Dune::MPIHelper::MPICommunicator comm)
@@ -1352,13 +1356,7 @@ std::size_t packSize(const UnitSystem& data,
 std::size_t packSize(const WellSegments& data,
                      Dune::MPIHelper::MPICommunicator comm)
 {
-    return packSize(data.wellName(), comm) +
-           packSize(data.depthTopSegment(), comm) +
-           packSize(data.lengthTopSegment(), comm) +
-           packSize(data.volumeTopSegment(), comm) +
-           packSize(data.lengthDepthType(), comm) +
-           packSize(data.compPressureDrop(), comm) +
-           packSize(data.multiPhaseModel(), comm) +
+    return packSize(data.compPressureDrop(), comm) +
            packSize(data.segments(), comm) +
            packSize(data.segmentNumberIndex(), comm);
 
@@ -1468,20 +1466,6 @@ std::size_t packSize(const WListManager& data,
                      Dune::MPIHelper::MPICommunicator comm)
 {
     return packSize(data.lists(), comm);
-}
-
-std::size_t packSize(const UDQFunction& data,
-                     Dune::MPIHelper::MPICommunicator comm)
-{
-    return packSize(data.name(), comm) +
-           packSize(data.type(), comm);
-}
-
-std::size_t packSize(const UDQFunctionTable& data,
-                     Dune::MPIHelper::MPICommunicator comm)
-{
-    return packSize(data.getParams(), comm) +
-           packSize(data.functionMap(), comm);
 }
 
 std::size_t packSize(const UDQASTNode& data,
@@ -2184,6 +2168,10 @@ void pack(const std::unordered_map<T1,T2,H,P,A>& data, std::vector<char>& buffer
         pack(entry, buffer, position, comm);
     }
 }
+
+template void pack(const std::map<Phase, Group::GroupInjectionProperties>& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm);
 
 void pack(const data::Well& data, std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm)
@@ -3110,13 +3098,7 @@ void pack(const WellSegments& data,
           std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm)
 {
-    pack(data.wellName(), buffer, position, comm);
-    pack(data.depthTopSegment(), buffer, position, comm);
-    pack(data.lengthTopSegment(), buffer, position, comm);
-    pack(data.volumeTopSegment(), buffer, position, comm);
-    pack(data.lengthDepthType(), buffer, position, comm);
     pack(data.compPressureDrop(), buffer, position, comm);
-    pack(data.multiPhaseModel(), buffer, position, comm);
     pack(data.segments(), buffer, position, comm);
     pack(data.segmentNumberIndex(), buffer, position, comm);
 }
@@ -3229,22 +3211,6 @@ void pack(const WListManager& data,
           Dune::MPIHelper::MPICommunicator comm)
 {
     pack(data.lists(), buffer, position, comm);
-}
-
-void pack(const UDQFunction& data,
-          std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm)
-{
-    pack(data.name(), buffer, position, comm);
-    pack(data.type(), buffer, position, comm);
-}
-
-void pack(const UDQFunctionTable& data,
-          std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm)
-{
-    pack(data.getParams(), buffer, position, comm);
-    pack(data.functionMap(), buffer, position, comm);
 }
 
 void pack(const UDQASTNode& data,
@@ -5471,26 +5437,16 @@ void unpack(WellSegments& data,
             std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm)
 {
-    std::string wellName;
-    double depthTopSegment, lengthTopSegment, volumeTopSegment;
     WellSegments::CompPressureDrop compPressureDrop;
-    WellSegments::LengthDepth lengthDepthType;
-    WellSegments::MultiPhaseModel multiPhaseModel;
     std::vector<Segment> segments;
     std::map<int,int> segmentNumberIndex;
 
-    unpack(wellName, buffer, position, comm);
-    unpack(depthTopSegment, buffer, position, comm);
-    unpack(lengthTopSegment, buffer, position, comm);
-    unpack(volumeTopSegment, buffer, position, comm);
-    unpack(lengthDepthType, buffer, position, comm);
     unpack(compPressureDrop, buffer, position, comm);
-    unpack(multiPhaseModel, buffer, position, comm);
     unpack(segments, buffer, position, comm);
     unpack(segmentNumberIndex, buffer, position, comm);
-    data = WellSegments(wellName, depthTopSegment, lengthTopSegment,
-                        volumeTopSegment, lengthDepthType, compPressureDrop,
-                        multiPhaseModel, segments, segmentNumberIndex);
+
+    data = WellSegments(compPressureDrop,
+                        segments, segmentNumberIndex);
 }
 
 void unpack(Well& data,
@@ -5575,6 +5531,10 @@ void unpack(IOrderSet<T>& data, std::vector<char>& buffer, int& position,
     data = IOrderSet<T>(index, storage);
 }
 
+template void unpack(std::map<Phase,Group::GroupInjectionProperties>& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm);
+
 void unpack(Group::GroupInjectionProperties& data,
             std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm)
@@ -5620,7 +5580,7 @@ void unpack(Group& data,
     int groupNetVFPTable;
     std::string parent;
     IOrderSet<std::string> wells, groups;
-    Group::GroupInjectionProperties injection;
+    std::map<Phase, Group::GroupInjectionProperties> injection;
     Group::GroupProductionProperties production;
 
     unpack(name, buffer, position, comm);
@@ -5660,28 +5620,6 @@ void unpack(WListManager& data,
     std::map<std::string,WList> lists;
     unpack(lists, buffer, position, comm);
     data = WListManager(lists);
-}
-
-void unpack(UDQFunction& data,
-            std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm)
-{
-    std::string name;
-    UDQTokenType type;
-    unpack(name, buffer, position, comm);
-    unpack(type, buffer, position, comm);
-    data = UDQFunction(name, type);
-}
-
-void unpack(UDQFunctionTable& data,
-            std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm)
-{
-    UDQParams params;
-    UDQFunctionTable::FunctionMap map;
-    unpack(params, buffer, position, comm);
-    unpack(map, buffer, position, comm);
-    data = UDQFunctionTable(params, map);
 }
 
 void unpack(UDQASTNode& data,

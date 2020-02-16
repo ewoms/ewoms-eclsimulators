@@ -1518,11 +1518,9 @@ BOOST_AUTO_TEST_CASE(WellSegments)
                      Ewoms::Segment::SegmentType::SICD,
                      std::make_shared<Ewoms::SpiralICD>(),
                      std::make_shared<Ewoms::Valve>());
-    Ewoms::WellSegments val1("test", 1.0, 2.0, 3.0,
-                           Ewoms::WellSegments::LengthDepth::ABS,
-                           Ewoms::WellSegments::CompPressureDrop::HF_,
-                           Ewoms::WellSegments::MultiPhaseModel::DF,
-                           {seg, seg}, {{1,2},{3,4}});
+    Ewoms::WellSegments val1(Ewoms::WellSegments::CompPressureDrop::HF_,
+                           {seg, seg},
+                           {{1,2},{3,4}});
 
     auto val2 = PackUnpack(val1);
     DO_CHECKS(WellSegments)
@@ -1575,12 +1573,14 @@ BOOST_AUTO_TEST_CASE(Group)
 {
 #ifdef HAVE_MPI
     Ewoms::UnitSystem unitSystem;
+
+    std::map<Ewoms::Phase, Ewoms::Group::GroupInjectionProperties> injection;
     Ewoms::Group val1("test1", 1, 2, 3.0, unitSystem,
                     Ewoms::Group::GroupType::PRODUCTION,
                     4.0, true, 5, "test2",
                     Ewoms::IOrderSet<std::string>({"test3", "test4"}, {"test3","test4"}),
                     Ewoms::IOrderSet<std::string>({"test5", "test6"}, {"test5","test6"}),
-                    Ewoms::Group::GroupInjectionProperties(),
+                    injection,
                     Ewoms::Group::GroupProductionProperties());
 
     auto val2 = PackUnpack(val1);
@@ -1605,26 +1605,6 @@ BOOST_AUTO_TEST_CASE(WListManager)
     Ewoms::WListManager val1(data);
     auto val2 = PackUnpack(val1);
     DO_CHECKS(WListManager)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(UDQFunction)
-{
-#ifdef HAVE_MPI
-    Ewoms::UDQFunction val1("test", Ewoms::UDQTokenType::binary_op_add);
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(UDQFunction)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(UDQFunctionTable)
-{
-#ifdef HAVE_MPI
-    Ewoms::UDQFunctionTable::FunctionMap map{{"test",
-                                            std::make_shared<Ewoms::UDQFunction>()}};
-    Ewoms::UDQFunctionTable val1(Ewoms::UDQParams(true, 1, 2.0, 3.0, 4.0), map);
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(UDQFunctionTable)
 #endif
 }
 
@@ -1958,12 +1938,13 @@ BOOST_AUTO_TEST_CASE(Schedule)
     Ewoms::Schedule::WellMap wells;
     wells.insert({"test", {{std::make_shared<Ewoms::Well>(getFullWell())},1}});
     Ewoms::Schedule::GroupMap groups;
+    std::map<Ewoms::Phase, Ewoms::Group::GroupInjectionProperties> injection;
     groups.insert({"test", {{std::make_shared<Ewoms::Group>("test1", 1, 2, 3.0, unitSystem,
                                                           Ewoms::Group::GroupType::PRODUCTION,
                                                           4.0, true, 5, "test2",
                                                           Ewoms::IOrderSet<std::string>({"test3", "test4"}, {"test3","test4"}),
                                                           Ewoms::IOrderSet<std::string>({"test5", "test6"}, {"test5","test6"}),
-                                                          Ewoms::Group::GroupInjectionProperties(),
+                                                          injection,
                                                           Ewoms::Group::GroupProductionProperties())},1}});
     using VapType = Ewoms::OilVaporizationProperties::OilVaporization;
     Ewoms::DynamicState<Ewoms::OilVaporizationProperties> oilvap{{Ewoms::OilVaporizationProperties(VapType::VAPPARS,

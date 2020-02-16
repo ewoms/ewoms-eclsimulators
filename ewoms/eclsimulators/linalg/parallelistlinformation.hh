@@ -573,6 +573,21 @@ private:
     /// \brief Create a functor for computing a global maximum.
     ///
     /// To be used with ParallelISTLInformation::computeReduction.
+#if DUNE_VERSION_NEWER(DUNE_ISTL, 2,6)
+    template<class T>
+    auto makeGlobalMaxFunctor()
+    {
+        struct MaxOp
+        {
+            using result_type = T;
+            const result_type& operator()(const T& t1, const T& t2)
+            {
+                return std::max(t1, t2);
+            }
+        };
+        return MaskToMinOperator(MaxOp());
+    }
+#else
     template<class T>
     MaskToMinOperator<std::pointer_to_binary_function<const T&,const T&,const T&> >
     makeGlobalMaxFunctor()
@@ -581,6 +596,7 @@ private:
             (std::pointer_to_binary_function<const T&,const T&,const T&>
              ((const T&(*)(const T&, const T&))std::max<T>));
     }
+#endif
 
     namespace detail
     {
@@ -623,6 +639,22 @@ private:
     /// \brief Create a functor for computing a global minimum.
     ///
     /// To be used with ParallelISTLInformation::computeReduction.
+#if DUNE_VERSION_NEWER(DUNE_ISTL, 2,6)
+    template<class T>
+    auto
+    makeGlobalMinFunctor()
+    {
+        struct MinOp
+        {
+            using result_type = T;
+            const result_type& operator()(const T& t1, const T& t2)
+            {
+                return std::min(t1, t2);
+            }
+        };
+        return MaskToMaxOperator(MinOp());
+    }
+#else
     template<class T>
     MaskToMaxOperator<std::pointer_to_binary_function<const T&,const T&,const T&> >
     makeGlobalMinFunctor()
@@ -631,6 +663,8 @@ private:
             (std::pointer_to_binary_function<const T&,const T&,const T&>
              ((const T&(*)(const T&, const T&))std::min<T>));
     }
+#endif
+
     template<class T>
     InnerProductFunctor<T>
     makeInnerProductFunctor()

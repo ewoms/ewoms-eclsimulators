@@ -28,7 +28,7 @@
 #include <vector>
 
 #include <boost/test/unit_test.hpp>
-#include <boost/filesystem.hpp>
+#include <ewoms/common/filesystem.hh>
 
 #include <ewoms/eclio/parser/parser.hh>
 #include <ewoms/eclio/parser/eclipsestate/checkdeck.hh>
@@ -604,7 +604,7 @@ BOOST_AUTO_TEST_CASE(ParseInterpolateRealisticVFPPROD)
     Ewoms::ParseContext parseContext;
     Ewoms::ErrorGuard errorGuard;
     Ewoms::Parser parser;
-    boost::filesystem::path file("VFPPROD2");
+    Ewoms::filesystem::path file("VFPPROD2");
 
     auto deck = parser.parseFile(file.string());
     Ewoms::checkDeck(deck, parser, parseContext, errorGuard);

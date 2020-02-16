@@ -50,7 +50,7 @@
 #include <ewoms/eclio/opmlog/eclipseprtlog.hh>
 #include <ewoms/eclio/opmlog/logutil.hh>
 
-#include <boost/filesystem.hpp>
+#include <ewoms/common/filesystem.hh>
 
 #if HAVE_MPI
 #include <mpi.h>
@@ -119,9 +119,9 @@ protected:
 
     static void ensureOutputDirExists_(const std::string& outputDir)
     {
-        if (!boost::filesystem::is_directory(outputDir)) {
+        if (!Ewoms::filesystem::is_directory(outputDir)) {
             try {
-                boost::filesystem::create_directories(outputDir);
+                Ewoms::filesystem::create_directories(outputDir);
             }
             catch (const std::exception& e) {
                 throw std::runtime_error("Creation of output directory '" + outputDir + "' failed: " + e.what() + "\n");
@@ -157,12 +157,12 @@ public:
         std::string outputDir = EWOMS_GET_PARAM(TypeTag, std::string, OutputDir);
 
         // find the base name of the case, i.e., the file name without the extension
-        namespace fs = boost::filesystem;
+        namespace fs = Ewoms::filesystem;
         const std::string& deckFileNameParam = EWOMS_GET_PARAM(TypeTag, std::string, EclDeckFileName);
         fs::path deckFileNamePath(deckFileNameParam);
 
         if (outputDir.empty())
-            outputDir = boost::filesystem::canonical(deckFileNamePath.parent_path()).string();
+            outputDir = Ewoms::filesystem::canonical(deckFileNamePath.parent_path()).string();
 
         if (!outputDir.empty())
             ensureOutputDirExists_(outputDir);
@@ -262,20 +262,20 @@ public:
      * The input can either be the canonical deck file name or the name of the case
      * (i.e., without the .DATA extension)
      */
-    static boost::filesystem::path canonicalDeckPath(const std::string& caseName)
+    static Ewoms::filesystem::path canonicalDeckPath(const std::string& caseName)
     {
-        const auto fileExists = [](const boost::filesystem::path& f) -> bool
+        const auto fileExists = [](const Ewoms::filesystem::path& f) -> bool
             {
-                if (!boost::filesystem::exists(f))
+                if (!Ewoms::filesystem::exists(f))
                     return false;
 
-                if (boost::filesystem::is_regular_file(f))
+                if (Ewoms::filesystem::is_regular_file(f))
                     return true;
 
-                return boost::filesystem::is_symlink(f) && boost::filesystem::is_regular_file(boost::filesystem::read_symlink(f));
+                return Ewoms::filesystem::is_symlink(f) && Ewoms::filesystem::is_regular_file(Ewoms::filesystem::read_symlink(f));
             };
 
-        auto simcase = boost::filesystem::path(caseName);
+        auto simcase = Ewoms::filesystem::path(caseName);
         if (fileExists(simcase))
             return simcase;
 
@@ -678,9 +678,9 @@ private:
             outputDir = ioConfig.getOutputDir();
 
         // ensure that the output directory exists and that it is a directory
-        if (!boost::filesystem::is_directory(outputDir)) {
+        if (!Ewoms::filesystem::is_directory(outputDir)) {
             try {
-                boost::filesystem::create_directories(outputDir);
+                Ewoms::filesystem::create_directories(outputDir);
             }
             catch (...) {
                  throw std::runtime_error("Creation of output directory '"+outputDir+"' failed\n");

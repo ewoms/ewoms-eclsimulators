@@ -34,13 +34,19 @@ typedef Dune::InverseOperatorResult InverseOperatorResult;
 namespace Ewoms
 {
 
-BdaBridge::BdaBridge(bool use_gpu_ EWOMS_UNUSED, int linear_solver_verbosity EWOMS_UNUSED, int maxit EWOMS_UNUSED, double tolerance EWOMS_UNUSED) : use_gpu(use_gpu_) {
 #if HAVE_CUDA
+BdaBridge::BdaBridge(bool use_gpu_, int linear_solver_verbosity, int maxit, double tolerance)
+    : use_gpu(use_gpu_)
+{
     if (use_gpu) {
         backend.reset(new cusparseSolverBackend(linear_solver_verbosity, maxit, tolerance));
     }
-#endif
 }
+#else
+BdaBridge::BdaBridge(bool use_gpu_ EWOMS_UNUSED, int linear_solver_verbosity EWOMS_UNUSED, int maxit EWOMS_UNUSED, double tolerance EWOMS_UNUSED)
+{
+}
+#endif
 
 #if HAVE_CUDA
 template <class BridgeMatrix>
