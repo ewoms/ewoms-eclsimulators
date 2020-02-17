@@ -344,16 +344,16 @@ int main(int argc, char** argv)
                 setupMessageLimiter(schedule->getMessageLimits(), "STDOUT_LOGGER");
                 summaryConfig.reset( new Ewoms::SummaryConfig(*deck, *schedule, eclipseState->getTableManager(), parseContext, errorGuard));
 #ifdef HAVE_MPI
-                Ewoms::Mpi::packAndSend(*summaryConfig, mpiHelper.getCollectiveCommunication());
-                Ewoms::Mpi::packAndSend(*schedule, mpiHelper.getCollectiveCommunication());
+                Ewoms::Mpi::packAndSend(*summaryConfig, Dune::MPIHelper::getCollectiveCommunication());
+                Ewoms::Mpi::packAndSend(*schedule, Dune::MPIHelper::getCollectiveCommunication());
 #endif
             }
 #ifdef HAVE_MPI
             else {
                 summaryConfig.reset(new Ewoms::SummaryConfig);
                 schedule.reset(new Ewoms::Schedule);
-                Ewoms::Mpi::receiveAndUnpack(*summaryConfig, mpiHelper.getCollectiveCommunication());
-                Ewoms::Mpi::receiveAndUnpack(*schedule, mpiHelper.getCollectiveCommunication());
+                Ewoms::Mpi::receiveAndUnpack(*summaryConfig, Dune::MPIHelper::getCollectiveCommunication());
+                Ewoms::Mpi::receiveAndUnpack(*schedule, Dune::MPIHelper::getCollectiveCommunication());
             }
 #endif
 
