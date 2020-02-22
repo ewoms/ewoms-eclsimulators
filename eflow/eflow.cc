@@ -338,7 +338,7 @@ int main(int argc, char** argv)
             if ( outputCout )
                 Ewoms::checkDeck(*deck, parser, parseContext, errorGuard);
 
-            eclipseState.reset( new Ewoms::EclipseState(*deck, parseContext, errorGuard ));
+            eclipseState.reset( new Ewoms::EclipseState(*deck));
             if (mpiRank == 0) {
                 schedule.reset(new Ewoms::Schedule(*deck, *eclipseState, parseContext, errorGuard));
                 setupMessageLimiter(schedule->getMessageLimits(), "STDOUT_LOGGER");

@@ -20,10 +20,12 @@
 
 #define BOOST_TEST_MODULE EWOMS_test_FlexibleSolver
 #include <boost/test/unit_test.hpp>
+#include <boost/version.hpp>
 
 #include <dune/common/version.hh>
 
-#if DUNE_VERSION_NEWER(DUNE_ISTL, 2, 6)
+#if DUNE_VERSION_NEWER(DUNE_ISTL, 2, 6) && \
+    BOOST_VERSION / 100 % 1000 > 48
 
 #include <ewoms/eclsimulators/linalg/flexiblesolver.hh>
 

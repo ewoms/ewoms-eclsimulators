@@ -33,7 +33,7 @@
 #include <dune/common/dynvector.hh>
 #include <dune/common/dynmatrix.hh>
 
-#include <boost/optional.hpp>
+#include <optional>
 
 namespace Ewoms
 {
@@ -499,13 +499,13 @@ namespace Ewoms
                                         const int perf,
                                         DeferredLogger& deferred_logger);
 
-        boost::optional<double> computeBhpAtThpLimitProd(const Simulator& eebos_simulator,
-                                                         const SummaryState& summary_state,
-                                                         DeferredLogger& deferred_logger) const;
+        std::optional<double> computeBhpAtThpLimitProd(const Simulator& eebos_simulator,
+                                                       const SummaryState& summary_state,
+                                                       DeferredLogger& deferred_logger) const;
 
-        boost::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
-                                                        const SummaryState& summary_state,
-                                                        DeferredLogger& deferred_logger) const;
+        std::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
+                                                      const SummaryState& summary_state,
+                                                      DeferredLogger& deferred_logger) const;
 
     };
 

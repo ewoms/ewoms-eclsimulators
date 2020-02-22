@@ -134,7 +134,7 @@ namespace Ewoms
                         const size_t size = opAParallel_->getmat().N();
 
                         const ParallelISTLInformation& info =
-                            boost::any_cast<const ParallelISTLInformation&>( this->parallelInformation_);
+                            std::any_cast<const ParallelISTLInformation&>( this->parallelInformation_);
 
                         // As we use a dune-istl with block size np the number of components
                         // per parallel is only one.

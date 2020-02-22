@@ -20,6 +20,7 @@
 
 #include <ewoms/eclsimulators/linalg/setuppropertytree.hh>
 
+#include <boost/version.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 namespace Ewoms
@@ -34,9 +35,12 @@ boost::property_tree::ptree
 setupPropertyTree(const EFlowLinearSolverParameters& p)
 {
     boost::property_tree::ptree prm;
+#if BOOST_VERSION / 100 % 1000 > 48
     if (p.linear_solver_configuration_json_file_ != "none") {
         boost::property_tree::read_json(p.linear_solver_configuration_json_file_, prm);
-    } else {
+    } else
+#endif
+    {
         prm.put("tol", p.linear_solver_reduction_);
         prm.put("maxiter", p.linear_solver_maxiter_);
         prm.put("verbosity", p.linear_solver_verbosity_);

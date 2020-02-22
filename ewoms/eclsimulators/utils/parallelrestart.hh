@@ -25,6 +25,7 @@
 #include <ewoms/common/tabulated1dfunction.hh>
 #include <ewoms/common/intervaltabulated2dfunction.hh>
 #include <ewoms/common/uniformxtabulated2dfunction.hh>
+#include <ewoms/material/fluidsystems/blackoilpvt/constantcompressibilitybrinepvt.hh>
 #include <ewoms/material/fluidsystems/blackoilpvt/constantcompressibilityoilpvt.hh>
 #include <ewoms/material/fluidsystems/blackoilpvt/constantcompressibilitywaterpvt.hh>
 #include <ewoms/material/fluidsystems/blackoilpvt/deadoilpvt.hh>
@@ -38,6 +39,10 @@
 #include <ewoms/eclio/output/restartvalue.hh>
 #include <ewoms/eclio/output/eclipseio.hh>
 #include <ewoms/eclio/output/summary.hh>
+#include <ewoms/eclio/parser/eclipsestate/aquiferconfig.hh>
+#include <ewoms/eclio/parser/eclipsestate/aquancon.hh>
+#include <ewoms/eclio/parser/eclipsestate/aquiferct.hh>
+#include <ewoms/eclio/parser/eclipsestate/aquifetp.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/dynamicstate.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/dynamicvector.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/group/gconsale.hh>
@@ -298,6 +303,10 @@ std::size_t packSize(const ConstantCompressibilityWaterPvt<Scalar>& data,
                      Dune::MPIHelper::MPICommunicator comm);
 
 template<class Scalar>
+std::size_t packSize(const ConstantCompressibilityBrinePvt<Scalar>& data,
+                     Dune::MPIHelper::MPICommunicator comm);
+
+template<class Scalar>
 std::size_t packSize(const WaterPvtThermal<Scalar>& data, Dune::MPIHelper::MPICommunicator comm);
 
 template<class T>
@@ -455,6 +464,11 @@ void pack(const WaterPvtMultiplexer<Scalar,enableThermal,enableBrine>& data,
 
 template<class Scalar>
 void pack(const ConstantCompressibilityWaterPvt<Scalar>& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm);
+
+template<class Scalar>
+void pack(const ConstantCompressibilityBrinePvt<Scalar>& data,
           std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm);
 
@@ -625,6 +639,10 @@ template<class Scalar>
 void unpack(ConstantCompressibilityWaterPvt<Scalar>& data, std::vector<char>& buffer,
             int& position, Dune::MPIHelper::MPICommunicator comm);
 
+template<class Scalar>
+void unpack(ConstantCompressibilityBrinePvt<Scalar>& data, std::vector<char>& buffer,
+            int& position, Dune::MPIHelper::MPICommunicator comm);
+
 template<class T>
 void unpack(IOrderSet<T>& data, std::vector<char>& buffer,
             int& position, Dune::MPIHelper::MPICommunicator comm);
@@ -653,6 +671,13 @@ ADD_PACK_PROTOTYPES(Action::ASTNode)
 ADD_PACK_PROTOTYPES(Action::Condition)
 ADD_PACK_PROTOTYPES(Action::Quantity)
 ADD_PACK_PROTOTYPES(Aqudims)
+ADD_PACK_PROTOTYPES(AquiferConfig)
+ADD_PACK_PROTOTYPES(Aquancon)
+ADD_PACK_PROTOTYPES(Aquancon::AquancCell)
+ADD_PACK_PROTOTYPES(AquiferCT)
+ADD_PACK_PROTOTYPES(AquiferCT::AQUCT_data)
+ADD_PACK_PROTOTYPES(Aquifetp)
+ADD_PACK_PROTOTYPES(Aquifetp::AQUFETP_data)
 ADD_PACK_PROTOTYPES(BCConfig)
 ADD_PACK_PROTOTYPES(BCConfig::BCFace)
 ADD_PACK_PROTOTYPES(BrineDensityTable)

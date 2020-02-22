@@ -77,7 +77,7 @@ public:
 #if HAVE_MPI
         if (parallelInformation_.type() == typeid(ParallelISTLInformation)) {
             // Parallel case.
-            const ParallelISTLInformation* parinfo = boost::any_cast<ParallelISTLInformation>(&parallelInformation_);
+            const ParallelISTLInformation* parinfo = std::any_cast<ParallelISTLInformation>(&parallelInformation_);
             assert(parinfo);
             comm_.reset(new Communication(parinfo->communicator()));
         }
@@ -94,7 +94,7 @@ public:
         static bool firstcall = true;
         if (firstcall && parallelInformation_.type() == typeid(ParallelISTLInformation)) {
             // Parallel case.
-            const ParallelISTLInformation* parinfo = boost::any_cast<ParallelISTLInformation>(&parallelInformation_);
+            const ParallelISTLInformation* parinfo = std::any_cast<ParallelISTLInformation>(&parallelInformation_);
             assert(parinfo);
             const size_t size = mat.istlMatrix().N();
             parinfo->copyValuesTo(comm_->indexSet(), comm_->remoteIndices(), size, 1);
@@ -200,7 +200,7 @@ protected:
     boost::property_tree::ptree prm_;
     VectorType rhs_;
     Dune::InverseOperatorResult res_;
-    boost::any parallelInformation_;
+    std::any parallelInformation_;
 #if HAVE_MPI
     std::unique_ptr<Communication> comm_;
 #endif

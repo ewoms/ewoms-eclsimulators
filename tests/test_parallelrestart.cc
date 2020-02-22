@@ -30,9 +30,13 @@
 #include <ewoms/material/fluidsystems/blackoilpvt/wetgaspvt.hh>
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/deck/deckitem.hh>
+#include <ewoms/eclio/parser/eclipsestate/aquancon.hh>
+#include <ewoms/eclio/parser/eclipsestate/aquiferct.hh>
+#include <ewoms/eclio/parser/eclipsestate/aquifetp.hh>
 #include <ewoms/eclio/parser/eclipsestate/runspec.hh>
 #include <ewoms/eclio/parser/eclipsestate/edit/editnnc.hh>
 #include <ewoms/eclio/parser/eclipsestate/grid/nnc.hh>
+#include <ewoms/eclio/parser/eclipsestate/grid/facedir.hh>
 #include <ewoms/eclio/parser/eclipsestate/initconfig/equil.hh>
 #include <ewoms/eclio/parser/eclipsestate/initconfig/foamconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/initconfig/initconfig.hh>
@@ -234,6 +238,15 @@ Ewoms::TimeMap getTimeMap()
     return Ewoms::TimeMap({123});
 }
 
+Ewoms::RestartConfig getRestartConfig()
+{
+    Ewoms::DynamicState<Ewoms::RestartSchedule> rsched({Ewoms::RestartSchedule(1, 2, 3)}, 2);
+    Ewoms::DynamicState<std::map<std::string,int>> rkw({{{"test",3}}}, 3);
+    Ewoms::IOConfig io(true, false, true, false, false, true, "test1", true,
+                     "test2", true, "test3", false);
+    return Ewoms::RestartConfig(getTimeMap(), 1, true, rsched, rkw, {false, true});
+}
+
 Ewoms::PvtgTable getPvtgTable()
 {
     return Ewoms::PvtgTable(Ewoms::ColumnSchema("test1", Ewoms::Table::INCREASING,
@@ -290,13 +303,9 @@ Ewoms::Well getFullWell()
 Ewoms::VFPInjTable getVFPInjTable()
 {
     Ewoms::VFPInjTable::array_type table;
-    Ewoms::VFPInjTable::extents shape;
-    shape[0] = 3;
-    shape[1] = 2;
-    table.resize(shape);
-    double foo = 1.0;
-    for (size_t i = 0; i < table.num_elements(); ++i)
-        *(table.data() + i) = foo++;
+    table.resize(3*2);
+    std::iota(table.begin(), table.end(), 1.0);
+
     return Ewoms::VFPInjTable(1, 2.0, Ewoms::VFPInjTable::FLO_WAT, {1.0, 2.0},
                             {3.0, 4.0, 5.0}, table);
 }
@@ -304,16 +313,9 @@ Ewoms::VFPInjTable getVFPInjTable()
 Ewoms::VFPProdTable getVFPProdTable()
 {
     Ewoms::VFPProdTable::array_type table;
-    Ewoms::VFPProdTable::extents shape;
-    shape[0] = 1;
-    shape[1] = 2;
-    shape[2] = 3;
-    shape[3] = 4;
-    shape[4] = 5;
-    table.resize(shape);
-    double foo = 1.0;
-    for (size_t i = 0; i < table.num_elements(); ++i)
-        *(table.data() + i) = foo++;
+    table.resize(1*2*3*4*5);
+    std::iota(table.begin(), table.end(), 1.0);
+
     return Ewoms::VFPProdTable(1, 2.0, Ewoms::VFPProdTable::FLO_OIL,
                              Ewoms::VFPProdTable::WFR_WOR,
                              Ewoms::VFPProdTable::GFR_GLR,
@@ -423,6 +425,46 @@ Ewoms::Action::ActionX getActionX()
                                                   true, false)},
                                 ast, {getCondition()}, 4, 5);
 }
+
+Ewoms::AquiferCT getAquiferCT() {
+    Ewoms::AquiferCT::AQUCT_data data;
+    data.aquiferID = 1;
+    data.inftableID = 2;
+    data.pvttableID = 3;
+    data.phi_aq = 100;
+    data.d0 = 1;
+    data.C_t = 10;
+    data.r_o = 1.5;
+    data.k_a = 100;
+    data.c1 = 0.78;
+    data.h = 1;
+    data.c2 = 45;
+    data.p0 = std::make_pair(true, 98);
+    data.td = {1,2,3};
+    data.pi = {4,5,6};
+    data.cell_id = {0,10,100};
+
+    return Ewoms::AquiferCT( { data } );
+}
+
+Ewoms::Aquifetp getAquifetp() {
+    Ewoms::Aquifetp::AQUFETP_data data;
+
+    data.aquiferID = 1;
+    data.pvttableID = 3;
+    data.C_t = 10;
+    data.p0 = std::make_pair(true, 98);
+    data.V0 = 0;
+    data.d0 = 0;
+
+    return Ewoms::Aquifetp( { data } );
+}
+
+Ewoms::Aquancon getAquancon() {
+    Ewoms::Aquancon::AquancCell cell(1, 100, std::make_pair(false, 0), 100, Ewoms::FaceDir::XPlus);
+    return Ewoms::Aquancon( std::unordered_map<int, std::vector<Ewoms::Aquancon::AquancCell>>{{1, {cell}}});
+}
+
 #endif
 
 }
@@ -741,7 +783,7 @@ BOOST_AUTO_TEST_CASE(RestartConfig)
     Ewoms::DynamicState<std::map<std::string,int>> rkw({{{"test",3}}}, 3);
     Ewoms::IOConfig io(true, false, true, false, false, true, "test1", true,
                      "test2", true, "test3", false);
-    Ewoms::RestartConfig val1(io, getTimeMap(), 1, true, rsched, rkw, {false, true});
+    Ewoms::RestartConfig val1(getTimeMap(), 1, true, rsched, rkw, {false, true});
     auto val2 = PackUnpack(val1);
     DO_CHECKS(RestartConfig)
 #endif
@@ -1228,6 +1270,19 @@ BOOST_AUTO_TEST_CASE(ConstantCompressibilityWaterPvt)
 #endif
 }
 
+BOOST_AUTO_TEST_CASE(ConstantCompressibilityBrinePvt)
+{
+#ifdef HAVE_MPI
+    Ewoms::Tabulated1DFunction<double> func(2, std::vector<double>{1.0, 2.0},
+                                             std::vector<double>{3.0, 4.0});
+    Ewoms::ConstantCompressibilityBrinePvt<double> val1({1.0, 2.0}, {3.0, 4.0}, {func},
+                                                      {func}, {func}, {func});
+    auto val2 = PackUnpack(val1);
+    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
+    BOOST_CHECK(val1 == std::get<0>(val2));
+#endif
+}
+
 BOOST_AUTO_TEST_CASE(WaterPvtThermal)
 {
 #ifdef HAVE_MPI
@@ -1700,6 +1755,45 @@ BOOST_AUTO_TEST_CASE(UDQActive)
 #endif
 }
 
+BOOST_AUTO_TEST_CASE(AquiferCT)
+{
+#ifdef HAVE_MPI
+    Ewoms::AquiferCT val1 = getAquiferCT();
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(AquiferCT);
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Aquifetp)
+{
+#ifdef HAVE_MPI
+    Ewoms::Aquifetp val1 = getAquifetp();
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(Aquifetp);
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(Aquancon)
+{
+#ifdef HAVE_MPI
+    Ewoms::Aquancon val1 = getAquancon();
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(Aquancon);
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(AquferConfig)
+{
+#ifdef HAVE_MPI
+    Ewoms::Aquifetp fetp = getAquifetp();
+    Ewoms::AquiferCT ct = getAquiferCT();
+    Ewoms::Aquancon conn = getAquancon();
+    Ewoms::AquiferConfig val1(fetp, ct, conn);
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(AquiferConfig);
+#endif
+}
+
 BOOST_AUTO_TEST_CASE(GuideRateModel)
 {
 #ifdef HAVE_MPI
@@ -2034,6 +2128,7 @@ BOOST_AUTO_TEST_CASE(Schedule)
                        {{std::make_shared<Ewoms::Action::Actions>(acnts)}, 1},
                        rftc,
                        {std::vector<int>{1}, 1},
+                       getRestartConfig(),
                        {{"test", events}});
 
     auto val2 = PackUnpack(val1);
@@ -2134,10 +2229,7 @@ BOOST_AUTO_TEST_CASE(EclipseConfig)
     Ewoms::InitConfig init(Ewoms::Equil({getEquilRecord(), getEquilRecord()}),
                          Ewoms::FoamConfig({getFoamData(), getFoamData()}),
                          true, true, true, 20, "test1");
-    Ewoms::DynamicState<Ewoms::RestartSchedule> rsched({Ewoms::RestartSchedule(1, 2, 3)}, 2);
-    Ewoms::DynamicState<std::map<std::string,int>> rkw({{{"test",3}}}, 3);
-    Ewoms::RestartConfig restart(io, getTimeMap(), 1, true, rsched, rkw, {false, true});
-    Ewoms::EclipseConfig val1{init, restart};
+    Ewoms::EclipseConfig val1{init, io};
 
     auto val2 = PackUnpack(val1);
     DO_CHECKS(EclipseConfig)

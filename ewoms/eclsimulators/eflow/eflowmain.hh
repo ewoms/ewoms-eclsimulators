@@ -35,6 +35,7 @@
 #include <ewoms/eclio/parser/eclipsestate/ioconfig/ioconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/initconfig/initconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/checkdeck.hh>
+#include <ewoms/eclio/parser/utility/string.hh>
 
 #if HAVE_DUNE_FEM
 #include <dune/fem/misc/mpimanager.hh>
@@ -337,14 +338,14 @@ namespace Ewoms
             fs::path deck_filename(EWOMS_GET_PARAM(TypeTag, std::string, EclDeckFileName));
             std::string basename;
             // Strip extension "." and ".DATA"
-            std::string extension = boost::to_upper_copy(deck_filename.extension().string());
+            std::string extension = uppercase(deck_filename.extension().string());
             if ( extension == ".DATA" || extension == "." )
             {
-                basename = boost::to_upper_copy(deck_filename.stem().string());
+                basename = uppercase(deck_filename.stem().string());
             }
             else
             {
-                basename = boost::to_upper_copy(deck_filename.filename().string());
+                basename = uppercase(deck_filename.filename().string());
             }
             std::for_each(fs::directory_iterator(output_path),
                           fs::directory_iterator(),
@@ -503,7 +504,7 @@ namespace Ewoms
         std::unique_ptr<EebosSimulator> eebosSimulator_;
         int  mpi_rank_ = 0;
         int  mpi_size_ = 1;
-        boost::any parallel_information_;
+        std::any parallel_information_;
         std::unique_ptr<Simulator> simulator_;
     };
 } // namespace Ewoms

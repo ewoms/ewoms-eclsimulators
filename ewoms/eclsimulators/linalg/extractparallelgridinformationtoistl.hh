@@ -20,7 +20,7 @@
 #ifdef HAVE_EWOMS_ECLGRIDS
 
 #include<ewoms/eclgrids/cpgrid.hh>
-#include<boost/any.hpp>
+#include <any>
 
 namespace Ewoms
 {
@@ -35,11 +35,11 @@ namespace Ewoms
 /// \param[out] anyComm The handle to to store the information in. If grid is a parallel grid
 /// then this will ecapsulate an instance of ParallelISTLInformation.
 
-void extractParallelGridInformationToISTL(const Dune::CpGrid& grid, boost::any& anyComm);
+void extractParallelGridInformationToISTL(const Dune::CpGrid& grid, std::any& anyComm);
 
 // Grid is not CpGrid --> do nothing.
 template <class Grid>
-void extractParallelGridInformationToISTL(const Grid&, boost::any&)
+void extractParallelGridInformationToISTL(const Grid&, std::any&)
 {}
 
 } // end namespace Ewoms

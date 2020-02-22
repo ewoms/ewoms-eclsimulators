@@ -20,7 +20,7 @@
 
 #include <ewoms/eclgrids/unstructuredgrid.h>
 #include <ewoms/eclio/errormacros.hh>
-#include <boost/any.hpp>
+#include <any>
 #include <exception>
 
 #include <algorithm>
@@ -37,6 +37,8 @@
 #include <dune/common/parallel/interface.hh>
 #include <dune/common/parallel/communicator.hh>
 #include <dune/common/enumset.hh>
+
+#endif
 
 namespace Ewoms
 {
@@ -573,7 +575,6 @@ private:
     /// \brief Create a functor for computing a global maximum.
     ///
     /// To be used with ParallelISTLInformation::computeReduction.
-#if DUNE_VERSION_NEWER(DUNE_ISTL, 2,6)
     template<class T>
     auto makeGlobalMaxFunctor()
     {
@@ -587,16 +588,6 @@ private:
         };
         return MaskToMinOperator(MaxOp());
     }
-#else
-    template<class T>
-    MaskToMinOperator<std::pointer_to_binary_function<const T&,const T&,const T&> >
-    makeGlobalMaxFunctor()
-    {
-        return MaskToMinOperator<std::pointer_to_binary_function<const T&,const T&,const T&> >
-            (std::pointer_to_binary_function<const T&,const T&,const T&>
-             ((const T&(*)(const T&, const T&))std::max<T>));
-    }
-#endif
 
     namespace detail
     {
@@ -654,17 +645,6 @@ private:
         };
         return MaskToMaxOperator(MinOp());
     }
-#else
-    template<class T>
-    MaskToMaxOperator<std::pointer_to_binary_function<const T&,const T&,const T&> >
-    makeGlobalMinFunctor()
-    {
-        return MaskToMaxOperator<std::pointer_to_binary_function<const T&,const T&,const T&> >
-            (std::pointer_to_binary_function<const T&,const T&,const T&>
-             ((const T&(*)(const T&, const T&))std::min<T>));
-    }
-#endif
-
     template<class T>
     InnerProductFunctor<T>
     makeInnerProductFunctor()
@@ -688,7 +668,7 @@ namespace Ewoms
 /// then this will ecapsulate an instance of ParallelISTLInformation.
 /// \param grid The grid to inspect.
 
-inline void extractParallelGridInformationToISTL(const UnstructuredGrid& grid, const boost::any& anyComm)
+inline void extractParallelGridInformationToISTL(std::any& anyComm, const UnstructuredGrid& grid)
 {
     (void)anyComm; (void)grid;
 }

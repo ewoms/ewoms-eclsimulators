@@ -56,12 +56,12 @@ public:
         {
             auto debugPath = output_dir;
             debugPath /= (deckname + ".DBG");
-            debugStream_.reset(new std::ofstream(debugPath.string(),
-                                                 std::ofstream::app));
+            debugStream_.reset(new std::ofstream(debugPath,
+                                                std::ofstream::app));
             auto logPath = output_dir;
             logPath /= ( deckname + ".PRT");
-            logStream_.reset(new std::ofstream(logPath.string(),
-                                               std::ofstream::app));
+            logStream_.reset(new std::ofstream(logPath,
+                                              std::ofstream::app));
         }
     }
 

@@ -45,6 +45,7 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/summarystate.hh>
+#include <ewoms/eclio/parser/utility/string.hh>
 
 #include <ewoms/eclio/opmlog/opmlog.hh>
 #include <ewoms/eclio/opmlog/eclipseprtlog.hh>
@@ -154,26 +155,22 @@ public:
 
         // make sure that the directory specified via the --output-dir="..." parameter
         // exists
-        std::string outputDir = EWOMS_GET_PARAM(TypeTag, std::string, OutputDir);
+        const std::string& outputDir = EWOMS_GET_PARAM(TypeTag, std::string, OutputDir);
+        if (!outputDir.empty())
+            ensureOutputDirExists_(outputDir);
 
         // find the base name of the case, i.e., the file name without the extension
         namespace fs = Ewoms::filesystem;
         const std::string& deckFileNameParam = EWOMS_GET_PARAM(TypeTag, std::string, EclDeckFileName);
         fs::path deckFileNamePath(deckFileNameParam);
 
-        if (outputDir.empty())
-            outputDir = Ewoms::filesystem::canonical(deckFileNamePath.parent_path()).string();
-
-        if (!outputDir.empty())
-            ensureOutputDirExists_(outputDir);
-
         // Strip extension "." or ".DATA"
-        std::string extension = boost::to_upper_copy(deckFileNamePath.extension().string());
+        std::string extension = Ewoms::uppercase(deckFileNamePath.extension().string());
         std::string baseName;
         if (extension == ".DATA" || extension == ".")
-            baseName = boost::to_upper_copy(deckFileNamePath.stem().string());
+            baseName = Ewoms::uppercase(deckFileNamePath.stem().string());
         else
-            baseName = boost::to_upper_copy(deckFileNamePath.filename().string());
+            baseName = Ewoms::uppercase(deckFileNamePath.filename().string());
 
         // Stitch together the names of the debug and PRT log files
         std::string debugLogFileName = outputDir + "/" + baseName;
@@ -449,7 +446,7 @@ public:
         }
 
         if (!externalEclState_) {
-            internalEclState_.reset(new Ewoms::EclipseState(*deck_, *parseContext_, *errorGuard_));
+            internalEclState_.reset(new Ewoms::EclipseState(*deck_));
             eclState_ = internalEclState_.get();
         }
         else {
@@ -497,7 +494,7 @@ public:
         // written to disk (every N report step)
         int outputInterval = EWOMS_GET_PARAM(TypeTag, int, EclOutputInterval);
         if (outputInterval >= 0)
-            eclState_->getRestartConfig().overrideRestartWriteInterval(outputInterval);
+            schedule().restart().overrideRestartWriteInterval(outputInterval);
     }
 
     /*!

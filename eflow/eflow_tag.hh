@@ -363,7 +363,7 @@ int mainEFlow(int argc, char** argv)
             if ( outputCout )
                 Ewoms::checkDeck(*deck, parser, parseContext, errorGuard);
 
-            eclipseState.reset( new Ewoms::EclipseState(*deck, parseContext, errorGuard ));
+            eclipseState.reset( new Ewoms::EclipseState(*deck ));
             schedule.reset(new Ewoms::Schedule(*deck, *eclipseState, parseContext, errorGuard));
             summaryConfig.reset( new Ewoms::SummaryConfig(*deck, *schedule, eclipseState->getTableManager(), parseContext, errorGuard));
             setupMessageLimiter(schedule->getMessageLimits(), "STDOUT_LOGGER");

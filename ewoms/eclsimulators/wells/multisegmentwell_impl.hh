@@ -3281,7 +3281,7 @@ namespace Ewoms
     }
 
     template<typename TypeTag>
-    boost::optional<double>
+    std::optional<double>
     MultisegmentWell<TypeTag>::
     computeBhpAtThpLimitProd(const Simulator& eebos_simulator,
                              const std::vector<Scalar>& B_avg,
@@ -3363,7 +3363,7 @@ namespace Ewoms
                     // empty optional.
                     deferred_logger.warning("FAILED_ROBUST_BHP_THP_SOLVE_INOPERABLE",
                                             "Robust bhp(thp) solve failed due to inoperability for well " + name());
-                    return boost::optional<double>();
+                    return std::optional<double>();
                 } else {
                     // Still producing, even at high bhp.
                     assert(f_high < 0.0);
@@ -3447,7 +3447,7 @@ namespace Ewoms
                         // Return failure.
                         deferred_logger.warning("FAILED_ROBUST_BHP_THP_SOLVE_BRACKETING_FAILURE",
                                                 "Robust bhp(thp) solve failed due to bracketing failure for well " + name());
-                        return boost::optional<double>();
+                        return std::optional<double>();
                     }
                 }
             }
@@ -3473,12 +3473,12 @@ namespace Ewoms
         catch (...) {
             deferred_logger.warning("FAILED_ROBUST_BHP_THP_SOLVE",
                                     "Robust bhp(thp) solve failed for well " + name());
-            return boost::optional<double>();
+            return std::optional<double>();
 	}
     }
 
     template<typename TypeTag>
-    boost::optional<double>
+    std::optional<double>
     MultisegmentWell<TypeTag>::
     computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
                             const std::vector<Scalar>& B_avg,
@@ -3638,7 +3638,7 @@ namespace Ewoms
 
         // Handle the no solution case.
         if (sign_change_index == -1) {
-            return boost::optional<double>();
+            return std::optional<double>();
         }
 
         // Solve for the proper solution in the given interval.
@@ -3657,7 +3657,7 @@ namespace Ewoms
             assert(low == controls.bhp_limit);
             deferred_logger.warning("FAILED_ROBUST_BHP_THP_SOLVE",
                                     "Robust bhp(thp) solve failed for well " + name());
-            return boost::optional<double>();
+            return std::optional<double>();
         }
         try {
             const double solved_bhp = RegulaFalsiBisection<WarnAndContinueOnError>::
@@ -3671,7 +3671,7 @@ namespace Ewoms
         catch (...) {
             deferred_logger.warning("FAILED_ROBUST_BHP_THP_SOLVE",
                                     "Robust bhp(thp) solve failed for well " + name());
-            return boost::optional<double>();
+            return std::optional<double>();
         }
 
     }

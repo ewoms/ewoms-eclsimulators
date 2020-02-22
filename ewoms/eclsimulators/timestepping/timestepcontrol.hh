@@ -20,7 +20,6 @@
 
 #include <vector>
 
-#include <boost/any.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <ewoms/eclsimulators/timestepping/timestepcontrolinterface.hh>
 
