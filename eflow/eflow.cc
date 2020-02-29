@@ -17,6 +17,8 @@
 */
 #include "config.h"
 
+#include <eebos/eclmpiserializer.hh>
+
 #include <eflow/eflow_blackoil.hh>
 
 #ifndef FLOW_BLACKOIL_ONLY
@@ -33,6 +35,7 @@
 
 #include <ewoms/eclsimulators/eflow/simulatorfullyimplicitblackoil.hh>
 #include <ewoms/eclsimulators/eflow/eflowmain.hh>
+#include <ewoms/eclsimulators/utils/paralleleclipsestate.hh>
 #include <ewoms/common/propertysystem.hh>
 #include <ewoms/common/parametersystem.hh>
 #include <ewoms/eclsimulators/eflow/missingfeatures.hh>
@@ -41,6 +44,9 @@
 #include <ewoms/eclio/opmlog/opmlog.hh>
 #include <ewoms/eclio/opmlog/eclipseprtlog.hh>
 #include <ewoms/eclio/opmlog/logutil.hh>
+
+#include <ewoms/eclio/io/rst/state.hh>
+#include <ewoms/eclio/io/erst.hh>
 
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/parser.hh>
@@ -333,14 +339,37 @@ int main(int argc, char** argv)
 
             Ewoms::EFlowMain<PreTypeTag>::printPRTHeader(outputCout);
 
-            deck.reset( new Ewoms::Deck( parser.parseFile(deckFilename , parseContext, errorGuard)));
-            Ewoms::MissingFeatures::checkKeywords(*deck, parseContext, errorGuard);
-            if ( outputCout )
-                Ewoms::checkDeck(*deck, parser, parseContext, errorGuard);
-
-            eclipseState.reset( new Ewoms::EclipseState(*deck));
+#ifdef HAVE_MPI
+            Ewoms::ParallelEclipseState* parState;
+#endif
             if (mpiRank == 0) {
-                schedule.reset(new Ewoms::Schedule(*deck, *eclipseState, parseContext, errorGuard));
+                deck.reset( new Ewoms::Deck( parser.parseFile(deckFilename , parseContext, errorGuard)));
+                Ewoms::MissingFeatures::checkKeywords(*deck, parseContext, errorGuard);
+                if ( outputCout )
+                    Ewoms::checkDeck(*deck, parser, parseContext, errorGuard);
+
+#ifdef HAVE_MPI
+                parState = new Ewoms::ParallelEclipseState(*deck);
+                eclipseState.reset(parState);
+#else
+                eclipseState.reset(new Ewoms::EclipseState(*deck));
+#endif
+                /*
+                  For the time being initializing wells and groups from the
+                  restart file is not possible, but work is underways and it is
+                  included here as a switch.
+                */
+                const bool init_from_restart_file = false;
+                const auto& init_config = eclipseState->getInitConfig();
+                if (init_config.restartRequested() && init_from_restart_file) {
+                    int report_step = init_config.getRestartStep();
+                    const auto& rst_filename = eclipseState->getIOConfig().getRestartFileName( init_config.getRestartRootName(), report_step, false );
+                    Ewoms::EclIO::ERst rst_file(rst_filename);
+                    const auto& rst_state = Ewoms::RestartIO::RstState::load(rst_file, report_step);
+                    schedule.reset(new Ewoms::Schedule(*deck, *eclipseState, parseContext, errorGuard, &rst_state) );
+                } else
+                    schedule.reset(new Ewoms::Schedule(*deck, *eclipseState, parseContext, errorGuard));
+
                 setupMessageLimiter(schedule->getMessageLimits(), "STDOUT_LOGGER");
                 summaryConfig.reset( new Ewoms::SummaryConfig(*deck, *schedule, eclipseState->getTableManager(), parseContext, errorGuard));
 #ifdef HAVE_MPI
@@ -352,9 +381,13 @@ int main(int argc, char** argv)
             else {
                 summaryConfig.reset(new Ewoms::SummaryConfig);
                 schedule.reset(new Ewoms::Schedule);
-                Ewoms::Mpi::receiveAndUnpack(*summaryConfig, Dune::MPIHelper::getCollectiveCommunication());
-                Ewoms::Mpi::receiveAndUnpack(*schedule, Dune::MPIHelper::getCollectiveCommunication());
+                parState = new Ewoms::ParallelEclipseState;
+                Ewoms::Mpi::receiveAndUnpack(*summaryConfig, mpiHelper.getCollectiveCommunication());
+                Ewoms::Mpi::receiveAndUnpack(*schedule, mpiHelper.getCollectiveCommunication());
+                eclipseState.reset(parState);
             }
+            Ewoms::EclMpiSerializer ser(mpiHelper.getCollectiveCommunication());
+            ser.broadcast(*parState);
 #endif
 
             Ewoms::checkConsistentArrayDimensions(*eclipseState, *schedule, parseContext, errorGuard);
@@ -380,13 +413,13 @@ int main(int argc, char** argv)
             // oil-gas
             if (phases.active( Ewoms::Phase::GAS ))
             {
-                Ewoms::eflowGasOilSetDeck(externalSetupTimer.elapsed(), *deck, *eclipseState, *schedule, *summaryConfig);
+                Ewoms::eflowGasOilSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
                 return Ewoms::eflowGasOilMain(argc, argv, outputCout, outputFiles);
             }
             // oil-water
             else if ( phases.active( Ewoms::Phase::WATER ) )
             {
-                Ewoms::eflowOilWaterSetDeck(externalSetupTimer.elapsed(), *deck, *eclipseState, *schedule, *summaryConfig);
+                Ewoms::eflowOilWaterSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
                 return Ewoms::eflowOilWaterMain(argc, argv, outputCout, outputFiles);
             }
             else {
@@ -414,37 +447,37 @@ int main(int argc, char** argv)
             }
 
             if ( phases.size() == 3 ) { // oil water polymer case
-                Ewoms::eflowOilWaterPolymerSetDeck(externalSetupTimer.elapsed(), *deck, *eclipseState, *schedule, *summaryConfig);
+                Ewoms::eflowOilWaterPolymerSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
                 return Ewoms::eflowOilWaterPolymerMain(argc, argv, outputCout, outputFiles);
             } else {
-                Ewoms::eflowPolymerSetDeck(externalSetupTimer.elapsed(), *deck, *eclipseState, *schedule, *summaryConfig);
+                Ewoms::eflowPolymerSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
                 return Ewoms::eflowPolymerMain(argc, argv, outputCout, outputFiles);
             }
         }
         // Foam case
         else if ( phases.active( Ewoms::Phase::FOAM ) ) {
-            Ewoms::eflowFoamSetDeck(externalSetupTimer.elapsed(), *deck, *eclipseState, *schedule, *summaryConfig);
+            Ewoms::eflowFoamSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
             return Ewoms::eflowFoamMain(argc, argv, outputCout, outputFiles);
         }
         // Brine case
         else if ( phases.active( Ewoms::Phase::BRINE ) ) {
-            Ewoms::eflowBrineSetDeck(externalSetupTimer.elapsed(), *deck, *eclipseState, *schedule, *summaryConfig);
+            Ewoms::eflowBrineSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
             return Ewoms::eflowBrineMain(argc, argv, outputCout, outputFiles);
         }
         // Solvent case
         else if ( phases.active( Ewoms::Phase::SOLVENT ) ) {
-            Ewoms::eflowSolventSetDeck(externalSetupTimer.elapsed(), *deck, *eclipseState, *schedule, *summaryConfig);
+            Ewoms::eflowSolventSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
             return Ewoms::eflowSolventMain(argc, argv, outputCout, outputFiles);
         }
         // Energy case
         else if (eclipseState->getSimulationConfig().isThermal()) {
-            Ewoms::eflowEnergySetDeck(externalSetupTimer.elapsed(), *deck, *eclipseState, *schedule, *summaryConfig);
+            Ewoms::eflowEnergySetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
             return Ewoms::eflowEnergyMain(argc, argv, outputCout, outputFiles);
         }
 #endif // FLOW_BLACKOIL_ONLY
         // Blackoil case
         else if( phases.size() == 3 ) {
-            Ewoms::eflowBlackoilSetDeck(externalSetupTimer.elapsed(), *deck, *eclipseState, *schedule, *summaryConfig);
+            Ewoms::eflowBlackoilSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
             return Ewoms::eflowBlackoilMain(argc, argv, outputCout, outputFiles);
         }
         else

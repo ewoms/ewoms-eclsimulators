@@ -86,6 +86,7 @@
 #include <ewoms/eclio/parser/eclipsestate/tables/columnschema.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/eqldims.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/flattable.hh>
+#include <ewoms/eclio/parser/eclipsestate/tables/dent.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/jfunc.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/plymwinjtable.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/pvtgtable.hh>
@@ -214,6 +215,13 @@ Ewoms::TableColumn getTableColumn()
     return Ewoms::TableColumn(Ewoms::ColumnSchema("test1", Ewoms::Table::INCREASING,
                                               Ewoms::Table::DEFAULT_LINEAR),
                             "test2", {1.0, 2.0}, {false, true}, 2);
+}
+
+Ewoms::DenT getDenT() {
+    std::vector<Ewoms::DenT::entry> records;
+    records.emplace_back(1,2,3);
+    records.emplace_back(4,5,6);
+    return Ewoms::DenT(records);
 }
 
 Ewoms::SimpleTable getSimpleTable()
@@ -1098,6 +1106,7 @@ BOOST_AUTO_TEST_CASE(TableManager)
                            Ewoms::WatdentTable({Ewoms::WATDENTRecord{1.0, 2.0, 3.0}}),
                            {{1.0, 2.0, {1.0, 2.0, 3.0}}},
                            {{{1.0, 2.0, 3.0}}},
+                           {{{4.0, 5.0, 6.0}}},
                            {{1, Ewoms::PlymwinjTable({1.0}, {2.0}, 1, {{1.0}, {2.0}})}},
                            {{2, Ewoms::SkprwatTable({1.0}, {2.0}, 1, {{1.0}, {2.0}})}},
                            {{3, Ewoms::SkprpolyTable({1.0}, {2.0}, 1, {{1.0}, {2.0}}, 3.0)}},
@@ -1109,6 +1118,10 @@ BOOST_AUTO_TEST_CASE(TableManager)
                            true,
                            true,
                            jfunc,
+                           getDenT(),
+                           getDenT(),
+                           getDenT(),
+                           77,
                            1.0);
     auto val2 = PackUnpack(val1);
     DO_CHECKS(TableManager)
@@ -1574,8 +1587,7 @@ BOOST_AUTO_TEST_CASE(WellSegments)
                      std::make_shared<Ewoms::SpiralICD>(),
                      std::make_shared<Ewoms::Valve>());
     Ewoms::WellSegments val1(Ewoms::WellSegments::CompPressureDrop::HF_,
-                           {seg, seg},
-                           {{1,2},{3,4}});
+                           {seg, seg});
 
     auto val2 = PackUnpack(val1);
     DO_CHECKS(WellSegments)
@@ -1632,7 +1644,7 @@ BOOST_AUTO_TEST_CASE(Group)
     std::map<Ewoms::Phase, Ewoms::Group::GroupInjectionProperties> injection;
     Ewoms::Group val1("test1", 1, 2, 3.0, unitSystem,
                     Ewoms::Group::GroupType::PRODUCTION,
-                    4.0, true, 5, "test2",
+                    4.0, true, false, 5, "test2",
                     Ewoms::IOrderSet<std::string>({"test3", "test4"}, {"test3","test4"}),
                     Ewoms::IOrderSet<std::string>({"test5", "test6"}, {"test5","test6"}),
                     injection,
@@ -2035,7 +2047,7 @@ BOOST_AUTO_TEST_CASE(Schedule)
     std::map<Ewoms::Phase, Ewoms::Group::GroupInjectionProperties> injection;
     groups.insert({"test", {{std::make_shared<Ewoms::Group>("test1", 1, 2, 3.0, unitSystem,
                                                           Ewoms::Group::GroupType::PRODUCTION,
-                                                          4.0, true, 5, "test2",
+                                                          4.0, true, false, 5, "test2",
                                                           Ewoms::IOrderSet<std::string>({"test3", "test4"}, {"test3","test4"}),
                                                           Ewoms::IOrderSet<std::string>({"test5", "test6"}, {"test5","test6"}),
                                                           injection,
@@ -2276,6 +2288,15 @@ BOOST_AUTO_TEST_CASE(Fault)
 #endif
 }
 
+BOOST_AUTO_TEST_CASE(DenT)
+{
+#ifdef HAVE_MPI
+    Ewoms::DenT val1 = getDenT();
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(DenT)
+#endif
+}
+
 BOOST_AUTO_TEST_CASE(FaultCollection)
 {
 #ifdef HAVE_MPI
@@ -2297,6 +2318,24 @@ BOOST_AUTO_TEST_CASE(EclEpsScalingPointsInfo)
                                               16.0, 17.0, 18.0, 19.0, 20.0, 21};
     auto val2 = PackUnpack(val1);
     DO_CHECKS(EclEpsScalingPointsInfo<double>)
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(SolventDensityTable)
+{
+#ifdef HAVE_MPI
+    Ewoms::SolventDensityTable val1({1.0, 2.0, 3.0});
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(SolventDensityTable)
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(GridDims)
+{
+#ifdef HAVE_MPI
+    Ewoms::GridDims val1{ 1,  2,  3};
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(GridDims)
 #endif
 }
 

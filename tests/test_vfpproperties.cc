@@ -31,8 +31,6 @@
 #include <ewoms/common/filesystem.hh>
 
 #include <ewoms/eclio/parser/parser.hh>
-#include <ewoms/eclio/parser/parsecontext.hh>
-#include <ewoms/eclio/parser/errorguard.hh>
 #include <ewoms/eclio/parser/units/unitsystem.hh>
 #include <ewoms/eclsimulators/wells/vfphelpers.hh>
 #include <ewoms/eclsimulators/wells/vfpprodproperties.hh>
@@ -595,8 +593,6 @@ BOOST_AUTO_TEST_CASE(ParseInterpolateRealisticVFPPROD)
 {
     auto units = Ewoms::UnitSystem::newMETRIC();
 
-    Ewoms::ParseContext parseContext;
-    Ewoms::ErrorGuard errorGuard;
     Ewoms::Parser parser;
     Ewoms::filesystem::path file("VFPPROD2");
 

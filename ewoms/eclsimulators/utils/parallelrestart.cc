@@ -453,6 +453,7 @@ HANDLE_AS_POD(data::CurrentControl)
 HANDLE_AS_POD(data::Rates)
 HANDLE_AS_POD(data::Segment)
 HANDLE_AS_POD(DENSITYRecord)
+HANDLE_AS_POD(DenT::entry)
 HANDLE_AS_POD(Eqldims)
 HANDLE_AS_POD(MLimits)
 HANDLE_AS_POD(PVTWRecord)
@@ -518,6 +519,11 @@ std::size_t packSize(const ThresholdPressure& data, Dune::MPIHelper::MPICommunic
           packSize(data.restart(), comm) +
           packSize(data.thresholdPressureTable(), comm) +
           packSize(data.pressureTable(), comm);
+}
+
+std::size_t packSize(const DenT& data, Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.records(), comm);
 }
 
 std::size_t packSize(const Aquifetp& data, Dune::MPIHelper::MPICommunicator comm)
@@ -848,6 +854,7 @@ std::size_t packSize(const TableManager& data, Dune::MPIHelper::MPICommunicator 
            packSize(data.getWatdentTable(), comm) +
            packSize(data.getPvtwSaltTables(), comm) +
            packSize(data.getBrineDensityTables(), comm) +
+           packSize(data.getSolventDensityTables(), comm) +
            packSize(data.getPlymwinjTables(), comm) +
            packSize(data.getSkprwatTables(), comm) +
            packSize(data.getSkprpolyTables(), comm) +
@@ -859,7 +866,11 @@ std::size_t packSize(const TableManager& data, Dune::MPIHelper::MPICommunicator 
            packSize(data.useEnptvd(), comm) +
            packSize(data.useEqlnum(), comm) +
            packSize(data.useJFunc(), comm) +
-           (data.useJFunc() ? packSize(data.getJFunc(), comm) : 0) +
+          (data.useJFunc() ? packSize(data.getJFunc(), comm) : 0) +
+           packSize(data.OilDenT(), comm) +
+           packSize(data.GasDenT(), comm) +
+           packSize(data.WatDenT(), comm) +
+           packSize(data.gas_comp_index(), comm) +
            packSize(data.rtemp(), comm);
 }
 
@@ -1431,9 +1442,7 @@ std::size_t packSize(const WellSegments& data,
                      Dune::MPIHelper::MPICommunicator comm)
 {
     return packSize(data.compPressureDrop(), comm) +
-           packSize(data.segments(), comm) +
-           packSize(data.segmentNumberIndex(), comm);
-
+           packSize(data.segments(), comm);
 }
 
 std::size_t packSize(const Well& data,
@@ -1522,6 +1531,7 @@ std::size_t packSize(const Group& data,
            packSize(data.type(), comm) +
            packSize(data.getGroupEfficiencyFactor(), comm) +
            packSize(data.getTransferGroupEfficiencyFactor(), comm) +
+           packSize(data.isAvailableForGroupControl(), comm) +
            packSize(data.getGroupNetVFPTable(), comm) +
            packSize(data.parent(), comm) +
            packSize(data.iwells(), comm) +
@@ -2017,6 +2027,18 @@ std::size_t packSize(const FaultCollection& data,
     return packSize(data.getFaults(), comm);
 }
 
+std::size_t packSize(const SolventDensityTable& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.getSolventDensityColumn(), comm);
+}
+
+std::size_t packSize(const GridDims& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.getNXYZ(), comm);
+}
+
 ////// pack routines
 
 template<class T>
@@ -2346,6 +2368,11 @@ void pack(const Aquifetp::AQUFETP_data& data, std::vector<char>& buffer, int& po
     pack(data.V0, buffer, position, comm);
     pack(data.d0, buffer, position, comm);
     pack(data.p0, buffer, position, comm);
+}
+
+void pack(const DenT& data, std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm) {
+    pack(data.records(), buffer, position, comm);
 }
 
 void pack(const Aquifetp& data, std::vector<char>& buffer, int& position,
@@ -2679,6 +2706,7 @@ void pack(const TableManager& data, std::vector<char>& buffer, int& position,
     pack(data.getWatdentTable(), buffer, position, comm);
     pack(data.getPvtwSaltTables(), buffer, position, comm);
     pack(data.getBrineDensityTables(), buffer, position, comm);
+    pack(data.getSolventDensityTables(), buffer, position, comm);
     pack(data.getPlymwinjTables(), buffer, position, comm);
     pack(data.getSkprwatTables(), buffer, position, comm);
     pack(data.getSkprpolyTables(), buffer, position, comm);
@@ -2692,6 +2720,10 @@ void pack(const TableManager& data, std::vector<char>& buffer, int& position,
     pack(data.useJFunc(), buffer, position, comm);
     if (data.useJFunc())
         pack(data.getJFunc(), buffer, position, comm);
+    pack(data.OilDenT(), buffer, position, comm);
+    pack(data.GasDenT(), buffer, position, comm);
+    pack(data.WatDenT(), buffer, position, comm);
+    pack(data.gas_comp_index(), buffer, position, comm);
     pack(data.rtemp(), buffer, position, comm);
 }
 
@@ -3250,7 +3282,6 @@ void pack(const WellSegments& data,
 {
     pack(data.compPressureDrop(), buffer, position, comm);
     pack(data.segments(), buffer, position, comm);
-    pack(data.segmentNumberIndex(), buffer, position, comm);
 }
 
 void pack(const Well& data,
@@ -3341,6 +3372,7 @@ void pack(const Group& data,
     pack(data.type(), buffer, position, comm);
     pack(data.getGroupEfficiencyFactor(), buffer, position, comm);
     pack(data.getTransferGroupEfficiencyFactor(), buffer, position, comm);
+    pack(data.isAvailableForGroupControl(), buffer, position, comm);
     pack(data.getGroupNetVFPTable(), buffer, position, comm);
     pack(data.parent(), buffer, position, comm);
     pack(data.iwells(), buffer, position, comm);
@@ -3912,6 +3944,20 @@ void pack(const EclEpsScalingPointsInfo<Scalar>& data, std::vector<char>& buffer
     pack(data.maxKrg, buffer, position, comm);
 }
 
+void pack(const SolventDensityTable& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.getSolventDensityColumn(), buffer, position, comm);
+}
+
+void pack(const GridDims& data,
+          std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.getNXYZ(), buffer, position, comm);
+}
+
 /// unpack routines
 
 template<class T>
@@ -4322,6 +4368,13 @@ void unpack(AquiferCT::AQUCT_data& data, std::vector<char>& buffer, int& positio
                                  td,
                                  pi,
                                  cell_id);
+}
+
+void unpack(DenT& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm)
+{
+    std::vector<DenT::entry> records;
+    unpack(records, buffer, position, comm);
+    data = DenT( records );
 }
 
 void unpack(AquiferCT& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm)
@@ -4794,6 +4847,7 @@ void unpack(TableManager& data, std::vector<char>& buffer, int& position,
     WatdentTable watdentTable;
     std::vector<PvtwsaltTable> pvtwsaltTables;
     std::vector<BrineDensityTable> bdensityTables;
+    std::vector<SolventDensityTable> sdensityTables;
     std::map<int, PlymwinjTable> plymwinjTables;
     std::map<int, SkprwatTable> skprwatTables;
     std::map<int, SkprpolyTable> skprpolyTables;
@@ -4804,6 +4858,8 @@ void unpack(TableManager& data, std::vector<char>& buffer, int& position,
     bool hasImptvd;
     bool hasEntpvd;
     bool hasEqlnum;
+    DenT oilDenT, gasDenT, watDenT;
+    std::size_t gas_comp_index;
     std::shared_ptr<JFunc> jfunc;
     double rtemp;
     unpack(simpleTables, buffer, position, comm);
@@ -4819,6 +4875,7 @@ void unpack(TableManager& data, std::vector<char>& buffer, int& position,
     unpack(watdentTable, buffer, position, comm);
     unpack(pvtwsaltTables, buffer, position, comm);
     unpack(bdensityTables, buffer, position, comm);
+    unpack(sdensityTables, buffer, position, comm);
     unpack(plymwinjTables, buffer, position, comm);
     unpack(skprwatTables, buffer, position, comm);
     unpack(skprpolyTables, buffer, position, comm);
@@ -4835,13 +4892,19 @@ void unpack(TableManager& data, std::vector<char>& buffer, int& position,
         jfunc = std::make_shared<JFunc>();
         unpack(*jfunc, buffer, position, comm);
     }
+    unpack(oilDenT, buffer, position, comm);
+    unpack(gasDenT, buffer, position, comm);
+    unpack(watDenT, buffer, position, comm);
+    unpack(gas_comp_index, buffer, position, comm);
     unpack(rtemp, buffer, position, comm);
+
     data = TableManager(simpleTables, pvtgTables, pvtoTables, rock2dTables,
                         rock2dtrTables, pvtwTable, pvcdoTable, densityTable,
                         rockTable, viscrefTable, watdentTable, pvtwsaltTables,
-                        bdensityTables, plymwinjTables,
+                        bdensityTables, sdensityTables, plymwinjTables,
                         skprwatTables, skprpolyTables, tabdims, regdims, eqldims,
-                        aqudims, hasImptvd, hasEntpvd, hasEqlnum, jfunc, rtemp);
+                        aqudims, hasImptvd, hasEntpvd, hasEqlnum, jfunc, oilDenT, gasDenT,
+                        watDenT, gas_comp_index, rtemp);
 }
 
 template<class Scalar>
@@ -5713,14 +5776,11 @@ void unpack(WellSegments& data,
 {
     WellSegments::CompPressureDrop compPressureDrop;
     std::vector<Segment> segments;
-    std::map<int,int> segmentNumberIndex;
 
     unpack(compPressureDrop, buffer, position, comm);
     unpack(segments, buffer, position, comm);
-    unpack(segmentNumberIndex, buffer, position, comm);
 
-    data = WellSegments(compPressureDrop,
-                        segments, segmentNumberIndex);
+    data = WellSegments(compPressureDrop, segments);
 }
 
 void unpack(Well& data,
@@ -5851,6 +5911,7 @@ void unpack(Group& data,
     Group::GroupType type;
     double groupEfficiencyFactor;
     bool transferGroupEfficiencyFactor;
+    bool availableForGroupControl;
     int groupNetVFPTable;
     std::string parent;
     IOrderSet<std::string> wells, groups;
@@ -5865,6 +5926,7 @@ void unpack(Group& data,
     unpack(type, buffer, position, comm);
     unpack(groupEfficiencyFactor, buffer, position, comm);
     unpack(transferGroupEfficiencyFactor, buffer, position, comm);
+    unpack(availableForGroupControl, buffer, position, comm);
     unpack(groupNetVFPTable, buffer, position, comm);
     unpack(parent, buffer, position, comm);
     unpack(wells, buffer, position, comm);
@@ -5874,6 +5936,7 @@ void unpack(Group& data,
     data = Group(name, insert_index, initStep, udqUndefined,
                  units, type, groupEfficiencyFactor,
                  transferGroupEfficiencyFactor,
+                 availableForGroupControl,
                  groupNetVFPTable, parent, wells, groups,
                  injection, production);
 }
@@ -6641,6 +6704,25 @@ void unpack(FaultCollection& data,
 
     unpack(faults, buffer, position, comm);
     data = FaultCollection(faults);
+}
+
+void unpack(SolventDensityTable& data, std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    std::vector<double> tableValues;
+
+    unpack(tableValues, buffer, position, comm);
+    data = SolventDensityTable(tableValues);
+}
+
+void unpack(GridDims& data,
+            std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    std::array<int,3> NXYZ;
+
+    unpack(NXYZ, buffer, position, comm);
+    data = GridDims(NXYZ);
 }
 
 #define INSTANTIATE_PACK_VECTOR(...) \

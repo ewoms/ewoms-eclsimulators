@@ -116,30 +116,26 @@ public:
      * either but at least it seems to be much better.
      */
     void finishInit()
-    { update(); }
+    { update(true); }
 
     /*!
      * \brief Compute all transmissibilities
      *
+     * \param global If true, update is called on all processes
      * Also, this updates the "thermal half transmissibilities" if energy is enabled.
      */
-    void update()
+    void update(bool global)
     {
         const auto& gridView = vanguard_.gridView();
         const auto& cartMapper = vanguard_.cartesianIndexMapper();
         const auto& eclState = vanguard_.eclState();
-        const auto& eclGrid = eclState.getInputGrid();
         const auto& cartDims = cartMapper.cartesianDimensions();
         auto& transMult = eclState.getTransMult();
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
+        const auto& comm = vanguard_.gridView().comm();
         ElementMapper elemMapper(gridView, Dune::mcmgElementLayout());
-#else
-        ElementMapper elemMapper(gridView);
-#endif
 
         // get the ntg values, the ntg values are modified for the cells merged with minpv
-        std::vector<double> ntg;
-        minPvFillNtg_(ntg);
+        const std::vector<double>& ntg = eclState.fieldProps().get_global_double("NTG");
 
         unsigned numElements = elemMapper.size();
 
@@ -151,17 +147,66 @@ public:
         for (unsigned dimIdx = 0; dimIdx < dimWorld; ++dimIdx)
             axisCentroids[dimIdx].resize(numElements);
 
+        std::vector<double> centroids;
+#if HAVE_MPI
+        size_t cells = vanguard_.grid().numCells();
+        if (global && comm.size() > 1) {
+            std::vector<size_t> sizes(comm.size());
+            if (comm.rank() == 0) {
+                const auto& eclGrid = eclState.getInputGrid();
+                comm.gather(&cells, sizes.data(), 1, 0);
+                for (int i = 1; i < comm.size(); ++i) {
+                    std::vector<int> cell_id(sizes[i]);
+                    MPI_Recv(cell_id.data(), sizes[i], MPI_INT,
+                             i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    centroids.resize(dimWorld * sizes[i]);
+
+                    auto cIt = centroids.begin();
+                    for (int idx : cell_id) {
+                        const auto& centroid = eclGrid.getCellCenter(idx);
+                        for (const auto& it : centroid)
+                            *cIt++ = it;
+                    }
+                    MPI_Send(centroids.data(), dimWorld * sizes[i],
+                             MPI_DOUBLE, i, 0, MPI_COMM_WORLD);
+                }
+                centroids.clear();
+            } else {
+                comm.gather(&cells, sizes.data(), 1, 0);
+                std::vector<int> cell_ids;
+                cell_ids.reserve(cells);
+                auto elemIt = gridView.template begin</*codim=*/ 0>();
+                const auto& elemEndIt = gridView.template end</*codim=*/ 0>();
+                for (; elemIt != elemEndIt; ++elemIt) {
+                    const auto& elem = *elemIt;
+                    cell_ids.push_back(cartMapper.cartesianIndex(elemMapper.index(elem)));
+                }
+                MPI_Send(cell_ids.data(), cells, MPI_INT, 0, 0, MPI_COMM_WORLD);
+                centroids.resize(cells * dimWorld);
+                MPI_Recv(centroids.data(), dimWorld * cells, MPI_DOUBLE,
+                         0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            }
+        }
+#endif
+
         auto elemIt = gridView.template begin</*codim=*/ 0>();
         const auto& elemEndIt = gridView.template end</*codim=*/ 0>();
-        for (; elemIt != elemEndIt; ++elemIt) {
+        size_t centroidIdx = 0;
+        for (; elemIt != elemEndIt; ++elemIt, ++centroidIdx) {
             const auto& elem = *elemIt;
             unsigned elemIdx = elemMapper.index(elem);
 
             // compute the axis specific "centroids" used for the transmissibilities. for
             // consistency with the eflow simulator, we use the element centers as
             // computed by ewoms-eclio's Ewoms::EclipseGrid class for all axes.
-            unsigned cartesianCellIdx = cartMapper.cartesianIndex(elemIdx);
-            const auto& centroid = eclGrid.getCellCenter(cartesianCellIdx);
+            const double* centroid;
+            if (vanguard_.gridView().comm().rank() == 0) {
+                const auto& eclGrid = eclState.getInputGrid();
+                unsigned cartesianCellIdx = cartMapper.cartesianIndex(elemIdx);
+                centroid = &eclGrid.getCellCenter(cartesianCellIdx)[0];
+            } else
+                centroid = &centroids[centroidIdx * dimWorld];
+
             for (unsigned axisIdx = 0; axisIdx < dimWorld; ++axisIdx)
                 for (unsigned dimIdx = 0; dimIdx < dimWorld; ++dimIdx)
                     axisCentroids[axisIdx][elemIdx][dimIdx] = centroid[dimIdx];
@@ -182,6 +227,18 @@ public:
             thermalHalfTrans_->reserve(numElements*6*1.05);
 
             thermalHalfTransBoundary_.clear();
+        }
+
+        // The MULTZ needs special case if the option is ALL
+        // Then the smallest multiplier is applied.
+        // Default is to apply the top and bottom multiplier
+        bool useSmallestMultiplier;
+        if (comm.rank() == 0) {
+            const auto& eclGrid = eclState.getInputGrid();
+            useSmallestMultiplier = eclGrid.getMultzOption() == Ewoms::PinchMode::ModeEnum::ALL;
+        }
+        if (global && comm.size() > 1) {
+            comm.broadcast(&useSmallestMultiplier, 1, 0);
         }
 
         // compute the transmissibilities for all intersections
@@ -333,10 +390,6 @@ public:
                 // apply the full face transmissibility multipliers
                 // for the inside ...
 
-                // The MULTZ needs special case if the option is ALL
-                // Then the smallest multiplier is applied.
-                // Default is to apply the top and bottom multiplier
-                bool useSmallestMultiplier = eclGrid.getMultzOption() == Ewoms::PinchMode::ModeEnum::ALL;
                 if (useSmallestMultiplier)
                     applyAllZMultipliers_(trans, insideFaceIdx, insideCartElemIdx, outsideCartElemIdx, transMult, cartDims);
                 else
@@ -841,53 +894,6 @@ private:
             break;
 
             // NTG does not apply to top and bottom faces
-        }
-    }
-
-    void minPvFillNtg_(std::vector<double>& averageNtg) const
-    {
-        // compute volume weighted arithmetic average of NTG for
-        // cells merged as an result of minpv.
-        const auto& eclState = vanguard_.eclState();
-        const auto& eclGrid = eclState.getInputGrid();
-        bool opmfil = eclGrid.getMinpvMode() == Ewoms::MinpvMode::OpmFIL;
-        std::vector<double> ntg;
-
-        ntg = eclState.fieldProps().get_global_double("NTG");
-        // just return the unmodified ntg if opmfil is not used
-        averageNtg = ntg;
-        if (!opmfil)
-            return;
-
-        const auto& cartMapper = vanguard_.cartesianIndexMapper();
-        const auto& cartDims = cartMapper.cartesianDimensions();
-        const auto& actnum = eclState.fieldProps().actnum();
-        const auto& porv = eclState.fieldProps().porv(true);
-        assert(dimWorld > 1);
-        const size_t nxny = cartDims[0] * cartDims[1];
-        for (size_t cartesianCellIdx = 0; cartesianCellIdx < ntg.size(); ++cartesianCellIdx) {
-            // use the original ntg values for the inactive cells
-            if (!actnum[cartesianCellIdx])
-                continue;
-
-            // Average properties as long as there exist cells above
-            // that has pore volume less than the MINPV threshold
-            const double cellVolume = eclGrid.getCellVolume(cartesianCellIdx);
-            double ntgCellVolume = ntg[cartesianCellIdx] * cellVolume;
-            double totalCellVolume = cellVolume;
-            int cartesianCellIdxAbove = cartesianCellIdx - nxny;
-            while (cartesianCellIdxAbove >= 0 &&
-                   actnum[cartesianCellIdxAbove] > 0 &&
-                   porv[cartesianCellIdxAbove] < eclGrid.getMinpvVector()[cartesianCellIdxAbove])
-            {
-                // Volume weighted arithmetic average of NTG
-                const double cellAboveVolume = eclGrid.getCellVolume(cartesianCellIdxAbove);
-                totalCellVolume += cellAboveVolume;
-                ntgCellVolume += ntg[cartesianCellIdxAbove]*cellAboveVolume;
-                cartesianCellIdxAbove -= nxny;
-            }
-
-            averageNtg[cartesianCellIdx] = ntgCellVolume / totalCellVolume;
         }
     }
 

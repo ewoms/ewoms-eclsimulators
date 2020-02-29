@@ -23,7 +23,7 @@
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 
 namespace Ewoms {
-void eflowBlackoilSetDeck(double setupTime, Deck &deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig);
+void eflowBlackoilSetDeck(double setupTime, Deck *deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig);
 int eflowBlackoilMain(int argc, char** argv, bool outputCout, bool outputFiles);
 }
 

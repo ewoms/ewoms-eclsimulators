@@ -84,8 +84,9 @@ class ColumnSchema;
 class Connection;
 class DeckItem;
 class DeckRecord;
-struct DENSITYRecord;
-struct DensityTable;
+class DENSITYRecord;
+class DenT;
+class DensityTable;
 class Dimension;
 class EclHysterConfig;
 class EclipseConfig;
@@ -101,6 +102,7 @@ class FaultCollection;
 class FaultFace;
 class FoamConfig;
 class FoamData;
+class GridDims;
 class InitConfig;
 class IOConfig;
 template<class T> class IOrderSet;
@@ -139,6 +141,7 @@ class SimulationConfig;
 class SimpleTable;
 class SkprpolyTable;
 class SkprwatTable;
+class SolventDensityTable;
 class SpiralICD;
 class SummaryConfig;
 class SummaryNode;
@@ -697,6 +700,8 @@ ADD_PACK_PROTOTYPES(DeckKeyword)
 ADD_PACK_PROTOTYPES(DeckRecord)
 ADD_PACK_PROTOTYPES(DENSITYRecord)
 ADD_PACK_PROTOTYPES(DensityTable)
+ADD_PACK_PROTOTYPES(DenT)
+ADD_PACK_PROTOTYPES(DenT::entry)
 ADD_PACK_PROTOTYPES(Dimension)
 ADD_PACK_PROTOTYPES(EclHysterConfig)
 ADD_PACK_PROTOTYPES(EclipseConfig)
@@ -715,6 +720,7 @@ ADD_PACK_PROTOTYPES(GConSale)
 ADD_PACK_PROTOTYPES(GConSale::GCONSALEGroup)
 ADD_PACK_PROTOTYPES(GConSump)
 ADD_PACK_PROTOTYPES(GConSump::GCONSUMPGroup)
+ADD_PACK_PROTOTYPES(GridDims)
 ADD_PACK_PROTOTYPES(GuideRateConfig)
 ADD_PACK_PROTOTYPES(GuideRateConfig::GroupTarget)
 ADD_PACK_PROTOTYPES(GuideRateConfig::WellTarget)
@@ -762,6 +768,7 @@ ADD_PACK_PROTOTYPES(SimulationConfig)
 ADD_PACK_PROTOTYPES(SimpleTable)
 ADD_PACK_PROTOTYPES(SkprpolyTable)
 ADD_PACK_PROTOTYPES(SkprwatTable)
+ADD_PACK_PROTOTYPES(SolventDensityTable)
 ADD_PACK_PROTOTYPES(SpiralICD)
 ADD_PACK_PROTOTYPES(std::string)
 ADD_PACK_PROTOTYPES(SummaryConfig)
