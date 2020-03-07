@@ -581,9 +581,9 @@ public:
         // Tell the black-oil extensions to initialize their internal data structures
         const auto& vanguard = simulator.vanguard();
         const auto& comm = this->gridView().comm();
-        SolventModule::initFromState(vanguard.eclState(), vanguard.schedule());
-        FoamModule::initFromState(vanguard.eclState());
-        BrineModule::initFromState(vanguard.eclState());
+        SolventModule::initFromEclState(vanguard.eclState(), vanguard.schedule());
+        FoamModule::initFromEclState(vanguard.eclState());
+        BrineModule::initFromEclState(vanguard.eclState());
         if (comm.rank() == 0) {
             PolymerModule::initFromDeck(vanguard.deck(), vanguard.eclState());
         }
@@ -2150,8 +2150,8 @@ private:
 
         unsigned numElem = vanguard.gridView().size(0);
         rockTableIdx_.resize(numElem);
-        if (eclState.fieldProps().has_int(rock_config.rocknum_property())) {
-            const auto& num = eclState.fieldProps().get_int(rock_config.rocknum_property());
+        if (eclState.fieldProps().has_int(rockConfig.rocknum_property())) {
+            const auto& num = eclState.fieldProps().get_int(rockConfig.rocknum_property());
             for (size_t elemIdx = 0; elemIdx < numElem; ++ elemIdx) {
                 rockTableIdx_[elemIdx] = num[elemIdx] - 1;
             }
@@ -2345,7 +2345,7 @@ private:
         const auto& eclState = simulator.vanguard().eclState();
         const auto& schedule = simulator.vanguard().schedule();
 
-        FluidSystem::initFromState(eclState, schedule);
+        FluidSystem::initFromEclState(eclState, schedule);
    }
 
     void readInitialCondition_()

@@ -53,7 +53,7 @@ using namespace Ewoms;
 
 void verify_norne_oil_pvt_region1(const Ewoms::EclipseState& eclState, const Ewoms::Schedule& schedule) {
     Ewoms::LiveOilPvt<double> oilPvt;
-    oilPvt.initFromState(eclState, schedule);
+    oilPvt.initFromEclState(eclState, schedule);
 
     std::vector<double> rs = {33, 33,
                               43, 43,
@@ -123,7 +123,7 @@ void verify_norne_oil_pvt_region1(const Ewoms::EclipseState& eclState, const Ewo
 
 void verify_norne_oil_pvt_region2(const Ewoms::EclipseState& eclState, const Ewoms::Schedule& schedule) {
     Ewoms::LiveOilPvt<double> oilPvt;
-    oilPvt.initFromState(eclState, schedule);
+    oilPvt.initFromEclState(eclState, schedule);
 
     std::vector<double> rs = {21 , 21,
                               30 , 30,
