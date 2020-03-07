@@ -581,18 +581,15 @@ public:
         // Tell the black-oil extensions to initialize their internal data structures
         const auto& vanguard = simulator.vanguard();
         const auto& comm = this->gridView().comm();
+        SolventModule::initFromState(vanguard.eclState(), vanguard.schedule());
+        FoamModule::initFromState(vanguard.eclState());
+        BrineModule::initFromState(vanguard.eclState());
         if (comm.rank() == 0) {
-            SolventModule::initFromDeck(vanguard.deck(), vanguard.eclState());
             PolymerModule::initFromDeck(vanguard.deck(), vanguard.eclState());
-            FoamModule::initFromDeck(vanguard.deck(), vanguard.eclState());
-            BrineModule::initFromDeck(vanguard.deck(), vanguard.eclState());
         }
 
         EclMpiSerializer ser(comm);
-        ser.staticBroadcast<SolventModule>();
         ser.staticBroadcast<PolymerModule>();
-        ser.staticBroadcast<FoamModule>();
-        ser.staticBroadcast<BrineModule>();
 
         // create the ECL writer
         eclWriter_.reset(new EclWriterType(simulator));
@@ -2151,13 +2148,13 @@ private:
         // read the parameters for water-induced rock compaction
         readRockCompactionParameters_();
 
-        const auto& num = eclState.fieldProps().get_global_int(rockConfig.rocknum_property());
         unsigned numElem = vanguard.gridView().size(0);
         rockTableIdx_.resize(numElem);
-        for (size_t elemIdx = 0; elemIdx < numElem; ++ elemIdx) {
-            unsigned cartElemIdx = vanguard.cartesianIndex(elemIdx);
-
-            rockTableIdx_[elemIdx] = num[cartElemIdx] - 1;
+        if (eclState.fieldProps().has_int(rock_config.rocknum_property())) {
+            const auto& num = eclState.fieldProps().get_int(rock_config.rocknum_property());
+            for (size_t elemIdx = 0; elemIdx < numElem; ++ elemIdx) {
+                rockTableIdx_[elemIdx] = num[elemIdx] - 1;
+            }
         }
 
         // Store overburden pressure pr element
@@ -2291,11 +2288,6 @@ private:
 
         ////////////////////////////////
         // fluid-matrix interactions (saturation functions; relperm/capillary pressure)
-        size_t numDof = this->model().numGridDof();
-        std::vector<int> compressedToCartesianElemIdx(numDof);
-        for (unsigned elemIdx = 0; elemIdx < numDof; ++elemIdx)
-            compressedToCartesianElemIdx[elemIdx] = vanguard.cartesianIndex(elemIdx);
-
         materialLawManager_ = std::make_shared<EclMaterialLawManager>();
         if (comm.rank() == 0)
             materialLawManager_->initFromDeck(deck, eclState);
@@ -2303,7 +2295,7 @@ private:
         EclMpiSerializer ser(comm);
         ser.broadcast(*materialLawManager_);
 
-        materialLawManager_->initParamsForElements(eclState, compressedToCartesianElemIdx);
+        materialLawManager_->initParamsForElements(eclState, this->model().numGridDof());
         ////////////////////////////////
     }
 
@@ -2317,13 +2309,8 @@ private:
         const auto& eclState = vanguard.eclState();
 
         // fluid-matrix interactions (saturation functions; relperm/capillary pressure)
-        size_t numDof = this->model().numGridDof();
-        std::vector<int> compressedToCartesianElemIdx(numDof);
-        for (unsigned elemIdx = 0; elemIdx < numDof; ++elemIdx)
-            compressedToCartesianElemIdx[elemIdx] = vanguard.cartesianIndex(elemIdx);
-
         thermalLawManager_ = std::make_shared<EclThermalLawManager>();
-        thermalLawManager_->initParamsForElements(eclState, compressedToCartesianElemIdx);
+        thermalLawManager_->initParamsForElements(eclState, this->model().numGridDof());
     }
 
     void updateReferencePorosity_()
@@ -2355,15 +2342,10 @@ private:
     void initFluidSystem_()
     {
         const auto& simulator = this->simulator();
-        const auto& deck = simulator.vanguard().deck();
         const auto& eclState = simulator.vanguard().eclState();
-        const auto& comm = simulator.gridView().comm();
+        const auto& schedule = simulator.vanguard().schedule();
 
-        if (comm.rank() == 0)
-            FluidSystem::initFromDeck(deck, eclState);
-
-        EclMpiSerializer ser(comm);
-        ser.staticBroadcast<FluidSystem>();
+        FluidSystem::initFromState(eclState, schedule);
    }
 
     void readInitialCondition_()
@@ -2592,9 +2574,6 @@ private:
 
         initialFluidStates_.resize(numDof);
 
-        const auto& cartSize = simulator.vanguard().cartesianDimensions();
-        size_t numCartesianCells = cartSize[0] * cartSize[1] * cartSize[2];
-
         std::vector<double> waterSaturationData;
         std::vector<double> gasSaturationData;
         std::vector<double> pressureData;
@@ -2603,49 +2582,35 @@ private:
         std::vector<double> tempiData;
 
         if (FluidSystem::phaseIsActive(waterPhaseIdx))
-            waterSaturationData = fieldProps.get_global_double("SWAT");
+            waterSaturationData = fieldProps.get_double("SWAT");
         else
-            waterSaturationData.resize(numCartesianCells);
+            waterSaturationData.resize(numDof);
 
         if (FluidSystem::phaseIsActive(gasPhaseIdx))
-            gasSaturationData = fieldProps.get_global_double("SGAS");
+            gasSaturationData = fieldProps.get_double("SGAS");
         else
-            gasSaturationData.resize(numCartesianCells);
+            gasSaturationData.resize(numDof);
 
-        pressureData = fieldProps.get_global_double("PRESSURE");
+        pressureData = fieldProps.get_double("PRESSURE");
         if (FluidSystem::enableDissolvedGas())
-            rsData = fieldProps.get_global_double("RS");
+            rsData = fieldProps.get_double("RS");
 
         if (FluidSystem::enableVaporizedOil())
-            rvData = fieldProps.get_global_double("RV");
+            rvData = fieldProps.get_double("RV");
 
         // initial reservoir temperature
-        tempiData = fieldProps.get_global_double("TEMPI");
-
-        // make sure that the size of the data arrays is correct
-#ifndef NDEBUG
-        assert(waterSaturationData.size() == numCartesianCells);
-        assert(gasSaturationData.size() == numCartesianCells);
-        assert(pressureData.size() == numCartesianCells);
-        if (FluidSystem::enableDissolvedGas())
-            assert(rsData.size() == numCartesianCells);
-        if (FluidSystem::enableVaporizedOil())
-            assert(rvData.size() == numCartesianCells);
-#endif
+        tempiData = fieldProps.get_double("TEMPI");
 
         // calculate the initial fluid states
         for (size_t dofIdx = 0; dofIdx < numDof; ++dofIdx) {
             auto& dofFluidState = initialFluidStates_[dofIdx];
 
             dofFluidState.setPvtRegionIndex(pvtRegionIndex(dofIdx));
-            size_t cartesianDofIdx = vanguard.cartesianIndex(dofIdx);
-            assert(0 <= cartesianDofIdx);
-            assert(cartesianDofIdx <= numCartesianCells);
 
             //////
             // set temperature
             //////
-            Scalar temperatureLoc = tempiData[cartesianDofIdx];
+            Scalar temperatureLoc = tempiData[dofIdx];
             if (!std::isfinite(temperatureLoc) || temperatureLoc <= 0)
                 temperatureLoc = FluidSystem::surfaceTemperature;
             dofFluidState.setTemperature(temperatureLoc);
@@ -2655,20 +2620,20 @@ private:
             //////
             if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx))
                 dofFluidState.setSaturation(FluidSystem::waterPhaseIdx,
-                                            waterSaturationData[cartesianDofIdx]);
+                                            waterSaturationData[dofIdx]);
             if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx))
                 dofFluidState.setSaturation(FluidSystem::gasPhaseIdx,
-                                            gasSaturationData[cartesianDofIdx]);
+                                            gasSaturationData[dofIdx]);
             if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx))
                 dofFluidState.setSaturation(FluidSystem::oilPhaseIdx,
                                             1.0
-                                            - waterSaturationData[cartesianDofIdx]
-                                            - gasSaturationData[cartesianDofIdx]);
+                                            - waterSaturationData[dofIdx]
+                                            - gasSaturationData[dofIdx]);
 
             //////
             // set phase pressures
             //////
-            Scalar oilPressure = pressureData[cartesianDofIdx];
+            Scalar oilPressure = pressureData[dofIdx];
 
             // this assumes that capillary pressures only depend on the phase saturations
             // and possibly on temperature. (this is always the case for ECL problems.)
@@ -2685,12 +2650,12 @@ private:
             }
 
             if (FluidSystem::enableDissolvedGas())
-                dofFluidState.setRs(rsData[cartesianDofIdx]);
+                dofFluidState.setRs(rsData[dofIdx]);
             else if (Indices::gasEnabled && Indices::oilEnabled)
                 dofFluidState.setRs(0.0);
 
             if (FluidSystem::enableVaporizedOil())
-                dofFluidState.setRv(rvData[cartesianDofIdx]);
+                dofFluidState.setRv(rvData[dofIdx]);
             else if (Indices::gasEnabled && Indices::oilEnabled)
                 dofFluidState.setRv(0.0);
 
@@ -2716,53 +2681,27 @@ private:
         const auto& simulator = this->simulator();
         const auto& vanguard = simulator.vanguard();
         const auto& eclState = vanguard.eclState();
-        const auto& comm = vanguard.gridView().comm();
         size_t numDof = this->model().numGridDof();
 
-        size_t globalSize;
-        if (comm.rank() == 0)
-            globalSize = eclState.getInputGrid().getCartesianSize();
-        comm.broadcast(&globalSize, 1, 0);
-
         if (enableSolvent) {
-            std::vector<double> solventSaturationData(globalSize, 0.0);
             if (eclState.fieldProps().has_double("SSOL"))
-                solventSaturationData = eclState.fieldProps().get_global_double("SSOL");
-
-            solventSaturation_.resize(numDof, 0.0);
-            for (size_t dofIdx = 0; dofIdx < numDof; ++dofIdx) {
-                size_t cartesianDofIdx = vanguard.cartesianIndex(dofIdx);
-                assert(0 <= cartesianDofIdx);
-                assert(cartesianDofIdx <= solventSaturationData.size());
-                solventSaturation_[dofIdx] = solventSaturationData[cartesianDofIdx];
-            }
+                solventSaturation_ = eclState.fieldProps().get_double("SSOL");
+            else
+                solventSaturation_.resize(numDof, 0.0);
         }
 
         if (enablePolymer) {
-            std::vector<double> polyConcentrationData(globalSize, 0.0);
             if (eclState.fieldProps().has_double("SPOLY"))
-                polyConcentrationData = eclState.fieldProps().get_global_double("SPOLY");
-
-            polymerConcentration_.resize(numDof, 0.0);
-            for (size_t dofIdx = 0; dofIdx < numDof; ++dofIdx) {
-                size_t cartesianDofIdx = vanguard.cartesianIndex(dofIdx);
-                assert(0 <= cartesianDofIdx);
-                assert(cartesianDofIdx <= polyConcentrationData.size());
-                polymerConcentration_[dofIdx] = polyConcentrationData[cartesianDofIdx];
-            }
+                polymerConcentration_ = eclState.fieldProps().get_double("SPOLY");
+            else
+                polymerConcentration_.resize(numDof, 0.0);
         }
 
         if (enablePolymerMolarWeight) {
-            std::vector<double> polyMoleWeightData(globalSize, 0.0);
             if (eclState.fieldProps().has_double("SPOLYMW"))
-                polyMoleWeightData = eclState.fieldProps().get_global_double("SPOLYMW");
-            polymerMoleWeight_.resize(numDof, 0.0);
-            for (size_t dofIdx = 0; dofIdx < numDof; ++dofIdx) {
-                const size_t cartesianDofIdx = vanguard.cartesianIndex(dofIdx);
-                assert(0 <= cartesianDofIdx);
-                assert(cartesianDofIdx <= polyMoleWeightData.size());
-                polymerMoleWeight_[dofIdx] = polyMoleWeightData[cartesianDofIdx];
-            }
+                polymerMoleWeight_ = eclState.fieldProps().get_double("SPOLYMW");
+            else
+                polymerMoleWeight_.resize(numDof, 0.0);
         }
     }
 
@@ -2822,14 +2761,13 @@ private:
         if (!eclState.fieldProps().has_int(name))
             return;
 
-        const auto& numData = eclState.fieldProps().get_global_int(name);
+        const auto& numData = eclState.fieldProps().template get_copy<int>(name);
         const auto& vanguard = simulator.vanguard();
 
         unsigned numElems = vanguard.gridView().size(/*codim=*/0);
         numbers.resize(numElems);
         for (unsigned elemIdx = 0; elemIdx < numElems; ++elemIdx) {
-            unsigned cartElemIdx = vanguard.cartesianIndex(elemIdx);
-            numbers[elemIdx] = static_cast<T>(std::max(numData[cartElemIdx], 1) - 1);
+            numbers[elemIdx] = static_cast<T>(numData[elemIdx]) - 1;
         }
     }
 

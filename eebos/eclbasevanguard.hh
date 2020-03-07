@@ -80,6 +80,7 @@ NEW_PROP_TAG(OutputDir);
 NEW_PROP_TAG(OutputMode);
 NEW_PROP_TAG(EnableEwomsRstFile);
 NEW_PROP_TAG(EclStrictParsing);
+NEW_PROP_TAG(SchedRestart);
 NEW_PROP_TAG(EclOutputInterval);
 NEW_PROP_TAG(IgnoreKeywords);
 NEW_PROP_TAG(EnableExperiments);
@@ -90,6 +91,7 @@ SET_STRING_PROP(EclBaseVanguard, EclDeckFileName, "");
 SET_INT_PROP(EclBaseVanguard, EclOutputInterval, -1); // use the deck-provided value
 SET_BOOL_PROP(EclBaseVanguard, EnableEwomsRstFile, false);
 SET_BOOL_PROP(EclBaseVanguard, EclStrictParsing, false);
+SET_BOOL_PROP(EclBaseVanguard, SchedRestart, true);
 SET_INT_PROP(EclBaseVanguard, EdgeWeightsMethod, 1);
 
 END_PROPERTIES
@@ -249,6 +251,8 @@ public:
                              "List of Eclipse keywords which should be ignored. As a ':' separated string.");
         EWOMS_REGISTER_PARAM(TypeTag, bool, EclStrictParsing,
                              "Use strict mode for parsing - all errors are collected before the applicaton exists.");
+        EWOMS_REGISTER_PARAM(TypeTag, bool, SchedRestart,
+                             "When restarting: should we try to initialize wells and groups from historical SCHEDULE section.");
         EWOMS_REGISTER_PARAM(TypeTag, int, EdgeWeightsMethod,
                              "Choose edge-weighing strategy: 0=uniform, 1=trans, 2=log(trans).");
     }
@@ -647,6 +651,15 @@ public:
     std::unordered_set<std::string> defunctWellNames() const
     { return std::unordered_set<std::string>(); }
 
+    /*!
+     * \brief Get the cell centroids for a distributed grid.
+     *
+     * Currently this only non-empty for a loadbalanced CpGrid.
+     */
+    const std::vector<double>& cellCentroids() const
+    {
+        return centroids_;
+    }
 protected:
     void callImplementationInit()
     {
@@ -724,6 +737,12 @@ private:
     Ewoms::SummaryConfig* eclSummaryConfig_;
 
     Dune::EdgeWeightMethod edgeWeightsMethod_;
+
+protected:
+    /*! \brief The cell centroids after loadbalance was called.
+     * Empty otherwise. Used by EclTransmissibilty.
+     */
+    std::vector<double> centroids_;
 };
 
 template <class TypeTag>

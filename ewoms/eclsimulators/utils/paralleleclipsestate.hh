@@ -36,6 +36,9 @@ class EclMpiSerializer;
 class ParallelFieldPropsManager : public FieldPropsManager {
 public:
     friend class ParallelEclipseState; //!< Friend so props can be setup.
+    //! \brief Friend to set up props
+    template<class Grid>
+    friend class PropsCentroidsDataHandle;
 
     //! \brief Constructor.
     //! \param manager The field property manager to wrap.
@@ -97,6 +100,9 @@ protected:
 */
 
 class ParallelEclipseState : public EclipseState {
+    //! \brief Friend to set up props
+    template<class Grid>
+    friend class PropsCentroidsDataHandle;
 public:
     //! \brief Default constructor.
     ParallelEclipseState();
@@ -131,13 +137,6 @@ public:
     //! \details Called on root process to use the distributed field properties.
     //!          setupLocalProps must be called prior to this.
     void switchToDistributedProps();
-
-#if HAVE_MPI
-    //! \brief Setup local properties.
-    //! \param localToGlobal Map from local cells on calling process to global cartesian cell
-    //! \details Must be called after grid has been paritioned
-    void setupLocalProps(const std::vector<int>& localToGlobal);
-#endif
 
     //! \brief Returns a const ref to current field properties.
     const FieldPropsManager& fieldProps() const override;

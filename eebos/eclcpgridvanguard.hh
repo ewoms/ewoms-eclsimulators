@@ -33,6 +33,7 @@
 #include <ewoms/eclgrids/cpgrid.hh>
 #include <ewoms/eclgrids/cpgrid/gridhelpers.hh>
 #include <ewoms/eclsimulators/utils/paralleleclipsestate.hh>
+#include <ewoms/eclsimulators/utils/propscentroidsdatahandle.hh>
 
 #include <dune/grid/common/mcmgmapper.hh>
 
@@ -191,7 +192,17 @@ public:
             //distribute the grid and switch to the distributed view.
             {
                 const auto wells = this->schedule().getWellsatEnd();
-                defunctWellNames_ = std::get<1>(grid_->loadBalance(edgeWeightsMethod, &wells, faceTrans.data()));
+                auto& eclState = static_cast<ParallelEclipseState&>(this->eclState());
+                const EclipseGrid* eclGrid = nullptr;
+
+                if (grid_->comm().rank() == 0)
+                {
+                    eclGrid = &this->eclState().getInputGrid();
+                }
+
+                PropsCentroidsDataHandle<Dune::CpGrid> handle(*grid_, eclState, eclGrid, this->centroids_,
+                                                              cartesianIndexMapper());
+                defunctWellNames_ = std::get<1>(grid_->loadBalance(handle, edgeWeightsMethod, &wells, faceTrans.data()));
             }
             grid_->switchToDistributedView();
 
@@ -212,14 +223,6 @@ public:
         this->updateGridView_();
 #if HAVE_MPI
         if (mpiSize > 1) {
-            std::vector<int> cartIndices;
-            cartIndices.reserve(grid_->numCells());
-            auto locElemIt = this->gridView().template begin</*codim=*/0>();
-            const auto& locElemEndIt = this->gridView().template end</*codim=*/0>();
-            for (; locElemIt != locElemEndIt; ++locElemIt) {
-                cartIndices.push_back(cartesianIndexMapper_->cartesianIndex(locElemIt->index()));
-            }
-            static_cast<ParallelEclipseState&>(this->eclState()).setupLocalProps(cartIndices);
             static_cast<ParallelEclipseState&>(this->eclState()).switchToDistributedProps();
         }
 #endif

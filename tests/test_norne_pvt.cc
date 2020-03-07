@@ -51,9 +51,9 @@ using namespace Ewoms;
   further semantic meaning.
 */
 
-void verify_norne_oil_pvt_region1(const Ewoms::Deck& deck, const Ewoms::EclipseState& eclState) {
+void verify_norne_oil_pvt_region1(const Ewoms::EclipseState& eclState, const Ewoms::Schedule& schedule) {
     Ewoms::LiveOilPvt<double> oilPvt;
-    oilPvt.initFromDeck(deck, eclState);
+    oilPvt.initFromState(eclState, schedule);
 
     std::vector<double> rs = {33, 33,
                               43, 43,
@@ -121,9 +121,9 @@ void verify_norne_oil_pvt_region1(const Ewoms::Deck& deck, const Ewoms::EclipseS
     }
 }
 
-void verify_norne_oil_pvt_region2(const Ewoms::Deck& deck, const Ewoms::EclipseState& eclState) {
+void verify_norne_oil_pvt_region2(const Ewoms::EclipseState& eclState, const Ewoms::Schedule& schedule) {
     Ewoms::LiveOilPvt<double> oilPvt;
-    oilPvt.initFromDeck(deck, eclState);
+    oilPvt.initFromState(eclState, schedule);
 
     std::vector<double> rs = {21 , 21,
                               30 , 30,
@@ -270,7 +270,8 @@ BOOST_AUTO_TEST_CASE( Test_Norne_PVT) {
     auto deck = parser.parseFile("norne_pvt.data", parseContext, errorGuard);
 
     Ewoms::EclipseState eclState(deck);
+    Ewoms::Schedule schedule(deck, eclState);
 
-    verify_norne_oil_pvt_region1( deck, eclState );
-    verify_norne_oil_pvt_region2( deck, eclState );
+    verify_norne_oil_pvt_region1(eclState, schedule);
+    verify_norne_oil_pvt_region2(eclState, schedule);
 }

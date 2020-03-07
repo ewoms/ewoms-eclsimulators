@@ -372,7 +372,7 @@ namespace Ewoms
                                Ewoms::DeferredLogger& deferred_logger);
 
         void assembleGroupProductionControl(const Group& group, const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState, EvalWell& control_eq, double efficincyFactor, Ewoms::DeferredLogger& deferred_logger);
-        void assembleGroupInjectionControl(const Group& group, const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState,  const Well::InjectorType& injectorType, EvalWell& control_eq, double efficincyFactor, Ewoms::DeferredLogger& deferred_logger);
+        void assembleGroupInjectionControl(const Group& group, const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState,  const InjectorType& injectorType, EvalWell& control_eq, double efficincyFactor, Ewoms::DeferredLogger& deferred_logger);
 
         void assemblePressureEq(const int seg) const;
 

@@ -277,20 +277,20 @@ namespace Ewoms
         {
             const auto& controls = well.injectionControls(summaryState);
 
-            Well::InjectorType injectorType = controls.injector_type;
+            InjectorType injectorType = controls.injector_type;
             int phasePos;
             switch (injectorType) {
-            case Well::InjectorType::WATER:
+            case InjectorType::WATER:
             {
                 phasePos = pu.phase_pos[BlackoilPhases::Aqua];
                 break;
             }
-            case Well::InjectorType::OIL:
+            case InjectorType::OIL:
             {
                 phasePos = pu.phase_pos[BlackoilPhases::Liquid];
                 break;
             }
-            case Well::InjectorType::GAS:
+            case InjectorType::GAS:
             {
                 phasePos = pu.phase_pos[BlackoilPhases::Vapour];
                 break;
@@ -833,7 +833,7 @@ namespace Ewoms
                     auto phase = well.getInjectionProperties().injectorType;
 
                     if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
-                        if (phase == Well::InjectorType::WATER) {
+                        if (phase == InjectorType::WATER) {
                             primary_variables_[seg][WFrac] = 1.0;
                         } else {
                             primary_variables_[seg][WFrac] = 0.0;
@@ -841,7 +841,7 @@ namespace Ewoms
                     }
 
                     if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
-                        if (phase == Well::InjectorType::GAS) {
+                        if (phase == InjectorType::GAS) {
                             primary_variables_[seg][GFrac] = 1.0;
                         } else {
                             primary_variables_[seg][GFrac] = 0.0;
@@ -1507,17 +1507,17 @@ namespace Ewoms
 
             if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)
                     && Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx) == comp_idx
-                    && phase == Well::InjectorType::WATER)
+                    && phase == InjectorType::WATER)
                 return primary_variables_evaluation_[seg][GTotal] / scalingFactor(eebosCompIdxToEFlowCompIdx(comp_idx));
 
             if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx)
                     && Indices::canonicalToActiveComponentIndex(FluidSystem::oilCompIdx) == comp_idx
-                    && phase == Well::InjectorType::OIL)
+                    && phase == InjectorType::OIL)
                 return primary_variables_evaluation_[seg][GTotal] / scalingFactor(eebosCompIdxToEFlowCompIdx(comp_idx));
 
             if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)
                     && Indices::canonicalToActiveComponentIndex(FluidSystem::gasCompIdx) == comp_idx
-                    && phase == Well::InjectorType::GAS)
+                    && phase == InjectorType::GAS)
                 return primary_variables_evaluation_[seg][GTotal] / scalingFactor(eebosCompIdxToEFlowCompIdx(comp_idx));
 
             return 0.0;
@@ -1613,23 +1613,23 @@ namespace Ewoms
             const Ewoms::Well::InjectorCMode& current = well_state.currentInjectionControls()[well_index];
             const auto& controls = inj_controls;
 
-            Well::InjectorType injectorType = controls.injector_type;
+            InjectorType injectorType = controls.injector_type;
             double scaling = 1.0;
 
             const auto& pu = phaseUsage();
 
             switch (injectorType) {
-            case Well::InjectorType::WATER:
+            case InjectorType::WATER:
             {
                 scaling = scalingFactor(pu.phase_pos[BlackoilPhases::Aqua]);
                 break;
             }
-            case Well::InjectorType::OIL:
+            case InjectorType::OIL:
             {
                 scaling = scalingFactor(pu.phase_pos[BlackoilPhases::Liquid]);
                 break;
             }
-            case Well::InjectorType::GAS:
+            case InjectorType::GAS:
             {
                 scaling = scalingFactor(pu.phase_pos[BlackoilPhases::Vapour]);
                 break;
@@ -1653,17 +1653,17 @@ namespace Ewoms
                 double coeff = 1.0;
 
                 switch (injectorType) {
-                case Well::InjectorType::WATER:
+                case InjectorType::WATER:
                 {
                     coeff = convert_coeff[pu.phase_pos[BlackoilPhases::Aqua]];
                     break;
                 }
-                case Well::InjectorType::OIL:
+                case InjectorType::OIL:
                 {
                     coeff = convert_coeff[pu.phase_pos[BlackoilPhases::Liquid]];
                     break;
                 }
-                case Well::InjectorType::GAS:
+                case InjectorType::GAS:
                 {
                     coeff = convert_coeff[pu.phase_pos[BlackoilPhases::Vapour]];
                     break;
@@ -1951,7 +1951,7 @@ namespace Ewoms
     template <typename TypeTag>
     void
     MultisegmentWell<TypeTag>::
-    assembleGroupInjectionControl(const Group& group, const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState, const Well::InjectorType& injectorType, EvalWell& control_eq, double efficiencyFactor, Ewoms::DeferredLogger& deferred_logger)
+    assembleGroupInjectionControl(const Group& group, const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState, const InjectorType& injectorType, EvalWell& control_eq, double efficiencyFactor, Ewoms::DeferredLogger& deferred_logger)
     {
         const auto& well = well_ecl_;
         const auto& pu = phaseUsage();
@@ -1962,7 +1962,7 @@ namespace Ewoms
         double scaling = 1.0;
 
         switch (injectorType) {
-        case Well::InjectorType::WATER:
+        case InjectorType::WATER:
         {
             phasePos = pu.phase_pos[BlackoilPhases::Aqua];
             wellTarget = Well::GuideRateTarget::WAT;
@@ -1970,7 +1970,7 @@ namespace Ewoms
             scaling = scalingFactor(pu.phase_pos[BlackoilPhases::Aqua]);
             break;
         }
-        case Well::InjectorType::OIL:
+        case InjectorType::OIL:
         {
             phasePos = pu.phase_pos[BlackoilPhases::Liquid];
             wellTarget = Well::GuideRateTarget::OIL;
@@ -1978,7 +1978,7 @@ namespace Ewoms
             scaling = scalingFactor(pu.phase_pos[BlackoilPhases::Liquid]);
             break;
         }
-        case Well::InjectorType::GAS:
+        case InjectorType::GAS:
         {
             phasePos = pu.phase_pos[BlackoilPhases::Vapour];
             wellTarget = Well::GuideRateTarget::GAS;

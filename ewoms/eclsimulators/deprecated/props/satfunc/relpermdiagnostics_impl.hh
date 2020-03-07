@@ -54,7 +54,7 @@ namespace Ewoms {
         const auto dims = Ewoms::UgGridHelpers::cartDims(grid);
         const auto& compressedToCartesianIdx = Ewoms::compressedToCartesian(nc, global_cell);
         scaledEpsInfo_.resize(nc);
-        EclEpsGridProperties epsGridProperties(eclState, false, compressedToCartesianIdx);
+        EclEpsGridProperties epsGridProperties(eclState, false);
         const std::string tag = "Scaled endpoints";
         for (int c = 0; c < nc; ++c) {
             const std::string satnumIdx = std::to_string(epsGridProperties.compressedSatnum[c]);

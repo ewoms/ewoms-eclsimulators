@@ -185,16 +185,16 @@ public:
                 well->setWellType(Well::Injector);
                 const auto controls = deckWell.injectionControls(summaryState);
                 switch (controls.injector_type) {
-                case Ewoms::Well::InjectorType::WATER:
+                case Ewoms::InjectorType::WATER:
                     well->setInjectedPhaseIndex(FluidSystem::waterPhaseIdx);
                     break;
-                case Ewoms::Well::InjectorType::GAS:
+                case Ewoms::InjectorType::GAS:
                     well->setInjectedPhaseIndex(FluidSystem::gasPhaseIdx);
                     break;
-                case Ewoms::Well::InjectorType::OIL:
+                case Ewoms::InjectorType::OIL:
                     well->setInjectedPhaseIndex(FluidSystem::oilPhaseIdx);
                     break;
-                case Ewoms::Well::InjectorType::MULTI:
+                case Ewoms::InjectorType::MULTI:
                     throw std::runtime_error("Not implemented: Multi-phase injector wells");
                 }
 
@@ -226,19 +226,19 @@ public:
                 }
 
                 switch (controls.injector_type) {
-                case Ewoms::Well::InjectorType::WATER:
+                case Ewoms::InjectorType::WATER:
                     well->setVolumetricPhaseWeights(/*oil=*/0.0, /*gas=*/0.0, /*water=*/1.0);
                     break;
 
-                case Ewoms::Well::InjectorType::OIL:
+                case Ewoms::InjectorType::OIL:
                     well->setVolumetricPhaseWeights(/*oil=*/1.0, /*gas=*/0.0, /*water=*/0.0);
                     break;
 
-                case Ewoms::Well::InjectorType::GAS:
+                case Ewoms::InjectorType::GAS:
                     well->setVolumetricPhaseWeights(/*oil=*/0.0, /*gas=*/1.0, /*water=*/0.0);
                     break;
 
-                case Ewoms::Well::InjectorType::MULTI:
+                case Ewoms::InjectorType::MULTI:
                     throw std::runtime_error("Not implemented: Multi-phase injection wells");
                 }
 

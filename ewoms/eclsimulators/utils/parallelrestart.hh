@@ -25,17 +25,6 @@
 #include <ewoms/common/tabulated1dfunction.hh>
 #include <ewoms/common/intervaltabulated2dfunction.hh>
 #include <ewoms/common/uniformxtabulated2dfunction.hh>
-#include <ewoms/material/fluidsystems/blackoilpvt/constantcompressibilitybrinepvt.hh>
-#include <ewoms/material/fluidsystems/blackoilpvt/constantcompressibilityoilpvt.hh>
-#include <ewoms/material/fluidsystems/blackoilpvt/constantcompressibilitywaterpvt.hh>
-#include <ewoms/material/fluidsystems/blackoilpvt/deadoilpvt.hh>
-#include <ewoms/material/fluidsystems/blackoilpvt/drygaspvt.hh>
-#include <ewoms/material/fluidsystems/blackoilpvt/gaspvtmultiplexer.hh>
-#include <ewoms/material/fluidsystems/blackoilpvt/liveoilpvt.hh>
-#include <ewoms/material/fluidsystems/blackoilpvt/oilpvtmultiplexer.hh>
-#include <ewoms/material/fluidsystems/blackoilpvt/solventpvt.hh>
-#include <ewoms/material/fluidsystems/blackoilpvt/waterpvtmultiplexer.hh>
-#include <ewoms/material/fluidsystems/blackoilpvt/wetgaspvt.hh>
 #include <ewoms/eclio/output/restartvalue.hh>
 #include <ewoms/eclio/output/eclipseio.hh>
 #include <ewoms/eclio/output/summary.hh>
@@ -54,6 +43,9 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqactive.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/well.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/welltestconfig.hh>
+#include <ewoms/eclio/parser/eclipsestate/simulationconfig/bcconfig.hh>
+#include <ewoms/eclio/parser/eclipsestate/simulationconfig/rockconfig.hh>
+#include <ewoms/eclio/parser/eclipsestate/tables/dent.hh>
 #include <ewoms/eclio/parser/eclipsestate/util/orderedmap.hh>
 
 #include <dune/common/parallel/mpihelper.hh>
@@ -84,9 +76,8 @@ class ColumnSchema;
 class Connection;
 class DeckItem;
 class DeckRecord;
-class DENSITYRecord;
-class DenT;
-class DensityTable;
+struct DENSITYRecord;
+struct DensityTable;
 class Dimension;
 class EclHysterConfig;
 class EclipseConfig;
@@ -117,32 +108,42 @@ struct NNCdata;
 class OilVaporizationProperties;
 class Phases;
 class PlymwinjTable;
+class PlyshlogTable;
+class PlyvmhRecord;
+class PlyvmhTable;
 class PolyInjTable;
-struct PVCDORecord;
-struct PvcdoTable;
+class PVCDORecord;
+class PvcdoTable;
+class PlmixparRecord;
+class PlmixparTable;
 class PvtgTable;
 class PvtoTable;
-struct PVTWRecord;
+class PVTWRecord;
 class PvtwsaltTable;
-struct PvtwTable;
+class PvtwTable;
 class Regdims;
 class RestartConfig;
 class RestartSchedule;
 class RFTConfig;
-class RockConfig;
-struct ROCKRecord;
-struct RockTable;
+class ROCKRecord;
+class RockTable;
+class RocktabTable;
 class Rock2dTable;
 class Rock2dtrTable;
 class Runspec;
 class Schedule;
 class Segment;
+class ShrateRecord;
+class ShrateTable;
 class SimulationConfig;
 class SimpleTable;
 class SkprpolyTable;
 class SkprwatTable;
 class SolventDensityTable;
 class SpiralICD;
+class StandardCond;
+class Stone1exRecord;
+class Stone1exTable;
 class SummaryConfig;
 class SummaryNode;
 class Tabdims;
@@ -152,6 +153,8 @@ class TableManager;
 class TableSchema;
 class ThresholdPressure;
 class TimeStampUTC;
+class TlmixparRecord;
+class TlmixparTable;
 class TransMult;
 struct Tuning;
 class UDAValue;
@@ -262,56 +265,6 @@ std::size_t packSize(const IntervalTabulated2DFunction<Scalar>& data, Dune::MPIH
 template<class Scalar>
 std::size_t packSize(const UniformXTabulated2DFunction<Scalar>& data, Dune::MPIHelper::MPICommunicator comm);
 
-template<class Scalar>
-std::size_t packSize(const SolventPvt<Scalar>& data, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar, bool enableThermal>
-std::size_t packSize(const GasPvtMultiplexer<Scalar,enableThermal>& data,
-                     Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-std::size_t packSize(const DryGasPvt<Scalar>& data, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-std::size_t packSize(const GasPvtThermal<Scalar>& data, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-std::size_t packSize(const WetGasPvt<Scalar>& data, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar, bool enableThermal>
-std::size_t packSize(const OilPvtMultiplexer<Scalar,enableThermal>& data,
-                     Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-std::size_t packSize(const ConstantCompressibilityOilPvt<Scalar>& data,
-                     Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-std::size_t packSize(const DeadOilPvt<Scalar>& data,
-                     Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-std::size_t packSize(const LiveOilPvt<Scalar>& data,
-                     Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-std::size_t packSize(const OilPvtThermal<Scalar>& data, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar, bool enableThermal, bool enableBrine>
-std::size_t packSize(const WaterPvtMultiplexer<Scalar,enableThermal,enableBrine>& data,
-                     Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-std::size_t packSize(const ConstantCompressibilityWaterPvt<Scalar>& data,
-                     Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-std::size_t packSize(const ConstantCompressibilityBrinePvt<Scalar>& data,
-                     Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-std::size_t packSize(const WaterPvtThermal<Scalar>& data, Dune::MPIHelper::MPICommunicator comm);
-
 template<class T>
 std::size_t packSize(const IOrderSet<T>& data, Dune::MPIHelper::MPICommunicator comm);
 
@@ -413,70 +366,6 @@ void pack(const IntervalTabulated2DFunction<Scalar>& data, std::vector<char>& bu
 
 template<class Scalar>
 void pack(const UniformXTabulated2DFunction<Scalar>& data, std::vector<char>& buffer,
-          int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void pack(const SolventPvt<Scalar>& data, std::vector<char>& buffer,
-          int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar, bool enableThermal>
-void pack(const GasPvtMultiplexer<Scalar,enableThermal>& data,
-          const std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void pack(const DryGasPvt<Scalar>& data, std::vector<char>& buffer,
-          int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void pack(const GasPvtThermal<Scalar>& data, std::vector<char>& buffer,
-          int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void pack(const WetGasPvt<Scalar>& data, std::vector<char>& buffer,
-          int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar, bool enableThermal>
-void pack(const OilPvtMultiplexer<Scalar,enableThermal>& data,
-          const std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void pack(const ConstantCompressibilityOilPvt<Scalar>& data,
-          std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void pack(const DeadOilPvt<Scalar>& data,
-          std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void pack(const LiveOilPvt<Scalar>& data,
-          std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void pack(const OilPvtThermal<Scalar>& data, std::vector<char>& buffer,
-          int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar, bool enableThermal, bool enableBrine>
-void pack(const WaterPvtMultiplexer<Scalar,enableThermal,enableBrine>& data,
-          const std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void pack(const ConstantCompressibilityWaterPvt<Scalar>& data,
-          std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void pack(const ConstantCompressibilityBrinePvt<Scalar>& data,
-          std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void pack(const WaterPvtThermal<Scalar>& data, std::vector<char>& buffer,
           int& position, Dune::MPIHelper::MPICommunicator comm);
 
 template<class T>
@@ -587,65 +476,6 @@ template<class Scalar>
 void unpack(UniformXTabulated2DFunction<Scalar>& data, std::vector<char>& buffer,
             int& position, Dune::MPIHelper::MPICommunicator comm);
 
-template<class Scalar>
-void unpack(SolventPvt<Scalar>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar, bool enableThermal>
-void unpack(GasPvtMultiplexer<Scalar,enableThermal>& data,
-            const std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void unpack(DryGasPvt<Scalar>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void unpack(GasPvtThermal<Scalar>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void unpack(WetGasPvt<Scalar>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar, bool enableThermal>
-void unpack(OilPvtMultiplexer<Scalar,enableThermal>& data,
-            const std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void unpack(ConstantCompressibilityOilPvt<Scalar>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void unpack(DeadOilPvt<Scalar>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void unpack(LiveOilPvt<Scalar>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void unpack(OilPvtThermal<Scalar>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar, bool enableThermal, bool enableBrine>
-void unpack(WaterPvtMultiplexer<Scalar,enableThermal,enableBrine>& data,
-            const std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void unpack(WaterPvtThermal<Scalar>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void unpack(ConstantCompressibilityWaterPvt<Scalar>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void unpack(ConstantCompressibilityBrinePvt<Scalar>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
 template<class T>
 void unpack(IOrderSet<T>& data, std::vector<char>& buffer,
             int& position, Dune::MPIHelper::MPICommunicator comm);
@@ -740,7 +570,12 @@ ADD_PACK_PROTOTYPES(NNC)
 ADD_PACK_PROTOTYPES(NNCdata)
 ADD_PACK_PROTOTYPES(OilVaporizationProperties)
 ADD_PACK_PROTOTYPES(Phases)
+ADD_PACK_PROTOTYPES(PlmixparRecord)
+ADD_PACK_PROTOTYPES(PlmixparTable)
 ADD_PACK_PROTOTYPES(PlymwinjTable)
+ADD_PACK_PROTOTYPES(PlyshlogTable)
+ADD_PACK_PROTOTYPES(PlyvmhRecord)
+ADD_PACK_PROTOTYPES(PlyvmhTable)
 ADD_PACK_PROTOTYPES(PolyInjTable)
 ADD_PACK_PROTOTYPES(PVCDORecord)
 ADD_PACK_PROTOTYPES(PvcdoTable)
@@ -761,9 +596,12 @@ ADD_PACK_PROTOTYPES(ROCKRecord)
 ADD_PACK_PROTOTYPES(RockTable)
 ADD_PACK_PROTOTYPES(Rock2dTable)
 ADD_PACK_PROTOTYPES(Rock2dtrTable)
+ADD_PACK_PROTOTYPES(RocktabTable)
 ADD_PACK_PROTOTYPES(Runspec)
 ADD_PACK_PROTOTYPES(Schedule)
 ADD_PACK_PROTOTYPES(Segment)
+ADD_PACK_PROTOTYPES(ShrateRecord)
+ADD_PACK_PROTOTYPES(ShrateTable)
 ADD_PACK_PROTOTYPES(SimulationConfig)
 ADD_PACK_PROTOTYPES(SimpleTable)
 ADD_PACK_PROTOTYPES(SkprpolyTable)
@@ -771,6 +609,8 @@ ADD_PACK_PROTOTYPES(SkprwatTable)
 ADD_PACK_PROTOTYPES(SolventDensityTable)
 ADD_PACK_PROTOTYPES(SpiralICD)
 ADD_PACK_PROTOTYPES(std::string)
+ADD_PACK_PROTOTYPES(Stone1exRecord)
+ADD_PACK_PROTOTYPES(Stone1exTable)
 ADD_PACK_PROTOTYPES(SummaryConfig)
 ADD_PACK_PROTOTYPES(SummaryNode)
 ADD_PACK_PROTOTYPES(Tabdims)
@@ -781,6 +621,8 @@ ADD_PACK_PROTOTYPES(TableSchema)
 ADD_PACK_PROTOTYPES(ThresholdPressure)
 ADD_PACK_PROTOTYPES(TimeMap)
 ADD_PACK_PROTOTYPES(TimeStampUTC)
+ADD_PACK_PROTOTYPES(TlmixparRecord)
+ADD_PACK_PROTOTYPES(TlmixparTable)
 ADD_PACK_PROTOTYPES(TransMult)
 ADD_PACK_PROTOTYPES(Tuning)
 ADD_PACK_PROTOTYPES(UDAValue)

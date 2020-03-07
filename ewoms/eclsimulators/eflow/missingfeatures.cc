@@ -724,7 +724,6 @@ namespace MissingFeatures {
             "TUNINGS",
             "TVDP",
             "TZONE",
-            "VAPPARS",
             "UDT",
             "UDTDIMS",
             "UNCODHMD",

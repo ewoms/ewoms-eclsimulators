@@ -16,6 +16,7 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <ewoms/eclio/parser/eclipsestate/schedule/scheduletypes.hh>
 #include <ewoms/eclsimulators/utils/deferredloggingerrorhelpers.hh>
 
 namespace Ewoms
@@ -95,7 +96,7 @@ namespace Ewoms
 
         if (has_solvent && well.isInjector()) {
             auto injectorType = well_ecl_.injectorType();
-            if (injectorType == Well::InjectorType::GAS) {
+            if (injectorType == InjectorType::GAS) {
                 wsolvent_ = well_ecl_.getSolventFraction();
             }
         }
@@ -286,7 +287,7 @@ namespace Ewoms
 
         auto injectorType = well_ecl_.injectorType();
 
-        if (injectorType == Well::InjectorType::WATER) {
+        if (injectorType == InjectorType::WATER) {
             WellPolymerProperties polymer = well_ecl_.getPolymerProperties();
             const double polymer_injection_concentration = polymer.m_polymerConcentration;
             return polymer_injection_concentration;
@@ -307,7 +308,7 @@ namespace Ewoms
 
         auto injectorType = well_ecl_.injectorType();
 
-        if (injectorType == Well::InjectorType::GAS) {
+        if (injectorType == InjectorType::GAS) {
             WellFoamProperties fprop = well_ecl_.getFoamProperties();
             return fprop.m_foamConcentration;
         } else {
@@ -327,7 +328,7 @@ namespace Ewoms
 
         auto injectorType = well_ecl_.injectorType();
 
-        if (injectorType == Well::InjectorType::WATER) {
+        if (injectorType == InjectorType::WATER) {
             WellBrineProperties fprop = well_ecl_.getBrineProperties();
             return fprop.m_saltConcentration;
         } else {
@@ -1329,21 +1330,21 @@ namespace Ewoms
 
             if (controls.hasControl(Well::InjectorCMode::RATE) && currentControl != Well::InjectorCMode::RATE)
             {
-                Well::InjectorType injectorType = controls.injector_type;
+                InjectorType injectorType = controls.injector_type;
                 double current_rate = 0.0;
 
                 switch (injectorType) {
-                case Well::InjectorType::WATER:
+                case InjectorType::WATER:
                 {
                     current_rate = well_state.wellRates()[ wellrate_index + pu.phase_pos[BlackoilPhases::Aqua] ];
                     break;
                 }
-                case Well::InjectorType::OIL:
+                case InjectorType::OIL:
                 {
                     current_rate = well_state.wellRates()[ wellrate_index + pu.phase_pos[BlackoilPhases::Liquid] ];
                     break;
                 }
-                case Well::InjectorType::GAS:
+                case InjectorType::GAS:
                 {
                     current_rate = well_state.wellRates()[ wellrate_index + pu.phase_pos[BlackoilPhases::Vapour] ];
                     break;

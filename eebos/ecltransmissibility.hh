@@ -135,7 +135,7 @@ public:
         ElementMapper elemMapper(gridView, Dune::mcmgElementLayout());
 
         // get the ntg values, the ntg values are modified for the cells merged with minpv
-        const std::vector<double>& ntg = eclState.fieldProps().get_global_double("NTG");
+        const std::vector<double>& ntg = eclState.fieldProps().get_double("NTG");
 
         unsigned numElements = elemMapper.size();
 
@@ -147,47 +147,7 @@ public:
         for (unsigned dimIdx = 0; dimIdx < dimWorld; ++dimIdx)
             axisCentroids[dimIdx].resize(numElements);
 
-        std::vector<double> centroids;
-#if HAVE_MPI
-        size_t cells = vanguard_.grid().numCells();
-        if (global && comm.size() > 1) {
-            std::vector<size_t> sizes(comm.size());
-            if (comm.rank() == 0) {
-                const auto& eclGrid = eclState.getInputGrid();
-                comm.gather(&cells, sizes.data(), 1, 0);
-                for (int i = 1; i < comm.size(); ++i) {
-                    std::vector<int> cell_id(sizes[i]);
-                    MPI_Recv(cell_id.data(), sizes[i], MPI_INT,
-                             i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                    centroids.resize(dimWorld * sizes[i]);
-
-                    auto cIt = centroids.begin();
-                    for (int idx : cell_id) {
-                        const auto& centroid = eclGrid.getCellCenter(idx);
-                        for (const auto& it : centroid)
-                            *cIt++ = it;
-                    }
-                    MPI_Send(centroids.data(), dimWorld * sizes[i],
-                             MPI_DOUBLE, i, 0, MPI_COMM_WORLD);
-                }
-                centroids.clear();
-            } else {
-                comm.gather(&cells, sizes.data(), 1, 0);
-                std::vector<int> cell_ids;
-                cell_ids.reserve(cells);
-                auto elemIt = gridView.template begin</*codim=*/ 0>();
-                const auto& elemEndIt = gridView.template end</*codim=*/ 0>();
-                for (; elemIt != elemEndIt; ++elemIt) {
-                    const auto& elem = *elemIt;
-                    cell_ids.push_back(cartMapper.cartesianIndex(elemMapper.index(elem)));
-                }
-                MPI_Send(cell_ids.data(), cells, MPI_INT, 0, 0, MPI_COMM_WORLD);
-                centroids.resize(cells * dimWorld);
-                MPI_Recv(centroids.data(), dimWorld * cells, MPI_DOUBLE,
-                         0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            }
-        }
-#endif
+        const std::vector<double>& centroids = vanguard_.cellCentroids();
 
         auto elemIt = gridView.template begin</*codim=*/ 0>();
         const auto& elemEndIt = gridView.template end</*codim=*/ 0>();
@@ -375,8 +335,8 @@ public:
                                                   axisCentroids),
                                   permeability_[outsideElemIdx]);
 
-                applyNtg_(halfTrans1, insideFaceIdx, insideCartElemIdx, ntg);
-                applyNtg_(halfTrans2, outsideFaceIdx, outsideCartElemIdx, ntg);
+                applyNtg_(halfTrans1, insideFaceIdx, elemIdx, ntg);
+                applyNtg_(halfTrans2, outsideFaceIdx, outsideElemIdx, ntg);
 
                 // convert half transmissibilities to full face
                 // transmissibilities using the harmonic mean
@@ -549,9 +509,9 @@ private:
 #endif
 
         const auto& fieldProps = vanguard_.eclState().fieldProps();
-        const auto& inputTranxData = fieldProps.get_global_double("TRANX");
-        const auto& inputTranyData = fieldProps.get_global_double("TRANY");
-        const auto& inputTranzData = fieldProps.get_global_double("TRANZ");
+        const auto& inputTranxData = fieldProps.get_double("TRANX");
+        const auto& inputTranyData = fieldProps.get_double("TRANY");
+        const auto& inputTranzData = fieldProps.get_double("TRANZ");
         bool tranxIsDeckAssigned = false;                     // Ohh my ....
         bool tranyIsDeckAssigned = false;
         bool tranzIsDeckAssigned = false;
@@ -583,26 +543,26 @@ private:
                 if (gc2 - gc1 == 1) {
                     if (tranxIsDeckAssigned)
                         // set simulator internal transmissibilities to values from inputTranx
-                        trans_[isId] = inputTranxData[gc1];
+                        trans_[isId] = inputTranxData[c1];
                     else
                         // Scale transmissibilities with scale factor from inputTranx
-                        trans_[isId] *= inputTranxData[gc1];
+                        trans_[isId] *= inputTranxData[c1];
                 }
                 else if (gc2 - gc1 == cartDims[0]) {
                     if (tranyIsDeckAssigned)
                         // set simulator internal transmissibilities to values from inputTrany
-                        trans_[isId] = inputTranyData[gc1];
+                        trans_[isId] = inputTranyData[c1];
                     else
                         // Scale transmissibilities with scale factor from inputTrany
-                        trans_[isId] *= inputTranyData[gc1];
+                        trans_[isId] *= inputTranyData[c1];
                 }
                 else if (gc2 - gc1 == cartDims[0]*cartDims[1]) {
                     if (tranzIsDeckAssigned)
                         // set simulator internal transmissibilities to values from inputTranz
-                        trans_[isId] = inputTranzData[gc1];
+                        trans_[isId] = inputTranzData[c1];
                     else
                         // Scale transmissibilities with scale factor from inputTranz
-                        trans_[isId] *= inputTranzData[gc1];
+                        trans_[isId] *= inputTranzData[c1];
                 }
                 //else.. We don't support modification of NNC at the moment.
             }
@@ -755,22 +715,25 @@ private:
         // over several processes.)
         const auto& fieldProps = vanguard_.eclState().fieldProps();
         if (fieldProps.has_double("PERMX")) {
-            const std::vector<double>& permxData = fieldProps.get_global_double("PERMX");
+            const std::vector<double>& permxData = fieldProps.get_double("PERMX");
 
-            std::vector<double> permyData(permxData);
+            std::vector<double> permyData;
             if (fieldProps.has_double("PERMY"))
-                permyData = fieldProps.get_global_double("PERMY");
+                permyData = fieldProps.get_double("PERMY");
+            else
+                permyData = permxData;
 
-            std::vector<double> permzData(permxData);
+            std::vector<double> permzData;
             if (fieldProps.has_double("PERMZ"))
-                permzData = fieldProps.get_global_double("PERMZ");
+                permzData = fieldProps.get_double("PERMZ");
+            else
+                permzData = permxData;
 
             for (size_t dofIdx = 0; dofIdx < numElem; ++ dofIdx) {
-                unsigned cartesianElemIdx = vanguard_.cartesianIndex(dofIdx);
                 permeability_[dofIdx] = 0.0;
-                permeability_[dofIdx][0][0] = permxData[cartesianElemIdx];
-                permeability_[dofIdx][1][1] = permyData[cartesianElemIdx];
-                permeability_[dofIdx][2][2] = permzData[cartesianElemIdx];
+                permeability_[dofIdx][0][0] = permxData[dofIdx];
+                permeability_[dofIdx][1][1] = permyData[dofIdx];
+                permeability_[dofIdx][2][2] = permzData[dofIdx];
             }
 
             // for now we don't care about non-diagonal entries
@@ -872,7 +835,7 @@ private:
 
     void applyNtg_(Scalar& trans,
                    unsigned faceIdx,
-                   unsigned cartElemIdx,
+                   unsigned elemIdx,
                    const std::vector<double>& ntg) const
     {
         // apply multiplyer for the transmissibility of the face. (the
@@ -880,17 +843,17 @@ private:
         // contains the intersection of interest.)
         switch (faceIdx) {
         case 0: // left
-            trans *= ntg[cartElemIdx];
+            trans *= ntg[elemIdx];
             break;
         case 1: // right
-            trans *= ntg[cartElemIdx];
+            trans *= ntg[elemIdx];
             break;
 
         case 2: // front
-            trans *= ntg[cartElemIdx];
+            trans *= ntg[elemIdx];
             break;
         case 3: // back
-            trans *= ntg[cartElemIdx];
+            trans *= ntg[elemIdx];
             break;
 
             // NTG does not apply to top and bottom faces

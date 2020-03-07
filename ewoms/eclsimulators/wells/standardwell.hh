@@ -29,6 +29,7 @@
 #include <ewoms/numerics/models/blackoil/blackoilbrinemodules.hh>
 
 #include <ewoms/common/densead/dynamicevaluation.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/scheduletypes.hh>
 
 #include <dune/common/dynvector.hh>
 #include <dune/common/dynmatrix.hh>
@@ -395,7 +396,7 @@ namespace Ewoms
         void assembleControlEq(const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState, Ewoms::DeferredLogger& deferred_logger);
 
         void assembleGroupProductionControl(const Group& group, const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState, EvalWell& control_eq, double efficincyFactor, Ewoms::DeferredLogger& deferred_logger);
-        void assembleGroupInjectionControl(const Group& group, const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState,  const Well::InjectorType& injectorType, EvalWell& control_eq, double efficincyFactor, Ewoms::DeferredLogger& deferred_logger);
+        void assembleGroupInjectionControl(const Group& group, const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState,  const InjectorType& injectorType, EvalWell& control_eq, double efficincyFactor, Ewoms::DeferredLogger& deferred_logger);
 
         // handle the non reasonable fractions due to numerical overshoot
         void processFractions() const;

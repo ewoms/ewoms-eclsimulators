@@ -25,9 +25,6 @@
 
 #include <ewoms/eclio/opmlog/location.hh>
 #include <ewoms/material/fluidmatrixinteractions/eclepsscalingpoints.hh>
-#include <ewoms/material/fluidsystems/blackoilpvt/drygaspvt.hh>
-#include <ewoms/material/fluidsystems/blackoilpvt/solventpvt.hh>
-#include <ewoms/material/fluidsystems/blackoilpvt/wetgaspvt.hh>
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/deck/deckitem.hh>
 #include <ewoms/eclio/parser/eclipsestate/aquancon.hh>
@@ -89,11 +86,13 @@
 #include <ewoms/eclio/parser/eclipsestate/tables/dent.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/jfunc.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/plymwinjtable.hh>
+#include <ewoms/eclio/parser/eclipsestate/tables/plyshlogtable.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/pvtgtable.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/pvtotable.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/regdims.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/rock2dtable.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/rock2dtrtable.hh>
+#include <ewoms/eclio/parser/eclipsestate/tables/rocktabtable.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/simpletable.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/skprpolytable.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/skprwattable.hh>
@@ -217,7 +216,8 @@ Ewoms::TableColumn getTableColumn()
                             "test2", {1.0, 2.0}, {false, true}, 2);
 }
 
-Ewoms::DenT getDenT() {
+Ewoms::DenT getDenT()
+{
     std::vector<Ewoms::DenT::entry> records;
     records.emplace_back(1,2,3);
     records.emplace_back(4,5,6);
@@ -239,6 +239,13 @@ Ewoms::EquilRecord getEquilRecord()
 Ewoms::FoamData getFoamData()
 {
     return Ewoms::FoamData(1.0, 2.0, 3.0, true, 4.0);
+}
+
+Ewoms::FoamConfig getFoamConfig()
+{
+    return Ewoms::FoamConfig({getFoamData(), getFoamData()},
+                           Ewoms::Phase::GAS,
+                           Ewoms::FoamConfig::MobilityModel::TAB);
 }
 
 Ewoms::TimeMap getTimeMap()
@@ -283,8 +290,8 @@ Ewoms::TableContainer getTableContainer()
     data.insert({"test3", getTableColumn()});
     Ewoms::SimpleTable tab1(getTableSchema(), data, true);
     Ewoms::TableContainer result(2);
-    result.addTable(0, std::make_shared<const Ewoms::SimpleTable>(tab1));
-    result.addTable(1, std::make_shared<const Ewoms::SimpleTable>(tab1));
+    result.addTable(0, std::make_shared<Ewoms::SimpleTable>(tab1));
+    result.addTable(1, std::make_shared<Ewoms::SimpleTable>(tab1));
     return result;
 }
 
@@ -694,8 +701,8 @@ BOOST_AUTO_TEST_CASE(TableContainer)
     data.insert({"test3", getTableColumn()});
     Ewoms::SimpleTable tab1(getTableSchema(), data, true);
     Ewoms::TableContainer val1(2);
-    val1.addTable(0, std::make_shared<const Ewoms::SimpleTable>(tab1));
-    val1.addTable(1, std::make_shared<const Ewoms::SimpleTable>(tab1));
+    val1.addTable(0, std::make_shared<Ewoms::SimpleTable>(tab1));
+    val1.addTable(1, std::make_shared<Ewoms::SimpleTable>(tab1));
     auto val2 = PackUnpack(val1);
     DO_CHECKS(TableContainer)
 #endif
@@ -731,7 +738,7 @@ BOOST_AUTO_TEST_CASE(FoamData)
 BOOST_AUTO_TEST_CASE(FoamConfig)
 {
 #if HAVE_MPI
-    Ewoms::FoamConfig val1({getFoamData(), getFoamData()});
+    Ewoms::FoamConfig val1 = getFoamConfig();
     auto val2 = PackUnpack(val1);
     DO_CHECKS(FoamConfig)
 #endif
@@ -741,7 +748,7 @@ BOOST_AUTO_TEST_CASE(InitConfig)
 {
 #if HAVE_MPI
     Ewoms::InitConfig val1(Ewoms::Equil({getEquilRecord(), getEquilRecord()}),
-                         Ewoms::FoamConfig({getFoamData(), getFoamData()}),
+                         getFoamConfig(),
                          true, true, true, 20, "test1");
     auto val2 = PackUnpack(val1);
     DO_CHECKS(InitConfig)
@@ -1101,7 +1108,12 @@ BOOST_AUTO_TEST_CASE(TableManager)
                            Ewoms::PvtwTable({Ewoms::PVTWRecord{1.0, 2.0, 3.0, 4.0, 5.0}}),
                            Ewoms::PvcdoTable({Ewoms::PVCDORecord{1.0, 2.0, 3.0, 4.0, 5.0}}),
                            Ewoms::DensityTable({Ewoms::DENSITYRecord{1.0, 2.0, 3.0}}),
+                           Ewoms::PlyvmhTable({Ewoms::PlyvmhRecord{1.0, 2.0, 3.0, 4.0}}),
                            Ewoms::RockTable({Ewoms::ROCKRecord{1.0,2.0}}),
+                           Ewoms::PlmixparTable({Ewoms::PlmixparRecord{1.0}}),
+                           Ewoms::ShrateTable({Ewoms::ShrateRecord{1.0}}),
+                           Ewoms::Stone1exTable({Ewoms::Stone1exRecord{1.0}}),
+                           Ewoms::TlmixparTable({Ewoms::TlmixparRecord{1.0, 2.0}}),
                            Ewoms::ViscrefTable({Ewoms::VISCREFRecord{1.0, 2.0}}),
                            Ewoms::WatdentTable({Ewoms::WATDENTRecord{1.0, 2.0, 3.0}}),
                            {{1.0, 2.0, {1.0, 2.0, 3.0}}},
@@ -1117,10 +1129,12 @@ BOOST_AUTO_TEST_CASE(TableManager)
                            true,
                            true,
                            true,
+                           true,
                            jfunc,
                            getDenT(),
                            getDenT(),
                            getDenT(),
+                           {7.0, 8.0},
                            77,
                            1.0);
     auto val2 = PackUnpack(val1);
@@ -1165,163 +1179,17 @@ BOOST_AUTO_TEST_CASE(UniformXTabulatedTwoDFunction)
 #endif
 }
 
-BOOST_AUTO_TEST_CASE(SolventPvt)
-{
-#ifdef HAVE_MPI
-    Ewoms::Tabulated1DFunction<double> func(2, std::vector<double>{1.0, 2.0},
-                                             std::vector<double>{3.0, 4.0});
-    Ewoms::SolventPvt<double> val1({1.0, 2.0}, {func}, {func}, {func});
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(SolventPvt<double>)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(DryGasPvt)
-{
-#ifdef HAVE_MPI
-    Ewoms::Tabulated1DFunction<double> func(2, std::vector<double>{1.0, 2.0},
-                                             std::vector<double>{3.0, 4.0});
-    Ewoms::DryGasPvt<double> val1({1.0, 2.0}, {func}, {func}, {func});
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(DryGasPvt<double>)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(GasPvtThermal)
-{
-#ifdef HAVE_MPI
-    Ewoms::Tabulated1DFunction<double> func(2, std::vector<double>{1.0, 2.0},
-                                             std::vector<double>{3.0, 4.0});
-    Ewoms::GasPvtThermal<double>::IsothermalPvt* pvt = new Ewoms::GasPvtThermal<double>::IsothermalPvt;
-    Ewoms::GasPvtThermal<double> val1(pvt, {func}, {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
-                                    {func}, true, true, false);
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(GasPvtThermal<double>)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(WetGasPvt)
-{
-#ifdef HAVE_MPI
-    Ewoms::Tabulated1DFunction<double> func(2, std::vector<double>{1.0, 2.0},
-                                             std::vector<double>{3.0, 4.0});
-    std::vector<double> xPos{1.0, 2.0};
-    std::vector<double> yPos{3.0, 4.0};
-    using FFuncType = Ewoms::UniformXTabulated2DFunction<double>;
-    using Samples = std::vector<std::vector<FFuncType::SamplePoint>>;
-    Samples samples({{std::make_tuple(1.0, 2.0, 3.0), std::make_tuple(3.0, 4.0, 5.0)}});
-    FFuncType func2(xPos, yPos, samples, FFuncType::Vertical);
-    Ewoms::WetGasPvt<double> val1({1.0, 2.0}, {3.0, 4.0},
-                                {func2}, {func}, {func2},
-                                {func2}, {func}, {func}, {func}, 5.0);
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(WetGasPvt<double>)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(ConstantCompressibilityOilPvt)
-{
-#ifdef HAVE_MPI
-    Ewoms::ConstantCompressibilityOilPvt<double> val1({1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
-                                                    {7.0, 8.0}, {9.0, 10.0}, {11.0, 12.0});
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(ConstantCompressibilityOilPvt<double>)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(DeadOilPvt)
-{
-#ifdef HAVE_MPI
-    Ewoms::Tabulated1DFunction<double> func(2, std::vector<double>{1.0, 2.0},
-                                             std::vector<double>{3.0, 4.0});
-    Ewoms::DeadOilPvt<double> val1({1.0, 2.0}, {func}, {func}, {func});
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(DeadOilPvt<double>)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(LiveOilPvt)
-{
-#ifdef HAVE_MPI
-    Ewoms::Tabulated1DFunction<double> func(2, std::vector<double>{1.0, 2.0},
-                                             std::vector<double>{3.0, 4.0});
-    std::vector<double> xPos{1.0, 2.0};
-    std::vector<double> yPos{3.0, 4.0};
-    using FFuncType = Ewoms::UniformXTabulated2DFunction<double>;
-    using Samples = std::vector<std::vector<FFuncType::SamplePoint>>;
-    Samples samples({{std::make_tuple(1.0, 2.0, 3.0), std::make_tuple(3.0, 4.0, 5.0)}});
-    FFuncType func2(xPos, yPos, samples, FFuncType::Vertical);
-    Ewoms::LiveOilPvt<double> val1({1.0, 2.0}, {3.0, 4.0},
-                                 {func2}, {func2}, {func2},
-                                 {func}, {func}, {func}, {func}, {func}, 5.0);
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(LiveOilPvt<double>)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(OilPvtThermal)
-{
-#ifdef HAVE_MPI
-    Ewoms::Tabulated1DFunction<double> func(2, std::vector<double>{1.0, 2.0},
-                                             std::vector<double>{3.0, 4.0});
-    Ewoms::OilPvtThermal<double>::IsothermalPvt* pvt = new Ewoms::OilPvtThermal<double>::IsothermalPvt;
-    Ewoms::OilPvtThermal<double> val1(pvt, {func}, {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
-                                    {7.0, 8.0}, {9.0, 10.0}, {11.0, 12.0},
-                                    {func}, true, true, false);
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(OilPvtThermal<double>)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(ConstantCompressibilityWaterPvt)
-{
-#ifdef HAVE_MPI
-    Ewoms::ConstantCompressibilityWaterPvt<double> val1({1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
-                                                      {7.0, 8.0}, {9.0, 10.0}, {11.0, 12.0});
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(ConstantCompressibilityWaterPvt<double>)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(ConstantCompressibilityBrinePvt)
-{
-#ifdef HAVE_MPI
-    Ewoms::Tabulated1DFunction<double> func(2, std::vector<double>{1.0, 2.0},
-                                             std::vector<double>{3.0, 4.0});
-    Ewoms::ConstantCompressibilityBrinePvt<double> val1({1.0, 2.0}, {3.0, 4.0}, {func},
-                                                      {func}, {func}, {func});
-    auto val2 = PackUnpack(val1);
-    BOOST_CHECK(std::get<1>(val2) == std::get<2>(val2));
-    BOOST_CHECK(val1 == std::get<0>(val2));
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(WaterPvtThermal)
-{
-#ifdef HAVE_MPI
-    Ewoms::Tabulated1DFunction<double> func(2, std::vector<double>{1.0, 2.0},
-                                             std::vector<double>{3.0, 4.0});
-    Ewoms::WaterPvtThermal<double>::IsothermalPvt* pvt = new Ewoms::WaterPvtThermal<double>::IsothermalPvt;
-    Ewoms::WaterPvtThermal<double> val1(pvt, {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
-                                      {7.0, 8.0}, {9.0, 10.0}, {11.0, 12.0},
-                                      {13.0, 14.0}, {15.0, 16.0}, {17.0, 18.0},
-                                      {func}, {func}, true, true, false);
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(WaterPvtThermal<double>)
-#endif
-}
-
 BOOST_AUTO_TEST_CASE(OilVaporizationProperties)
 {
 #ifdef HAVE_MPI
     using VapType = Ewoms::OilVaporizationProperties::OilVaporization;
     Ewoms::OilVaporizationProperties val1(VapType::VAPPARS,
-                                        {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
+                                        1.0, 2.0, {5.0, 6.0},
                                         {false, true}, {7.0, 8.0});
     auto val2 = PackUnpack(val1);
     DO_CHECKS(OilVaporizationProperties)
     val1 = Ewoms::OilVaporizationProperties(VapType::DRDT,
-                                          {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
+                                          1.0, 2.0, {5.0, 6.0},
                                           {false, true}, {7.0, 8.0});
     val2 = PackUnpack(val1);
     DO_CHECKS(OilVaporizationProperties)
@@ -1461,7 +1329,7 @@ BOOST_AUTO_TEST_CASE(WellInjectionProperties)
                                             7,
                                             true,
                                             8,
-                                            Ewoms::Well::InjectorType::OIL,
+                                            Ewoms::InjectorType::OIL,
                                             Ewoms::Well::InjectorCMode::BHP);
     auto val2 = PackUnpack(val1);
     DO_CHECKS(Well::WellInjectionProperties)
@@ -2054,7 +1922,7 @@ BOOST_AUTO_TEST_CASE(Schedule)
                                                           Ewoms::Group::GroupProductionProperties())},1}});
     using VapType = Ewoms::OilVaporizationProperties::OilVaporization;
     Ewoms::DynamicState<Ewoms::OilVaporizationProperties> oilvap{{Ewoms::OilVaporizationProperties(VapType::VAPPARS,
-                                                                                   {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0},
+                                                                                   1.0, 2.0, {5.0, 6.0},
                                                                                    {false, true}, {7.0, 8.0})},1};
     Ewoms::Events events(Ewoms::DynamicVector<uint64_t>({1,2,3,4,5}));
     std::unique_ptr<Ewoms::UnitSystem> unitSys(new Ewoms::UnitSystem);
@@ -2239,7 +2107,7 @@ BOOST_AUTO_TEST_CASE(EclipseConfig)
     Ewoms::IOConfig io(true, false, true, false, false, true, "test1", true,
                      "test2", true, "test3", false);
     Ewoms::InitConfig init(Ewoms::Equil({getEquilRecord(), getEquilRecord()}),
-                         Ewoms::FoamConfig({getFoamData(), getFoamData()}),
+                         getFoamConfig(),
                          true, true, true, 20, "test1");
     Ewoms::EclipseConfig val1{init, io};
 
@@ -2336,6 +2204,28 @@ BOOST_AUTO_TEST_CASE(GridDims)
     Ewoms::GridDims val1{ 1,  2,  3};
     auto val2 = PackUnpack(val1);
     DO_CHECKS(GridDims)
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(PlyshlogTable)
+{
+#ifdef HAVE_MPI
+    Ewoms::OrderedMap<std::string, Ewoms::TableColumn> data;
+    data.insert({"test3", getTableColumn()});
+    Ewoms::PlyshlogTable val1(getTableSchema(), data, true, 1.0, 2.0, 3.0, true, true);
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(PlyshlogTable)
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(RocktabTable)
+{
+#ifdef HAVE_MPI
+    Ewoms::OrderedMap<std::string, Ewoms::TableColumn> data;
+    data.insert({"test3", getTableColumn()});
+    Ewoms::RocktabTable val1(getTableSchema(), data, true, true);
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(RocktabTable)
 #endif
 }
 
