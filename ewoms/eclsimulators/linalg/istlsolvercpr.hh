@@ -95,10 +95,7 @@ namespace Ewoms
         ///                                with dune-istl the information about the parallelization.
         explicit ISTLSolverCpr(const Simulator& simulator)
             : SuperClass(simulator), oldMat()
-        {
-            extractParallelGridInformationToISTL(this->simulator_.vanguard().grid(), this->parallelInformation_);
-            detail::findOverlapAndInterior(this->simulator_.vanguard().grid(), this->overlapRows_, this->interiorRows_);
-        }
+        {}
 
         void prepare(const SparseMatrixAdapter& M, Vector& b)
         {

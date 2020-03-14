@@ -430,6 +430,64 @@ namespace Ewoms
         }
     }
 
+    //! Compute Blocked ILU0 decomposition, when we know junk ghost rows are located at the end of A
+    template<class M>
+    void ghost_last_bilu0_decomposition (M& A, size_t interiorSize)
+    {
+        // iterator types
+        typedef typename M::RowIterator rowiterator;
+        typedef typename M::ColIterator coliterator;
+        typedef typename M::block_type block;
+
+        // implement left looking variant with stored inverse
+        for (rowiterator i = A.begin(); i.index() < interiorSize; ++i)
+        {
+            // coliterator is diagonal after the following loop
+            coliterator endij=(*i).end();           // end of row i
+            coliterator ij;
+
+            // eliminate entries left of diagonal; store L factor
+            for (ij=(*i).begin(); ij.index()<i.index(); ++ij)
+            {
+                // find A_jj which eliminates A_ij
+                coliterator jj = A[ij.index()].find(ij.index());
+
+                // compute L_ij = A_jj^-1 * A_ij
+                (*ij).rightmultiply(*jj);
+
+                // modify row
+                coliterator endjk=A[ij.index()].end();    // end of row j
+                coliterator jk=jj; ++jk;
+                coliterator ik=ij; ++ik;
+                while (ik!=endij && jk!=endjk)
+                    if (ik.index()==jk.index())
+                    {
+                        block B(*jk);
+                        B.leftmultiply(*ij);
+                        *ik -= B;
+                        ++ik; ++jk;
+                    }
+                    else
+                    {
+                        if (ik.index()<jk.index())
+                            ++ik;
+                        else
+                            ++jk;
+                    }
+            }
+
+            // invert pivot and store it in A
+            if (ij.index()!=i.index())
+                DUNE_THROW(Dune::ISTLError,"diagonal entry missing");
+            try {
+                (*ij).invert();   // compute inverse of diagonal block
+            }
+            catch (Dune::FMatrixError & e) {
+                DUNE_THROW(Dune::ISTLError,"ILU failed to invert matrix block");
+            }
+        }
+    }
+
       //! compute ILU decomposition of A. A is overwritten by its decomposition
       template<class M, class CRS, class InvVector>
       void convertToCRS(const M& A, CRS& lower, CRS& upper, InvVector& inv )
@@ -504,7 +562,7 @@ namespace Ewoms
             if( j.index() == iIndex )
             {
               inv[ row ] = (*j);
-	      break;
+              break;
             }
             else if ( j.index() >= i.index() )
             {
@@ -638,6 +696,7 @@ public:
           comm_(nullptr), w_(w),
           relaxation_( std::abs( w - 1.0 ) > 1e-15 )
     {
+        interiorSize_ = A.N();
         // BlockMatrix is a Subclass of FieldMatrix that just adds
         // methods. Therefore this cast should be safe.
         init( reinterpret_cast<const Matrix&>(A), n, milu, redblack,
@@ -667,6 +726,7 @@ public:
           comm_(&comm), w_(w),
           relaxation_( std::abs( w - 1.0 ) > 1e-15 )
     {
+        interiorSize_ = A.N();
         // BlockMatrix is a Subclass of FieldMatrix that just adds
         // methods. Therefore this cast should be safe.
         init( reinterpret_cast<const Matrix&>(A), n, milu, redblack,
@@ -717,10 +777,44 @@ public:
           comm_(&comm), w_(w),
           relaxation_( std::abs( w - 1.0 ) > 1e-15 )
     {
+        interiorSize_ = A.N();
         // BlockMatrix is a Subclass of FieldMatrix that just adds
         // methods. Therefore this cast should be safe.
         init( reinterpret_cast<const Matrix&>(A), 0, milu, redblack,
               reorder_sphere );
+    }
+
+    /*! \brief Constructor.
+
+      Constructor gets all parameters to operate the prec.
+      \param A The matrix to operate on.
+      \param n ILU fill in level (for testing). This does not work in parallel.
+      \param w The relaxation factor.
+      \param milu The modified ILU variant to use. 0 means traditional ILU. \see MILU_VARIANT.
+      \param interiorSize The number of interior/owner rows in the matrix.
+      \param redblack Whether to use a red-black ordering.
+      \param reorder_sphere If true, we start the reordering at a root node.
+                            The vertices on each layer aound it (same distance) are
+                            ordered consecutivly. If false, we preserver the order of
+                            the vertices with the same color.
+    */
+    template<class BlockType, class Alloc>
+    ParallelOverlappingILU0 (const Dune::BCRSMatrix<BlockType,Alloc>& A,
+                             const ParallelInfo& comm,
+                             const field_type w, MILU_VARIANT milu,
+                             size_type interiorSize, bool redblack=false,
+                             bool reorder_sphere=true)
+        : lower_(),
+          upper_(),
+          inv_(),
+          comm_(&comm), w_(w),
+          relaxation_( std::abs( w - 1.0 ) > 1e-15 ),
+          interiorSize_(interiorSize)
+    {
+        // BlockMatrix is a Subclass of FieldMatrix that just adds
+        // methods. Therefore this cast should be safe.
+        init( reinterpret_cast<const Matrix&>(A), 0, milu, redblack,
+              reorder_sphere  );
     }
 
     /*!
@@ -750,13 +844,15 @@ public:
 
         const size_type iEnd = lower_.rows();
         const size_type lastRow = iEnd - 1;
+        size_type upperLoppStart = iEnd - interiorSize_;
+        size_type lowerLoopEnd = interiorSize_;
         if( iEnd != upper_.rows() )
         {
             EWOMS_THROW(std::logic_error,"ILU: number of lower and upper rows must be the same");
         }
 
         // lower triangular solve
-        for( size_type i=0; i<iEnd; ++ i )
+        for( size_type i=0; i<lowerLoopEnd; ++ i )
         {
           dblock rhs( md[ i ] );
           const size_type rowI     = lower_.rows_[ i ];
@@ -770,7 +866,7 @@ public:
           mv[ i ] = rhs;  // Lii = I
         }
 
-        for( size_type i=0; i<iEnd; ++ i )
+        for( size_type i=upperLoppStart; i<iEnd; ++ i )
         {
             vblock& vBlock = mv[ lastRow - i ];
             vblock rhs ( vBlock );
@@ -914,7 +1010,10 @@ protected:
                                                   detail::IsPositiveFunctor() );
                     break;
                 default:
-                    bilu0_decomposition( *ILU );
+                    if (interiorSize_ == A.N())
+                        bilu0_decomposition( *ILU );
+                    else
+                        detail::ghost_last_bilu0_decomposition(*ILU, interiorSize_);
                     break;
                 }
             }
@@ -1026,7 +1125,7 @@ protected:
     //! \brief The relaxation factor to use.
     const field_type w_;
     const bool relaxation_;
-
+    size_type interiorSize_;
 };
 
 } // end namespace Ewoms

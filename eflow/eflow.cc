@@ -17,8 +17,6 @@
 */
 #include "config.h"
 
-#include <eebos/eclmpiserializer.hh>
-
 #include <eflow/eflow_blackoil.hh>
 
 #ifndef FLOW_BLACKOIL_ONLY
@@ -35,7 +33,6 @@
 
 #include <ewoms/eclsimulators/eflow/simulatorfullyimplicitblackoil.hh>
 #include <ewoms/eclsimulators/eflow/eflowmain.hh>
-#include <ewoms/eclsimulators/utils/paralleleclipsestate.hh>
 #include <ewoms/common/propertysystem.hh>
 #include <ewoms/common/parametersystem.hh>
 #include <ewoms/eclsimulators/eflow/missingfeatures.hh>
@@ -65,6 +62,11 @@
 #include <dune/fem/misc/mpimanager.hh>
 #else
 #include <dune/common/parallel/mpihelper.hh>
+#endif
+
+#if HAVE_MPI
+#include <eebos/eclmpiserializer.hh>
+#include <ewoms/eclsimulators/utils/paralleleclipsestate.hh>
 #endif
 
 BEGIN_PROPERTIES
@@ -362,8 +364,6 @@ int main(int argc, char** argv)
                 const bool init_from_restart_file = !EWOMS_GET_PARAM(PreTypeTag, bool, SchedRestart);
                 const auto& init_config = eclipseState->getInitConfig();
                 if (init_config.restartRequested() && init_from_restart_file) {
-                    throw std::logic_error("Sorry - the ability to initialize wells and groups from the restart file is currently not ready");
-
                     int report_step = init_config.getRestartStep();
                     const auto& rst_filename = eclipseState->getIOConfig().getRestartFileName( init_config.getRestartRootName(), report_step, false );
                     Ewoms::EclIO::ERst rst_file(rst_filename);
@@ -375,7 +375,6 @@ int main(int argc, char** argv)
                 setupMessageLimiter(schedule->getMessageLimits(), "STDOUT_LOGGER");
                 summaryConfig.reset( new Ewoms::SummaryConfig(*deck, *schedule, eclipseState->getTableManager(), parseContext, errorGuard));
 #ifdef HAVE_MPI
-                Ewoms::Mpi::packAndSend(*summaryConfig, Dune::MPIHelper::getCollectiveCommunication());
                 Ewoms::Mpi::packAndSend(*schedule, Dune::MPIHelper::getCollectiveCommunication());
 #endif
             }
@@ -384,11 +383,11 @@ int main(int argc, char** argv)
                 summaryConfig.reset(new Ewoms::SummaryConfig);
                 schedule.reset(new Ewoms::Schedule);
                 parState = new Ewoms::ParallelEclipseState;
-                Ewoms::Mpi::receiveAndUnpack(*summaryConfig, mpiHelper.getCollectiveCommunication());
                 Ewoms::Mpi::receiveAndUnpack(*schedule, mpiHelper.getCollectiveCommunication());
                 eclipseState.reset(parState);
             }
             Ewoms::EclMpiSerializer ser(mpiHelper.getCollectiveCommunication());
+            ser.broadcast(*summaryConfig);
             ser.broadcast(*parState);
 #endif
 

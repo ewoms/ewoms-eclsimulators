@@ -24,16 +24,21 @@
 #include <boost/test/unit_test.hpp>
 
 #include <ewoms/eclio/opmlog/location.hh>
-#include <ewoms/material/fluidmatrixinteractions/eclepsscalingpoints.hh>
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/deck/deckitem.hh>
 #include <ewoms/eclio/parser/eclipsestate/aquancon.hh>
 #include <ewoms/eclio/parser/eclipsestate/aquiferct.hh>
 #include <ewoms/eclio/parser/eclipsestate/aquifetp.hh>
+#include <ewoms/eclio/parser/eclipsestate/eclipseconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/runspec.hh>
 #include <ewoms/eclio/parser/eclipsestate/edit/editnnc.hh>
-#include <ewoms/eclio/parser/eclipsestate/grid/nnc.hh>
 #include <ewoms/eclio/parser/eclipsestate/grid/facedir.hh>
+#include <ewoms/eclio/parser/eclipsestate/grid/fault.hh>
+#include <ewoms/eclio/parser/eclipsestate/grid/faultcollection.hh>
+#include <ewoms/eclio/parser/eclipsestate/grid/faultface.hh>
+#include <ewoms/eclio/parser/eclipsestate/grid/multregtscanner.hh>
+#include <ewoms/eclio/parser/eclipsestate/grid/nnc.hh>
+#include <ewoms/eclio/parser/eclipsestate/grid/transmult.hh>
 #include <ewoms/eclio/parser/eclipsestate/initconfig/equil.hh>
 #include <ewoms/eclio/parser/eclipsestate/initconfig/foamconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/initconfig/initconfig.hh>
@@ -55,6 +60,7 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/oilvaporizationproperties.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/rftconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/scheduletypes.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/timemap.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/tuning.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqactive.hh>
@@ -103,6 +109,7 @@
 #include <ewoms/eclio/parser/eclipsestate/tables/tableschema.hh>
 #include <ewoms/eclio/output/restartvalue.hh>
 #include <ewoms/eclsimulators/utils/parallelrestart.hh>
+#include <eebos/eclmpiserializer.hh>
 
 namespace {
 
@@ -299,9 +306,9 @@ Ewoms::Well getFullWell()
 {
     Ewoms::UnitSystem unitSystem;
     return Ewoms::Well("test1", "test2", 1, 2, 3, 4, 5.0,
-                     Ewoms::Phase::WATER, Ewoms::Connection::Order::DEPTH,
+                     Ewoms::WellType(Ewoms::Phase::WATER), Ewoms::Connection::Order::DEPTH,
                      unitSystem, 6.0, Ewoms::Well::Status::SHUT,
-                     7.0, true, true, false,
+                     7.0, true, false,
                      Ewoms::Well::WellGuideRate{true, 1.0, Ewoms::Well::GuideRateTarget::COMB, 2.0},
                      8.0, 9.0, false,
                      std::make_shared<Ewoms::WellEconProductionLimits>(),
@@ -394,15 +401,15 @@ Ewoms::DeckRecord getDeckRecord()
                        Ewoms::type_tag::string, "test5",
                        {Ewoms::value::status::deck_value},
                        true,
-                       {Ewoms::Dimension("DimensionLess", 7.0, 8.0)},
-                       {Ewoms::Dimension("Metric", 10.0, 11.0)});
+                       {Ewoms::Dimension(7.0, 8.0)},
+                       {Ewoms::Dimension(10.0, 11.0)});
 
     Ewoms::DeckItem item2({1.0}, {2}, {"test3"}, {Ewoms::UDAValue(4)},
                        Ewoms::type_tag::string, "test6",
                        {Ewoms::value::status::deck_value},
                        true,
-                       {Ewoms::Dimension("DimensionLess", 7.0, 8.0)},
-                       {Ewoms::Dimension("Metric", 10.0, 11.0)});
+                       {Ewoms::Dimension(7.0, 8.0)},
+                       {Ewoms::Dimension(10.0, 11.0)});
 
     return Ewoms::DeckRecord({item1, item2});
 }
@@ -495,6 +502,20 @@ std::tuple<T,int,int> PackUnpack(const T& in)
     int pos2 = 0;
     T out;
     Ewoms::Mpi::unpack(out, buffer, pos2, comm);
+
+    return std::make_tuple(out, pos1, pos2);
+}
+
+template<class T>
+std::tuple<T,int,int> PackUnpack2(T& in)
+{
+    auto comm = Dune::MPIHelper::getCollectiveCommunication();
+    Ewoms::EclMpiSerializer ser(comm);
+    ser.pack(in);
+    size_t pos1 = ser.position();
+    T out;
+    ser.unpack(out);
+    size_t pos2 = ser.position();
 
     return std::make_tuple(out, pos1, pos2);
 }
@@ -897,7 +918,7 @@ BOOST_AUTO_TEST_CASE(Runspec)
                       Ewoms::UDQParams(true, 1, 2.0, 3.0, 4.0),
                       Ewoms::EclHysterConfig(true, 1, 2),
                       Ewoms::Actdims(1,2,3,4),
-                      Ewoms::SatFuncControls(5.0e-7));
+                      Ewoms::SatFuncControls(5.0e-7, Ewoms::SatFuncControls::ThreePhaseOilKrModel::Stone2));
 
     auto val2 = PackUnpack(val1);
     DO_CHECKS(Runspec)
@@ -1139,43 +1160,6 @@ BOOST_AUTO_TEST_CASE(TableManager)
                            1.0);
     auto val2 = PackUnpack(val1);
     DO_CHECKS(TableManager)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(TabulatedOneDFunction)
-{
-#ifdef HAVE_MPI
-    Ewoms::Tabulated1DFunction<double> val1(2, std::vector<double>{1.0, 2.0},
-                                             std::vector<double>{3.0, 4.0});
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(Tabulated1DFunction<double>)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(IntervalTabulatedTwoDFunction)
-{
-#ifdef HAVE_MPI
-    std::vector<double> xPos{1.0, 2.0};
-    std::vector<double> yPos{3.0, 4.0};
-    std::vector<std::vector<double>> samples{{1.0, 2.0}, {3.0, 4.0}};
-    Ewoms::IntervalTabulated2DFunction<double> val1(xPos, yPos, samples, true, true);
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(IntervalTabulated2DFunction<double>)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(UniformXTabulatedTwoDFunction)
-{
-#ifdef HAVE_MPI
-    std::vector<double> xPos{1.0, 2.0};
-    std::vector<double> yPos{3.0, 4.0};
-    using SampleType = std::vector<std::vector<std::tuple<double,double,double>>>;
-    SampleType samples{{std::make_tuple(1.0, 2.0, 3.0)},
-                       {std::make_tuple(4.0, 5.0, 6.0)}};
-    using FFuncType = Ewoms::UniformXTabulated2DFunction<double>;
-    FFuncType val1(xPos, yPos, samples, FFuncType::Vertical);
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(UniformXTabulated2DFunction<double>)
 #endif
 }
 
@@ -1432,7 +1416,7 @@ BOOST_AUTO_TEST_CASE(Segment)
 BOOST_AUTO_TEST_CASE(Dimension)
 {
 #ifdef HAVE_MPI
-    Ewoms::Dimension val1("test", 1.0, 2.0);
+    Ewoms::Dimension val1(1.0, 2.0);
     auto val2 = PackUnpack(val1);
     DO_CHECKS(Dimension)
 #endif
@@ -1787,8 +1771,8 @@ BOOST_AUTO_TEST_CASE(DeckItem)
                        Ewoms::type_tag::string, "test5",
                        {Ewoms::value::status::deck_value},
                        true,
-                       {Ewoms::Dimension("DimensionLess", 7.0, 8.0)},
-                       {Ewoms::Dimension("Metric", 10.0, 11.0)});
+                       {Ewoms::Dimension(7.0, 8.0)},
+                       {Ewoms::Dimension(10.0, 11.0)});
 
     auto val2 = PackUnpack(val1);
     DO_CHECKS(DeckItem)
@@ -1941,7 +1925,7 @@ BOOST_AUTO_TEST_CASE(Schedule)
                          Ewoms::UDQParams(true, 1, 2.0, 3.0, 4.0),
                          Ewoms::EclHysterConfig(true, 1, 2),
                          Ewoms::Actdims(1,2,3,4),
-                         Ewoms::SatFuncControls(5.6e-7));
+                         Ewoms::SatFuncControls(5.6e-7, Ewoms::SatFuncControls::ThreePhaseOilKrModel::Stone1));
     Ewoms::Schedule::VFPProdMap vfpProd {{1, {{std::make_shared<Ewoms::VFPProdTable>(getVFPProdTable())},1}}};
     Ewoms::Schedule::VFPInjMap vfpIn{{1, {{std::make_shared<Ewoms::VFPInjTable>(getVFPInjTable())},1}}};
     Ewoms::WellTestConfig::WTESTWell tw{"test", Ewoms::WellTestConfig::ECONOMIC,
@@ -2025,33 +2009,33 @@ BOOST_AUTO_TEST_CASE(BrineDensityTable)
 #endif
 }
 
-BOOST_AUTO_TEST_CASE(SummaryNode)
+BOOST_AUTO_TEST_CASE(SummaryConfigNode)
 {
 #ifdef HAVE_MPI
-    auto val1 = Ewoms::SummaryNode{"test1", Ewoms::SummaryNode::Category::Region,
+    auto val1 = Ewoms::SummaryConfigNode{"test1", Ewoms::SummaryConfigNode::Category::Region,
                                  Ewoms::Location{"test2", 1}}
-                                 .parameterType(Ewoms::SummaryNode::Type::Pressure)
+                                 .parameterType(Ewoms::SummaryConfigNode::Type::Pressure)
                                  .namedEntity("test3")
                                  .number(2)
                                  .isUserDefined(true);
 
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(SummaryNode)
+    auto val2 = PackUnpack2(val1);
+    DO_CHECKS(SummaryConfigNode)
 #endif
 }
 
 BOOST_AUTO_TEST_CASE(SummaryConfig)
 {
 #ifdef HAVE_MPI
-    auto node = Ewoms::SummaryNode{"test1", Ewoms::SummaryNode::Category::Region,
+    auto node = Ewoms::SummaryConfigNode{"test1", Ewoms::SummaryConfigNode::Category::Region,
                                  Ewoms::Location{"test2", 1}}
-                                 .parameterType(Ewoms::SummaryNode::Type::Pressure)
+                                 .parameterType(Ewoms::SummaryConfigNode::Type::Pressure)
                                  .namedEntity("test3")
                                  .number(2)
                                  .isUserDefined(true);
     Ewoms::SummaryConfig val1({node}, {"test1", "test2"}, {"test3", "test4"});
 
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(SummaryConfig)
 #endif
 }
@@ -2156,6 +2140,15 @@ BOOST_AUTO_TEST_CASE(Fault)
 #endif
 }
 
+BOOST_AUTO_TEST_CASE(WellType)
+{
+#ifdef HAVE_MPI
+    Ewoms::WellType val1(true, Ewoms::Phase::OIL);
+    auto val2 = PackUnpack(val1);
+    DO_CHECKS(WellType)
+#endif
+}
+
 BOOST_AUTO_TEST_CASE(DenT)
 {
 #ifdef HAVE_MPI
@@ -2174,18 +2167,6 @@ BOOST_AUTO_TEST_CASE(FaultCollection)
     Ewoms::FaultCollection val1(faults);
     auto val2 = PackUnpack(val1);
     DO_CHECKS(FaultCollection)
-#endif
-}
-
-BOOST_AUTO_TEST_CASE(EclEpsScalingPointsInfo)
-{
-#ifdef HAVE_MPI
-    Ewoms::EclEpsScalingPointsInfo<double> val1{ 1.0,  2.0,  3.0,  4.0,  5.0,
-                                               6.0,  7.0,  8.0,  9.0, 10.0,
-                                              11.0, 12.0, 13.0, 14.0, 15.0,
-                                              16.0, 17.0, 18.0, 19.0, 20.0, 21};
-    auto val2 = PackUnpack(val1);
-    DO_CHECKS(EclEpsScalingPointsInfo<double>)
 #endif
 }
 

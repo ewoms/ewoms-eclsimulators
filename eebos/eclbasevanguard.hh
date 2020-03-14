@@ -85,6 +85,7 @@ NEW_PROP_TAG(EclOutputInterval);
 NEW_PROP_TAG(IgnoreKeywords);
 NEW_PROP_TAG(EnableExperiments);
 NEW_PROP_TAG(EdgeWeightsMethod);
+NEW_PROP_TAG(OwnerCellsFirst);
 
 SET_STRING_PROP(EclBaseVanguard, IgnoreKeywords, "");
 SET_STRING_PROP(EclBaseVanguard, EclDeckFileName, "");
@@ -93,6 +94,7 @@ SET_BOOL_PROP(EclBaseVanguard, EnableEwomsRstFile, false);
 SET_BOOL_PROP(EclBaseVanguard, EclStrictParsing, false);
 SET_BOOL_PROP(EclBaseVanguard, SchedRestart, true);
 SET_INT_PROP(EclBaseVanguard, EdgeWeightsMethod, 1);
+SET_BOOL_PROP(EclBaseVanguard, OwnerCellsFirst, false);
 
 END_PROPERTIES
 
@@ -255,6 +257,8 @@ public:
                              "When restarting: should we try to initialize wells and groups from historical SCHEDULE section.");
         EWOMS_REGISTER_PARAM(TypeTag, int, EdgeWeightsMethod,
                              "Choose edge-weighing strategy: 0=uniform, 1=trans, 2=log(trans).");
+        EWOMS_REGISTER_PARAM(TypeTag, bool, OwnerCellsFirst,
+                             "Order cells owned by rank before ghost/overlap cells.");
     }
 
     /*!
@@ -388,6 +392,7 @@ public:
 
         std::string fileName = EWOMS_GET_PARAM(TypeTag, std::string, EclDeckFileName);
         edgeWeightsMethod_   = Dune::EdgeWeightMethod(EWOMS_GET_PARAM(TypeTag, int, EdgeWeightsMethod));
+        ownersFirst_ = EWOMS_GET_PARAM(TypeTag, bool, OwnerCellsFirst);
 
         if (fileName == "")
             throw std::runtime_error("No input deck file has been specified as a command line argument,"
@@ -569,6 +574,13 @@ public:
      */
     Dune::EdgeWeightMethod edgeWeightsMethod() const
     { return edgeWeightsMethod_; }
+
+    /*!
+     * \brief Parameter that decide if cells owned by rank are ordered before ghost cells.
+     */
+    bool ownersFirst() const
+    { return ownersFirst_; }
+
     /*!
      * \brief Returns the name of the case.
      *
@@ -737,6 +749,7 @@ private:
     Ewoms::SummaryConfig* eclSummaryConfig_;
 
     Dune::EdgeWeightMethod edgeWeightsMethod_;
+    bool ownersFirst_;
 
 protected:
     /*! \brief The cell centroids after loadbalance was called.

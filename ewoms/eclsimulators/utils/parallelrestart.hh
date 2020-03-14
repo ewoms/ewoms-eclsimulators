@@ -22,9 +22,6 @@
 #include <mpi.h>
 #endif
 
-#include <ewoms/common/tabulated1dfunction.hh>
-#include <ewoms/common/intervaltabulated2dfunction.hh>
-#include <ewoms/common/uniformxtabulated2dfunction.hh>
 #include <ewoms/eclio/output/restartvalue.hh>
 #include <ewoms/eclio/output/eclipseio.hh>
 #include <ewoms/eclio/output/summary.hh>
@@ -82,7 +79,6 @@ class Dimension;
 class EclHysterConfig;
 class EclipseConfig;
 class Eqldims;
-template<class Scalar> struct EclEpsScalingPointsInfo;
 class EDITNNC;
 class EndpointScaling;
 class Equil;
@@ -109,43 +105,41 @@ class OilVaporizationProperties;
 class Phases;
 class PlymwinjTable;
 class PlyshlogTable;
-class PlyvmhRecord;
-class PlyvmhTable;
+struct PlyvmhRecord;
+struct PlyvmhTable;
 class PolyInjTable;
-class PVCDORecord;
-class PvcdoTable;
-class PlmixparRecord;
-class PlmixparTable;
+struct PVCDORecord;
+struct PvcdoTable;
+struct PlmixparRecord;
+struct PlmixparTable;
 class PvtgTable;
 class PvtoTable;
-class PVTWRecord;
+struct PVTWRecord;
 class PvtwsaltTable;
-class PvtwTable;
+struct PvtwTable;
 class Regdims;
 class RestartConfig;
 class RestartSchedule;
 class RFTConfig;
-class ROCKRecord;
-class RockTable;
+struct ROCKRecord;
+struct RockTable;
 class RocktabTable;
 class Rock2dTable;
 class Rock2dtrTable;
 class Runspec;
 class Schedule;
 class Segment;
-class ShrateRecord;
-class ShrateTable;
+struct ShrateRecord;
+struct ShrateTable;
 class SimulationConfig;
 class SimpleTable;
 class SkprpolyTable;
 class SkprwatTable;
 class SolventDensityTable;
 class SpiralICD;
-class StandardCond;
-class Stone1exRecord;
-class Stone1exTable;
-class SummaryConfig;
-class SummaryNode;
+struct StandardCond;
+struct Stone1exRecord;
+struct Stone1exTable;
 class Tabdims;
 class TableColumn;
 class TableContainer;
@@ -153,8 +147,8 @@ class TableManager;
 class TableSchema;
 class ThresholdPressure;
 class TimeStampUTC;
-class TlmixparRecord;
-class TlmixparTable;
+struct TlmixparRecord;
+struct TlmixparTable;
 class TransMult;
 struct Tuning;
 class UDAValue;
@@ -197,14 +191,30 @@ std::size_t packSize(const T* data, std::size_t l, Dune::MPIHelper::MPICommunica
 
 template<class T>
 std::size_t packSize(const T&, Dune::MPIHelper::MPICommunicator,
-                     std::integral_constant<bool, false>);
+                     std::integral_constant<bool, false>)
+{
+    EWOMS_THROW(std::logic_error, "Packing not (yet) supported for this non-pod type.");
+}
 
 template<class T>
 std::size_t packSize(const T&, Dune::MPIHelper::MPICommunicator comm,
-                     std::integral_constant<bool, true>);
+                     std::integral_constant<bool, true>)
+{
+#if HAVE_MPI
+    int size{};
+    MPI_Pack_size(1, Dune::MPITraits<T>::getType(), comm, &size);
+    return size;
+#else
+    (void) comm;
+    return 0;
+#endif
+}
 
 template<class T>
-std::size_t packSize(const T& data, Dune::MPIHelper::MPICommunicator comm);
+std::size_t packSize(const T& data, Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data, comm, typename std::is_pod<T>::type());
+}
 
 template<class T1, class T2>
 std::size_t packSize(const std::pair<T1,T2>& data, Dune::MPIHelper::MPICommunicator comm);
@@ -256,21 +266,8 @@ std::size_t packSize(const DynamicVector<T>& data, Dune::MPIHelper::MPICommunica
 template<class T>
 std::size_t packSize(const DynamicState<T>& data, Dune::MPIHelper::MPICommunicator comm);
 
-template<class Scalar>
-std::size_t packSize(const Tabulated1DFunction<Scalar>& data, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-std::size_t packSize(const IntervalTabulated2DFunction<Scalar>& data, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-std::size_t packSize(const UniformXTabulated2DFunction<Scalar>& data, Dune::MPIHelper::MPICommunicator comm);
-
 template<class T>
 std::size_t packSize(const IOrderSet<T>& data, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-std::size_t packSize(const EclEpsScalingPointsInfo<Scalar>& data,
-                     Dune::MPIHelper::MPICommunicator comm);
 
 ////// pack routines
 
@@ -288,15 +285,32 @@ void pack(const T* data, std::size_t l, std::vector<char>& buffer, int& position
 
 template<class T>
 void pack(const T&, std::vector<char>&, int&,
-          Dune::MPIHelper::MPICommunicator, std::integral_constant<bool, false>);
+          Dune::MPIHelper::MPICommunicator, std::integral_constant<bool, false>)
+{
+    EWOMS_THROW(std::logic_error, "Packing not (yet) supported for this non-pod type.");
+}
 
 template<class T>
 void pack(const T& data, std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm, std::integral_constant<bool, true>);
+          Dune::MPIHelper::MPICommunicator comm, std::integral_constant<bool, true>)
+{
+#if HAVE_MPI
+    MPI_Pack(&data, 1, Dune::MPITraits<T>::getType(), buffer.data(),
+             buffer.size(), &position, comm);
+#else
+    (void) data;
+    (void) comm;
+    (void) buffer;
+    (void) position;
+#endif
+}
 
 template<class T>
 void pack(const T& data, std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data, buffer, position, comm, typename std::is_pod<T>::type());
+}
 
 template<class T1, class T2>
 void pack(const std::pair<T1,T2>& data, std::vector<char>& buffer, int& position,
@@ -356,24 +370,8 @@ template<class T>
 void pack(const DynamicVector<T>& data, std::vector<char>& buffer,
           int& position, Dune::MPIHelper::MPICommunicator comm);
 
-template<class Scalar>
-void pack(const Tabulated1DFunction<Scalar>& data, std::vector<char>& buffer,
-          int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void pack(const IntervalTabulated2DFunction<Scalar>& data, std::vector<char>& buffer,
-          int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void pack(const UniformXTabulated2DFunction<Scalar>& data, std::vector<char>& buffer,
-          int& position, Dune::MPIHelper::MPICommunicator comm);
-
 template<class T>
 void pack(const IOrderSet<T>& data, std::vector<char>& buffer,
-          int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void pack(const EclEpsScalingPointsInfo<Scalar>& data, std::vector<char>& buffer,
           int& position, Dune::MPIHelper::MPICommunicator comm);
 
 void pack(const char* str, std::vector<char>& buffer, int& position,
@@ -396,15 +394,32 @@ void unpack(T* data, const std::size_t& l, std::vector<char>& buffer, int& posit
 
 template<class T>
 void unpack(T&, std::vector<char>&, int&,
-            Dune::MPIHelper::MPICommunicator, std::integral_constant<bool, false>);
+            Dune::MPIHelper::MPICommunicator, std::integral_constant<bool, false>)
+{
+    EWOMS_THROW(std::logic_error, "Packing not (yet) supported for this non-pod type.");
+}
 
 template<class T>
 void unpack(T& data, std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm, std::integral_constant<bool, true>);
+            Dune::MPIHelper::MPICommunicator comm, std::integral_constant<bool, true>)
+{
+#if HAVE_MPI
+    MPI_Unpack(buffer.data(), buffer.size(), &position, &data, 1,
+               Dune::MPITraits<T>::getType(), comm);
+#else
+    (void) data;
+    (void) comm;
+    (void) buffer;
+    (void) position;
+#endif
+}
 
 template<class T>
 void unpack(T& data, std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    unpack(data, buffer, position, comm, typename std::is_pod<T>::type());
+}
 
 template<class T1, class T2>
 void unpack(std::pair<T1,T2>& data, std::vector<char>& buffer, int& position,
@@ -464,24 +479,8 @@ template<class T>
 void unpack(DynamicVector<T>& data, std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm);
 
-template<class Scalar>
-void unpack(Tabulated1DFunction<Scalar>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void unpack(IntervalTabulated2DFunction<Scalar>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void unpack(UniformXTabulated2DFunction<Scalar>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
 template<class T>
 void unpack(IOrderSet<T>& data, std::vector<char>& buffer,
-            int& position, Dune::MPIHelper::MPICommunicator comm);
-
-template<class Scalar>
-void unpack(EclEpsScalingPointsInfo<Scalar>& data, std::vector<char>& buffer,
             int& position, Dune::MPIHelper::MPICommunicator comm);
 
 void unpack(char* str, std::size_t length, std::vector<char>& buffer, int& position,
@@ -611,8 +610,6 @@ ADD_PACK_PROTOTYPES(SpiralICD)
 ADD_PACK_PROTOTYPES(std::string)
 ADD_PACK_PROTOTYPES(Stone1exRecord)
 ADD_PACK_PROTOTYPES(Stone1exTable)
-ADD_PACK_PROTOTYPES(SummaryConfig)
-ADD_PACK_PROTOTYPES(SummaryNode)
 ADD_PACK_PROTOTYPES(Tabdims)
 ADD_PACK_PROTOTYPES(TableColumn)
 ADD_PACK_PROTOTYPES(TableContainer)
@@ -645,6 +642,7 @@ ADD_PACK_PROTOTYPES(ViscrefTable)
 ADD_PACK_PROTOTYPES(WATDENTRecord)
 ADD_PACK_PROTOTYPES(WatdentTable)
 ADD_PACK_PROTOTYPES(Well)
+ADD_PACK_PROTOTYPES(WellType)
 ADD_PACK_PROTOTYPES(Well::WellGuideRate)
 ADD_PACK_PROTOTYPES(Well::WellInjectionProperties)
 ADD_PACK_PROTOTYPES(Well::WellProductionProperties)

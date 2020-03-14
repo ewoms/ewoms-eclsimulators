@@ -38,7 +38,7 @@ namespace Ewoms {
         phaseCheck_(eclState);
         satFamilyCheck_(eclState);
         tableCheck_(eclState);
-        unscaledEndPointsCheck_(deck, eclState);
+        unscaledEndPointsCheck_(eclState);
         scaledEndPointsCheck_(deck, eclState, grid);
     }
 

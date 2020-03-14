@@ -32,7 +32,6 @@
 
 #include "eclwellmanager.hh"
 #include "eclequilinitializer.hh"
-#include "eclmpiserializer.hh"
 #include "eclwriter.hh"
 #include "ecloutputblackoilmodule.hh"
 #include "ecltransmissibility.hh"
@@ -580,16 +579,10 @@ public:
         this->model().addOutputModule(new VtkEclTracerModule<TypeTag>(simulator));
         // Tell the black-oil extensions to initialize their internal data structures
         const auto& vanguard = simulator.vanguard();
-        const auto& comm = this->gridView().comm();
         SolventModule::initFromEclState(vanguard.eclState(), vanguard.schedule());
+        PolymerModule::initFromEclState(vanguard.eclState());
         FoamModule::initFromEclState(vanguard.eclState());
         BrineModule::initFromEclState(vanguard.eclState());
-        if (comm.rank() == 0) {
-            PolymerModule::initFromDeck(vanguard.deck(), vanguard.eclState());
-        }
-
-        EclMpiSerializer ser(comm);
-        ser.staticBroadcast<PolymerModule>();
 
         // create the ECL writer
         eclWriter_.reset(new EclWriterType(simulator));
@@ -2267,9 +2260,7 @@ private:
     {
         const auto& simulator = this->simulator();
         const auto& vanguard = simulator.vanguard();
-        const auto& deck = vanguard.deck();
         const auto& eclState = vanguard.eclState();
-        const auto& comm = vanguard.gridView().comm();
 
         // the PVT and saturation region numbers
         updatePvtnum_();
@@ -2289,12 +2280,7 @@ private:
         ////////////////////////////////
         // fluid-matrix interactions (saturation functions; relperm/capillary pressure)
         materialLawManager_ = std::make_shared<EclMaterialLawManager>();
-        if (comm.rank() == 0)
-            materialLawManager_->initFromDeck(deck, eclState);
-
-        EclMpiSerializer ser(comm);
-        ser.broadcast(*materialLawManager_);
-
+        materialLawManager_->initFromEclState(eclState);
         materialLawManager_->initParamsForElements(eclState, this->model().numGridDof());
         ////////////////////////////////
     }

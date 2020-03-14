@@ -60,7 +60,19 @@ const std::vector<int>& ParallelFieldPropsManager::get_int(const std::string& ke
 {
     auto it = m_intProps.find(keyword);
     if (it == m_intProps.end())
-        EWOMS_THROW(std::runtime_error, "No integer property field: " + keyword);
+    {
+        // Some of the keywords might be defaulted.
+        // We will let rank 0 create them and distribute them using get_global_int
+        auto data = get_global_int(keyword);
+        auto& local_data = const_cast<std::map<std::string, std::vector<int>>&>(m_intProps)[keyword];
+        local_data.resize(m_activeSize());
+
+        for (int i = 0; i < m_activeSize(); ++i)
+        {
+            local_data[i] = data[m_local2Global(i)];
+        }
+        return local_data;
+    }
 
     return it->second;
 }
@@ -68,8 +80,26 @@ const std::vector<int>& ParallelFieldPropsManager::get_int(const std::string& ke
 std::vector<int> ParallelFieldPropsManager::get_global_int(const std::string& keyword) const
 {
     std::vector<int> result;
+    int exceptionThrown{};
+
     if (m_comm.rank() == 0)
-        result = m_manager.get_global_int(keyword);
+    {
+        try
+        {
+            result = m_manager.get_global_int(keyword);
+        }catch(std::exception& e) {
+            exceptionThrown = 1;
+            OpmLog::error("No integer property field: " + keyword + " ("+e.what()+")");
+            m_comm.broadcast(&exceptionThrown, 1, 0);
+            throw e;
+        }
+    }
+
+    m_comm.broadcast(&exceptionThrown, 1, 0);
+
+    if (exceptionThrown)
+        EWOMS_THROW_NOLOG(std::runtime_error, "No integer property field: " + keyword);
+
     size_t size = result.size();
     m_comm.broadcast(&size, 1, 0);
     result.resize(size);
@@ -82,7 +112,18 @@ const std::vector<double>& ParallelFieldPropsManager::get_double(const std::stri
 {
     auto it = m_doubleProps.find(keyword);
     if (it == m_doubleProps.end())
-        EWOMS_THROW(std::runtime_error, "No double property field: " + keyword);
+    {
+        // Some of the keywords might be defaulted.
+        // We will let rank 0 create them and distribute them using get_global_int
+        auto data = get_global_double(keyword);
+        auto& local_data = const_cast<std::map<std::string, std::vector<double>>&>(m_doubleProps)[keyword];
+        local_data.resize(m_activeSize());
+        for (int i = 0; i < m_activeSize(); ++i)
+        {
+            local_data[i] = data[m_local2Global(i)];
+        }
+        return local_data;
+    }
 
     return it->second;
 }
@@ -90,8 +131,26 @@ const std::vector<double>& ParallelFieldPropsManager::get_double(const std::stri
 std::vector<double> ParallelFieldPropsManager::get_global_double(const std::string& keyword) const
 {
     std::vector<double> result;
+    int exceptionThrown{};
+
     if (m_comm.rank() == 0)
-        result = m_manager.get_global_double(keyword);
+    {
+        try
+        {
+            result = m_manager.get_global_double(keyword);
+        }catch(std::exception& e) {
+            exceptionThrown = 1;
+            OpmLog::error("No double property field: " + keyword + " ("+e.what()+")");
+            m_comm.broadcast(&exceptionThrown, 1, 0);
+            throw e;
+        }
+    }
+
+    m_comm.broadcast(&exceptionThrown, 1, 0);
+
+    if (exceptionThrown)
+        EWOMS_THROW_NOLOG(std::runtime_error, "No double property field: " + keyword);
+
     size_t size = result.size();
     m_comm.broadcast(&size, 1, 0);
     result.resize(size);
@@ -122,56 +181,6 @@ ParallelEclipseState::ParallelEclipseState(const Deck& deck)
     , m_fieldProps(field_props)
 {
 }
-
-#if HAVE_MPI
-std::size_t ParallelEclipseState::packSize(EclMpiSerializer& serializer) const
-{
-    return serializer.packSize(m_tables) +
-           serializer.packSize(m_runspec) +
-           serializer.packSize(m_eclipseConfig) +
-           serializer.packSize(m_deckUnitSystem) +
-           serializer.packSize(m_inputNnc) +
-           serializer.packSize(m_inputEditNnc) +
-           serializer.packSize(m_gridDims) +
-           serializer.packSize(m_simulationConfig) +
-           serializer.packSize(m_transMult) +
-           serializer.packSize(m_faults) +
-           serializer.packSize(m_title);
-
-}
-
-void ParallelEclipseState::pack(std::vector<char>& buffer, int& position,
-                                EclMpiSerializer& serializer) const
-{
-    serializer.pack(m_tables, buffer, position);
-    serializer.pack(m_runspec, buffer, position);
-    serializer.pack(m_eclipseConfig, buffer, position);
-    serializer.pack(m_deckUnitSystem, buffer, position);
-    serializer.pack(m_inputNnc, buffer, position);
-    serializer.pack(m_inputEditNnc, buffer, position);
-    serializer.pack(m_gridDims, buffer, position);
-    serializer.pack(m_simulationConfig, buffer, position);
-    serializer.pack(m_transMult, buffer, position);
-    serializer.pack(m_faults, buffer, position);
-    serializer.pack(m_title, buffer, position);
-}
-
-void ParallelEclipseState::unpack(std::vector<char>& buffer, int& position,
-                                  EclMpiSerializer& serializer)
-{
-    serializer.unpack(m_tables, buffer, position);
-    serializer.unpack(m_runspec, buffer, position);
-    serializer.unpack(m_eclipseConfig, buffer, position);
-    serializer.unpack(m_deckUnitSystem, buffer, position);
-    serializer.unpack(m_inputNnc, buffer, position);
-    serializer.unpack(m_inputEditNnc, buffer, position);
-    serializer.unpack(m_gridDims, buffer, position);
-    serializer.unpack(m_simulationConfig, buffer, position);
-    serializer.unpack(m_transMult, buffer, position);
-    serializer.unpack(m_faults, buffer, position);
-    serializer.unpack(m_title, buffer, position);
-}
-#endif
 
 const FieldPropsManager& ParallelEclipseState::fieldProps() const
 {

@@ -39,6 +39,8 @@
 
 #include <dune/common/version.hh>
 
+#include <sstream>
+
 namespace Ewoms {
 template <class TypeTag>
 class EclCpGridVanguard;
@@ -156,6 +158,7 @@ public:
             }
 
             Dune::EdgeWeightMethod edgeWeightsMethod = this->edgeWeightsMethod();
+            bool ownersFirst = this->ownersFirst();
 
             // convert to transmissibility for faces
             // TODO: grid_->numFaces() is not generic. use grid_->size(1) instead? (might
@@ -192,17 +195,29 @@ public:
             //distribute the grid and switch to the distributed view.
             {
                 const auto wells = this->schedule().getWellsatEnd();
-                auto& eclState = static_cast<ParallelEclipseState&>(this->eclState());
-                const EclipseGrid* eclGrid = nullptr;
 
-                if (grid_->comm().rank() == 0)
+                try
                 {
-                    eclGrid = &this->eclState().getInputGrid();
-                }
+                    auto& eclState = dynamic_cast<ParallelEclipseState&>(this->eclState());
+                    const EclipseGrid* eclGrid = nullptr;
 
-                PropsCentroidsDataHandle<Dune::CpGrid> handle(*grid_, eclState, eclGrid, this->centroids_,
-                                                              cartesianIndexMapper());
-                defunctWellNames_ = std::get<1>(grid_->loadBalance(handle, edgeWeightsMethod, &wells, faceTrans.data()));
+                    if (grid_->comm().rank() == 0)
+                    {
+                        eclGrid = &this->eclState().getInputGrid();
+                    }
+
+                    PropsCentroidsDataHandle<Dune::CpGrid> handle(*grid_, eclState, eclGrid, this->centroids_,
+                                                                  cartesianIndexMapper());
+                    defunctWellNames_ = std::get<1>(grid_->loadBalance(handle, edgeWeightsMethod, &wells, faceTrans.data(), ownersFirst));
+                }
+                catch(const std::bad_cast& e)
+                {
+                    std::ostringstream message;
+                    message << "Parallel simulator setup is incorrect as it does not use ParallelEclipseState ("
+                            << e.what() <<")"<<std::flush;
+                    OpmLog::error(message.str());
+                    std::rethrow_exception(std::current_exception());
+                }
             }
             grid_->switchToDistributedView();
 
@@ -223,7 +238,21 @@ public:
         this->updateGridView_();
 #if HAVE_MPI
         if (mpiSize > 1) {
-            static_cast<ParallelEclipseState&>(this->eclState()).switchToDistributedProps();
+            try
+            {
+                auto& parallelEclState = dynamic_cast<ParallelEclipseState&>(this->eclState());
+                // reset cartesian index mapper for auto creation of field properties
+                parallelEclState.resetCartesianMapper(cartesianIndexMapper_.get());
+                parallelEclState.switchToDistributedProps();
+            }
+            catch(const std::bad_cast& e)
+            {
+                std::ostringstream message;
+                message << "Parallel simulator setup is incorrect as it does not use ParallelEclipseState ("
+                        << e.what() <<")"<<std::flush;
+                OpmLog::error(message.str());
+                std::rethrow_exception(std::current_exception());
+            }
         }
 #endif
     }

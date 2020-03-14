@@ -108,7 +108,6 @@ public:
         const auto& eclState = vanguard.eclState();
 
         unsigned numElems = vanguard.grid().size(0);
-        unsigned numCartesianElems = vanguard.cartesianSize();
 
         EQUIL::DeckDependent::InitialStateComputer<TypeTag> initialState(materialLawManager,
                                                                          eclState,
@@ -116,10 +115,9 @@ public:
                                                                          simulator.problem().gravity()[dimWorld - 1]);
 
         // copy the result into the array of initial fluid states
-        initialFluidStates_.resize(numCartesianElems);
+        initialFluidStates_.resize(numElems);
         for (unsigned int elemIdx = 0; elemIdx < numElems; ++elemIdx) {
-            unsigned cartesianElemIdx = vanguard.cartesianIndex(elemIdx);
-            auto& fluidState = initialFluidStates_[cartesianElemIdx];
+            auto& fluidState = initialFluidStates_[elemIdx];
 
             // get the PVT region index of the current element
             unsigned regionIdx = simulator_.problem().pvtRegionIndex(elemIdx);
@@ -171,10 +169,7 @@ public:
      */
     const ScalarFluidState& initialFluidState(unsigned elemIdx) const
     {
-        const auto& vanguard = simulator_.vanguard();
-
-        unsigned cartesianElemIdx = vanguard.cartesianIndex(elemIdx);
-        return initialFluidStates_[cartesianElemIdx];
+        return initialFluidStates_[elemIdx];
     }
 
 protected:
