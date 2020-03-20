@@ -4,6 +4,4 @@
 # suggests ewoms-eclsimulators!
 #
 
-find_package(Boost
-  COMPONENTS filesystem regex system date_time
-  REQUIRED)
+find_package(Boost REQUIRED)
