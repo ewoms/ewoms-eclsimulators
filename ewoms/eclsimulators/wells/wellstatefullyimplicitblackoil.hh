@@ -311,11 +311,11 @@ namespace Ewoms
         std::vector<Well::ProducerCMode>& currentProductionControls() { return current_production_controls_; }
         const std::vector<Well::ProducerCMode>& currentProductionControls() const { return current_production_controls_; }
 
-        bool hasProductionGroupControl(const std::string& groupName) {
+        bool hasProductionGroupControl(const std::string& groupName) const {
             return current_production_group_controls_.count(groupName) > 0;
         }
 
-        bool hasInjectionGroupControl(const Ewoms::Phase& phase, const std::string& groupName) {
+        bool hasInjectionGroupControl(const Ewoms::Phase& phase, const std::string& groupName) const {
             return current_injection_group_controls_.count(std::make_pair(phase, groupName)) > 0;
         }
 

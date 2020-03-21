@@ -25,8 +25,6 @@
 
 namespace Ewoms {
 
-class EclMpiSerializer;
-
 /*! \brief Parallel frontend to the field properties.
  *
  * \details This is a parallel frontend to the mpi-unaware

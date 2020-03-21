@@ -18,8 +18,6 @@
 #include <config.h>
 
 #include "paralleleclipsestate.hh"
-#include "parallelrestart.hh"
-#include <eebos/eclmpiserializer.hh>
 
 namespace Ewoms {
 

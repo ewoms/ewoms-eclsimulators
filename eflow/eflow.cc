@@ -52,6 +52,7 @@
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
 #include <ewoms/eclio/parser/eclipsestate/checkdeck.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqassign.hh>
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 
 #include <ewoms/eclio/parser/eclipsestate/schedule/arraydimchecker.hh>
@@ -65,8 +66,8 @@
 #endif
 
 #if HAVE_MPI
-#include <eebos/eclmpiserializer.hh>
 #include <ewoms/eclsimulators/utils/paralleleclipsestate.hh>
+#include <ewoms/eclsimulators/utils/parallelserialization.hh>
 #endif
 
 BEGIN_PROPERTIES
@@ -341,18 +342,14 @@ int main(int argc, char** argv)
 
             Ewoms::EFlowMain<PreTypeTag>::printPRTHeader(outputCout);
 
-#ifdef HAVE_MPI
-            Ewoms::ParallelEclipseState* parState;
-#endif
             if (mpiRank == 0) {
                 deck.reset( new Ewoms::Deck( parser.parseFile(deckFilename , parseContext, errorGuard)));
                 Ewoms::MissingFeatures::checkKeywords(*deck, parseContext, errorGuard);
                 if ( outputCout )
                     Ewoms::checkDeck(*deck, parser, parseContext, errorGuard);
 
-#ifdef HAVE_MPI
-                parState = new Ewoms::ParallelEclipseState(*deck);
-                eclipseState.reset(parState);
+#if HAVE_MPI
+                eclipseState.reset(new Ewoms::ParallelEclipseState(*deck));
 #else
                 eclipseState.reset(new Ewoms::EclipseState(*deck));
 #endif
@@ -374,21 +371,14 @@ int main(int argc, char** argv)
 
                 setupMessageLimiter(schedule->getMessageLimits(), "STDOUT_LOGGER");
                 summaryConfig.reset( new Ewoms::SummaryConfig(*deck, *schedule, eclipseState->getTableManager(), parseContext, errorGuard));
-#ifdef HAVE_MPI
-                Ewoms::Mpi::packAndSend(*schedule, Dune::MPIHelper::getCollectiveCommunication());
-#endif
             }
-#ifdef HAVE_MPI
+#if HAVE_MPI
             else {
                 summaryConfig.reset(new Ewoms::SummaryConfig);
                 schedule.reset(new Ewoms::Schedule);
-                parState = new Ewoms::ParallelEclipseState;
-                Ewoms::Mpi::receiveAndUnpack(*schedule, mpiHelper.getCollectiveCommunication());
-                eclipseState.reset(parState);
+                eclipseState.reset(new Ewoms::ParallelEclipseState);
             }
-            Ewoms::EclMpiSerializer ser(mpiHelper.getCollectiveCommunication());
-            ser.broadcast(*summaryConfig);
-            ser.broadcast(*parState);
+            Ewoms::eclStateBroadcast(*eclipseState, *schedule, *summaryConfig);
 #endif
 
             Ewoms::checkConsistentArrayDimensions(*eclipseState, *schedule, parseContext, errorGuard);

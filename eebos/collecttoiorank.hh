@@ -26,6 +26,7 @@
 #include <ewoms/eclio/output/data/cells.hh>
 #include <ewoms/eclio/output/data/solution.hh>
 #include <ewoms/eclio/output/data/wells.hh>
+#include <ewoms/eclio/output/data/groups.hh>
 
 #include <ewoms/eclgrids/common/p2pcommunicator.hh>
 #include <dune/grid/utility/persistentcontainer.hh>
@@ -556,6 +557,45 @@ public:
 
     };
 
+    class PackUnPackGroupData : public P2PCommunicatorType::DataHandleInterface
+    {
+        const Ewoms::data::Group& localGroupData_;
+        Ewoms::data::Group& globalGroupData_;
+
+    public:
+        PackUnPackGroupData(const Ewoms::data::Group& localGroupData,
+                           Ewoms::data::Group& globalGroupData,
+                           bool isIORank)
+            : localGroupData_(localGroupData)
+            , globalGroupData_(globalGroupData)
+        {
+            if (isIORank) {
+                MessageBufferType buffer;
+                pack(0, buffer);
+
+                // pass a dummy link to satisfy virtual class
+                int dummyLink = -1;
+                unpack(dummyLink, buffer);
+            }
+        }
+
+        // pack all data associated with link
+        void pack(int link, MessageBufferType& buffer)
+        {
+            // we should only get one link
+            if (link != 0)
+                throw std::logic_error("link in method pack is not 0 as expected");
+
+            // write all group data
+           localGroupData_.write(buffer);
+        }
+
+        // unpack all data associated with link
+        void unpack(int /*link*/, MessageBufferType& buffer)
+        { globalGroupData_.read(buffer); }
+
+    };
+
     class PackUnPackBlockData : public P2PCommunicatorType::DataHandleInterface
     {
         const std::map<std::pair<std::string, int>, double>& localBlockData_;
@@ -617,11 +657,13 @@ public:
     // gather solution to rank 0 for EclipseWriter
     void collect(const Ewoms::data::Solution& localCellData,
                  const std::map<std::pair<std::string, int>, double>& localBlockData,
-                 const Ewoms::data::Wells& localWellData)
+                 const Ewoms::data::Wells& localWellData,
+                const Ewoms::data::Group& localGroupData)
     {
         globalCellData_ = {};
         globalBlockData_.clear();
         globalWellData_.clear();
+        globalGroupData_.clear();
 
         // index maps only have to be build when reordering is needed
         if(!needsReordering && !isParallel())
@@ -645,6 +687,11 @@ public:
                                globalWellData_,
                                isIORank());
 
+        PackUnPackGroupData
+            packUnpackGroupData(localGroupData,
+                               globalGroupData_,
+                               isIORank());
+
         PackUnPackBlockData
             packUnpackBlockData(localBlockData,
                                 globalBlockData_,
@@ -652,6 +699,7 @@ public:
 
         toIORankComm_.exchange(packUnpackCellData);
         toIORankComm_.exchange(packUnpackWellData);
+        toIORankComm_.exchange(packUnpackGroupData);
         toIORankComm_.exchange(packUnpackBlockData);
 
 #ifndef NDEBUG
@@ -668,6 +716,9 @@ public:
 
     const Ewoms::data::Wells& globalWellData() const
     { return globalWellData_; }
+
+    const Ewoms::data::Group& globalGroupData() const
+    { return globalGroupData_; }
 
     bool isIORank() const
     { return toIORankComm_.rank() == ioRank; }
@@ -715,6 +766,7 @@ protected:
     Ewoms::data::Solution globalCellData_;
     std::map<std::pair<std::string, int>, double> globalBlockData_;
     Ewoms::data::Wells globalWellData_;
+    Ewoms::data::Group globalGroupData_;
     std::vector<int> localIdxToGlobalIdx_;
 };
 

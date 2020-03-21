@@ -21,6 +21,7 @@
 
 #include <ewoms/eclsimulators/deprecated/props/blackoilphases.hh>
 #include <ewoms/eclio/output/data/wells.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/well.hh>
 #include <ewoms/eclsimulators/wells/perforationdata.hh>
 

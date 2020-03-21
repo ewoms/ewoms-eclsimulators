@@ -34,7 +34,6 @@ typedef Dune::InverseOperatorResult InverseOperatorResult;
 namespace Ewoms
 {
 
-#if HAVE_CUDA
 BdaBridge::BdaBridge(bool use_gpu_, int linear_solver_verbosity, int maxit, double tolerance)
     : use_gpu(use_gpu_)
 {
@@ -42,13 +41,7 @@ BdaBridge::BdaBridge(bool use_gpu_, int linear_solver_verbosity, int maxit, doub
         backend.reset(new cusparseSolverBackend(linear_solver_verbosity, maxit, tolerance));
     }
 }
-#else
-BdaBridge::BdaBridge(bool use_gpu_ EWOMS_UNUSED, int linear_solver_verbosity EWOMS_UNUSED, int maxit EWOMS_UNUSED, double tolerance EWOMS_UNUSED)
-{
-}
-#endif
 
-#if HAVE_CUDA
 template <class BridgeMatrix>
 int checkZeroDiagonal(BridgeMatrix& mat) {
     static std::vector<typename BridgeMatrix::size_type> diag_indices;   // contains offsets of the diagonal nnzs
@@ -114,13 +107,10 @@ void getSparsityPattern(BridgeMatrix& mat, std::vector<int> &h_rows, std::vector
     }
 } // end getSparsityPattern()
 
-#endif
-
 template <class BridgeMatrix, class BridgeVector>
-void BdaBridge::solve_system(BridgeMatrix *mat EWOMS_UNUSED, BridgeVector &b EWOMS_UNUSED, InverseOperatorResult &res EWOMS_UNUSED)
+void BdaBridge::solve_system(BridgeMatrix *mat EWOMS_UNUSED, BridgeVector &b EWOMS_UNUSED, WellContributions& wellContribs EWOMS_UNUSED, InverseOperatorResult &res EWOMS_UNUSED)
 {
 
-#if HAVE_CUDA
     if (use_gpu) {
         BdaResult result;
         result.converged = false;
@@ -133,6 +123,7 @@ void BdaBridge::solve_system(BridgeMatrix *mat EWOMS_UNUSED, BridgeVector &b EWO
         if (dim != 3) {
             OpmLog::warning("cusparseSolver only accepts blocksize = 3 at this time, will use Dune for the remainder of the program");
             use_gpu = false;
+            return;
         }
 
         if (h_rows.capacity() == 0) {
@@ -164,7 +155,7 @@ void BdaBridge::solve_system(BridgeMatrix *mat EWOMS_UNUSED, BridgeVector &b EWO
 
         typedef cusparseSolverBackend::cusparseSolverStatus cusparseSolverStatus;
         // assume that underlying data (nonzeroes) from mat (Dune::BCRSMatrix) are contiguous, if this is not the case, cusparseSolver is expected to perform undefined behaviour
-        cusparseSolverStatus status = backend->solve_system(N, nnz, dim, static_cast<double*>(&(((*mat)[0][0][0][0]))), h_rows.data(), h_cols.data(), static_cast<double*>(&(b[0][0])), result);
+        cusparseSolverStatus status = backend->solve_system(N, nnz, dim, static_cast<double*>(&(((*mat)[0][0][0][0]))), h_rows.data(), h_cols.data(), static_cast<double*>(&(b[0][0])), wellContribs, result);
         switch(status) {
         case cusparseSolverStatus::CUSPARSE_SOLVER_SUCCESS:
             //OpmLog::info("cusparseSolver converged");
@@ -187,53 +178,61 @@ void BdaBridge::solve_system(BridgeMatrix *mat EWOMS_UNUSED, BridgeVector &b EWO
     }else{
         res.converged = false;
     }
-#endif // HAVE_CUDA
 }
 
 template <class BridgeVector>
 void BdaBridge::get_result(BridgeVector &x EWOMS_UNUSED) {
-#if HAVE_CUDA
     if (use_gpu) {
         backend->post_process(static_cast<double*>(&(x[0][0])));
     }
-#endif
 }
 
-template void BdaBridge::solve_system< \
-Dune::BCRSMatrix<Dune::FieldMatrix<double, 2, 2>, std::allocator<Dune::FieldMatrix<double, 2, 2> > > , \
-Dune::BlockVector<Dune::FieldVector<double, 2>, std::allocator<Dune::FieldVector<double, 2> > > > \
-(Dune::BCRSMatrix<Dune::FieldMatrix<double, 2, 2>, std::allocator<Dune::FieldMatrix<double, 2, 2> > > *mat, \
-    Dune::BlockVector<Dune::FieldVector<double, 2>, std::allocator<Dune::FieldVector<double, 2> > > &b, \
+template void BdaBridge::solve_system<
+Dune::BCRSMatrix<Ewoms::MatrixBlock<double, 1, 1>, std::allocator<Ewoms::MatrixBlock<double, 1, 1> > > ,
+Dune::BlockVector<Dune::FieldVector<double, 1>, std::allocator<Dune::FieldVector<double, 1> > > >
+(Dune::BCRSMatrix<Ewoms::MatrixBlock<double, 1, 1>, std::allocator<Ewoms::MatrixBlock<double, 1, 1> > > *mat,
+    Dune::BlockVector<Dune::FieldVector<double, 1>, std::allocator<Dune::FieldVector<double, 1> > > &b,
+    WellContributions& wellContribs,
     InverseOperatorResult &res);
 
-template void BdaBridge::solve_system< \
-Dune::BCRSMatrix<Dune::FieldMatrix<double, 3, 3>, std::allocator<Dune::FieldMatrix<double, 3, 3> > > , \
-Dune::BlockVector<Dune::FieldVector<double, 3>, std::allocator<Dune::FieldVector<double, 3> > > > \
-(Dune::BCRSMatrix<Dune::FieldMatrix<double, 3, 3>, std::allocator<Dune::FieldMatrix<double, 3, 3> > > *mat, \
-    Dune::BlockVector<Dune::FieldVector<double, 3>, std::allocator<Dune::FieldVector<double, 3> > > &b, \
+template void BdaBridge::solve_system<
+Dune::BCRSMatrix<Ewoms::MatrixBlock<double, 2, 2>, std::allocator<Ewoms::MatrixBlock<double, 2, 2> > > ,
+Dune::BlockVector<Dune::FieldVector<double, 2>, std::allocator<Dune::FieldVector<double, 2> > > >
+(Dune::BCRSMatrix<Ewoms::MatrixBlock<double, 2, 2>, std::allocator<Ewoms::MatrixBlock<double, 2, 2> > > *mat,
+    Dune::BlockVector<Dune::FieldVector<double, 2>, std::allocator<Dune::FieldVector<double, 2> > > &b,
+    WellContributions& wellContribs,
     InverseOperatorResult &res);
 
-template void BdaBridge::solve_system< \
-Dune::BCRSMatrix<Dune::FieldMatrix<double, 4, 4>, std::allocator<Dune::FieldMatrix<double, 4, 4> > > , \
-Dune::BlockVector<Dune::FieldVector<double, 4>, std::allocator<Dune::FieldVector<double, 4> > > > \
-(Dune::BCRSMatrix<Dune::FieldMatrix<double, 4, 4>, std::allocator<Dune::FieldMatrix<double, 4, 4> > > *mat, \
-    Dune::BlockVector<Dune::FieldVector<double, 4>, std::allocator<Dune::FieldVector<double, 4> > > &b, \
+template void BdaBridge::solve_system<
+Dune::BCRSMatrix<Ewoms::MatrixBlock<double, 3, 3>, std::allocator<Ewoms::MatrixBlock<double, 3, 3> > > ,
+Dune::BlockVector<Dune::FieldVector<double, 3>, std::allocator<Dune::FieldVector<double, 3> > > >
+(Dune::BCRSMatrix<Ewoms::MatrixBlock<double, 3, 3>, std::allocator<Ewoms::MatrixBlock<double, 3, 3> > > *mat,
+    Dune::BlockVector<Dune::FieldVector<double, 3>, std::allocator<Dune::FieldVector<double, 3> > > &b,
+    WellContributions& wellContribs,
     InverseOperatorResult &res);
 
-template void BdaBridge::get_result< \
-Dune::BlockVector<Dune::FieldVector<double, 1>, std::allocator<Dune::FieldVector<double, 1> > > > \
+template void BdaBridge::solve_system<
+Dune::BCRSMatrix<Ewoms::MatrixBlock<double, 4, 4>, std::allocator<Ewoms::MatrixBlock<double, 4, 4> > > ,
+Dune::BlockVector<Dune::FieldVector<double, 4>, std::allocator<Dune::FieldVector<double, 4> > > >
+(Dune::BCRSMatrix<Ewoms::MatrixBlock<double, 4, 4>, std::allocator<Ewoms::MatrixBlock<double, 4, 4> > > *mat,
+    Dune::BlockVector<Dune::FieldVector<double, 4>, std::allocator<Dune::FieldVector<double, 4> > > &b,
+    WellContributions& wellContribs,
+    InverseOperatorResult &res);
+
+template void BdaBridge::get_result<
+Dune::BlockVector<Dune::FieldVector<double, 1>, std::allocator<Dune::FieldVector<double, 1> > > >
 (Dune::BlockVector<Dune::FieldVector<double, 1>, std::allocator<Dune::FieldVector<double, 1> > > &x);
 
-template void BdaBridge::get_result< \
-Dune::BlockVector<Dune::FieldVector<double, 2>, std::allocator<Dune::FieldVector<double, 2> > > > \
+template void BdaBridge::get_result<
+Dune::BlockVector<Dune::FieldVector<double, 2>, std::allocator<Dune::FieldVector<double, 2> > > >
 (Dune::BlockVector<Dune::FieldVector<double, 2>, std::allocator<Dune::FieldVector<double, 2> > > &x);
 
-template void BdaBridge::get_result< \
-Dune::BlockVector<Dune::FieldVector<double, 3>, std::allocator<Dune::FieldVector<double, 3> > > > \
+template void BdaBridge::get_result<
+Dune::BlockVector<Dune::FieldVector<double, 3>, std::allocator<Dune::FieldVector<double, 3> > > >
 (Dune::BlockVector<Dune::FieldVector<double, 3>, std::allocator<Dune::FieldVector<double, 3> > > &x);
 
-template void BdaBridge::get_result< \
-Dune::BlockVector<Dune::FieldVector<double, 4>, std::allocator<Dune::FieldVector<double, 4> > > > \
+template void BdaBridge::get_result<
+Dune::BlockVector<Dune::FieldVector<double, 4>, std::allocator<Dune::FieldVector<double, 4> > > >
 (Dune::BlockVector<Dune::FieldVector<double, 4>, std::allocator<Dune::FieldVector<double, 4> > > &x);
 
 }

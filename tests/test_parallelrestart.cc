@@ -28,6 +28,7 @@
 #include <ewoms/eclio/parser/deck/deckitem.hh>
 #include <ewoms/eclio/parser/eclipsestate/aquancon.hh>
 #include <ewoms/eclio/parser/eclipsestate/aquiferct.hh>
+#include <ewoms/eclio/parser/eclipsestate/aquiferconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/aquifetp.hh>
 #include <ewoms/eclio/parser/eclipsestate/eclipseconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/runspec.hh>
@@ -45,6 +46,7 @@
 #include <ewoms/eclio/parser/eclipsestate/ioconfig/ioconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/ioconfig/restartconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/action/actionast.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/action/pyaction.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/action/actions.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/action/actionx.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/action/astnode.hh>
@@ -306,7 +308,7 @@ Ewoms::Well getFullWell()
 {
     Ewoms::UnitSystem unitSystem;
     return Ewoms::Well("test1", "test2", 1, 2, 3, 4, 5.0,
-                     Ewoms::WellType(Ewoms::Phase::WATER), Ewoms::Connection::Order::DEPTH,
+                     Ewoms::WellType(Ewoms::Phase::WATER),
                      unitSystem, 6.0, Ewoms::Well::Status::SHUT,
                      7.0, true, false,
                      Ewoms::Well::WellGuideRate{true, 1.0, Ewoms::Well::GuideRateTarget::COMB, 2.0},
@@ -448,7 +450,8 @@ Ewoms::Action::ActionX getActionX()
                                 ast, {getCondition()}, 4, 5);
 }
 
-Ewoms::AquiferCT getAquiferCT() {
+Ewoms::AquiferCT getAquiferCT()
+{
     Ewoms::AquiferCT::AQUCT_data data;
     data.aquiferID = 1;
     data.inftableID = 2;
@@ -469,7 +472,8 @@ Ewoms::AquiferCT getAquiferCT() {
     return Ewoms::AquiferCT( { data } );
 }
 
-Ewoms::Aquifetp getAquifetp() {
+Ewoms::Aquifetp getAquifetp()
+{
     Ewoms::Aquifetp::AQUFETP_data data;
 
     data.aquiferID = 1;
@@ -482,7 +486,8 @@ Ewoms::Aquifetp getAquifetp() {
     return Ewoms::Aquifetp( { data } );
 }
 
-Ewoms::Aquancon getAquancon() {
+Ewoms::Aquancon getAquancon()
+{
     Ewoms::Aquancon::AquancCell cell(1, 100, std::make_pair(false, 0), 100, Ewoms::FaceDir::XPlus);
     return Ewoms::Aquancon( std::unordered_map<int, std::vector<Ewoms::Aquancon::AquancCell>>{{1, {cell}}});
 }
@@ -625,7 +630,7 @@ BOOST_AUTO_TEST_CASE(ThresholdPressure)
 {
 #if HAVE_MPI
     Ewoms::ThresholdPressure val1 = getThresholdPressure();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(ThresholdPressure)
 #endif
 }
@@ -634,7 +639,7 @@ BOOST_AUTO_TEST_CASE(RockConfig)
 {
 #if HAVE_MPI
     Ewoms::RockConfig val1 = getRockConfig();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(RockConfig)
 #endif
 }
@@ -643,7 +648,7 @@ BOOST_AUTO_TEST_CASE(EDITNNC)
 {
 #if HAVE_MPI
     Ewoms::EDITNNC val1({{1,2,1.0},{2,3,2.0}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(EDITNNC)
 #endif
 }
@@ -652,7 +657,7 @@ BOOST_AUTO_TEST_CASE(NNC)
 {
 #if HAVE_MPI
     Ewoms::NNC val1({{1,2,1.0},{2,3,2.0}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(NNC)
 #endif
 }
@@ -661,7 +666,7 @@ BOOST_AUTO_TEST_CASE(Rock2dTable)
 {
 #if HAVE_MPI
     Ewoms::Rock2dTable val1({{1.0,2.0},{3.0,4.0}}, {1.0, 2.0, 3.0});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Rock2dTable)
 #endif
 }
@@ -670,7 +675,7 @@ BOOST_AUTO_TEST_CASE(Rock2dtrTable)
 {
 #if HAVE_MPI
     Ewoms::Rock2dtrTable val1({{1.0,2.0},{3.0,4.0}}, {1.0, 2.0, 3.0});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Rock2dtrTable)
 #endif
 }
@@ -680,10 +685,10 @@ BOOST_AUTO_TEST_CASE(ColumnSchema)
 #if HAVE_MPI
     Ewoms::ColumnSchema val1("test1", Ewoms::Table::INCREASING,
                            Ewoms::Table::DEFAULT_LINEAR);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(ColumnSchema)
     val1 = Ewoms::ColumnSchema("test2", Ewoms::Table::DECREASING, 1.0);
-    val2 = PackUnpack(val1);
+    val2 = PackUnpack2(val1);
     DO_CHECKS(ColumnSchema)
 #endif
 }
@@ -692,7 +697,7 @@ BOOST_AUTO_TEST_CASE(TableSchema)
 {
 #if HAVE_MPI
     Ewoms::TableSchema val1 = getTableSchema();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(TableSchema)
 #endif
 }
@@ -701,7 +706,7 @@ BOOST_AUTO_TEST_CASE(TableColumn)
 {
 #if HAVE_MPI
     Ewoms::TableColumn val1 = getTableColumn();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(TableColumn)
 #endif
 }
@@ -710,7 +715,7 @@ BOOST_AUTO_TEST_CASE(SimpleTable)
 {
 #if HAVE_MPI
     Ewoms::SimpleTable val1 = getSimpleTable();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(SimpleTable)
 #endif
 }
@@ -724,7 +729,7 @@ BOOST_AUTO_TEST_CASE(TableContainer)
     Ewoms::TableContainer val1(2);
     val1.addTable(0, std::make_shared<Ewoms::SimpleTable>(tab1));
     val1.addTable(1, std::make_shared<Ewoms::SimpleTable>(tab1));
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(TableContainer)
 #endif
 }
@@ -733,7 +738,7 @@ BOOST_AUTO_TEST_CASE(EquilRecord)
 {
 #if HAVE_MPI
     Ewoms::EquilRecord val1 = getEquilRecord();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(EquilRecord)
 #endif
 }
@@ -742,7 +747,7 @@ BOOST_AUTO_TEST_CASE(Equil)
 {
 #if HAVE_MPI
     Ewoms::Equil val1({getEquilRecord(), getEquilRecord()});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Equil)
 #endif
 }
@@ -751,7 +756,7 @@ BOOST_AUTO_TEST_CASE(FoamData)
 {
 #if HAVE_MPI
     Ewoms::FoamData val1 = getFoamData();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(FoamData)
 #endif
 }
@@ -760,7 +765,7 @@ BOOST_AUTO_TEST_CASE(FoamConfig)
 {
 #if HAVE_MPI
     Ewoms::FoamConfig val1 = getFoamConfig();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(FoamConfig)
 #endif
 }
@@ -771,7 +776,7 @@ BOOST_AUTO_TEST_CASE(InitConfig)
     Ewoms::InitConfig val1(Ewoms::Equil({getEquilRecord(), getEquilRecord()}),
                          getFoamConfig(),
                          true, true, true, 20, "test1");
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(InitConfig)
 #endif
 }
@@ -780,7 +785,7 @@ BOOST_AUTO_TEST_CASE(SimulationConfig)
 {
 #if HAVE_MPI
     Ewoms::SimulationConfig val1(getThresholdPressure(), getBCConfig(), getRockConfig(), false, true, false, true);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(SimulationConfig)
 #endif
 }
@@ -789,7 +794,7 @@ BOOST_AUTO_TEST_CASE(BCConfig)
 {
 #if HAVE_MPI
     Ewoms::BCConfig val1({{10,11,12,13,14,15,Ewoms::BCType::RATE, Ewoms::FaceDir::XPlus, Ewoms::BCComponent::GAS, 100}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(BCConfig)
 #endif
 }
@@ -798,7 +803,7 @@ BOOST_AUTO_TEST_CASE(RestartSchedule)
 {
 #if HAVE_MPI
     Ewoms::RestartSchedule val1(1, 2, 3);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(RestartSchedule)
 #endif
 }
@@ -807,7 +812,7 @@ BOOST_AUTO_TEST_CASE(TimeMap)
 {
 #if HAVE_MPI
     Ewoms::TimeMap val1 = getTimeMap();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(TimeMap)
 #endif
 }
@@ -820,7 +825,7 @@ BOOST_AUTO_TEST_CASE(RestartConfig)
     Ewoms::IOConfig io(true, false, true, false, false, true, "test1", true,
                      "test2", true, "test3", false);
     Ewoms::RestartConfig val1(getTimeMap(), 1, true, rsched, rkw, {false, true});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(RestartConfig)
 #endif
 }
@@ -830,7 +835,7 @@ BOOST_AUTO_TEST_CASE(IOConfig)
 #if HAVE_MPI
     Ewoms::IOConfig val1(true, false, true, false, false, true, "test1", true,
                        "test2", true, "test3", false);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(IOConfig)
 #endif
 }
@@ -839,7 +844,7 @@ BOOST_AUTO_TEST_CASE(Phases)
 {
 #if HAVE_MPI
     Ewoms::Phases val1(true, true, true, false, true, false, true, false);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Phases)
 #endif
 }
@@ -848,7 +853,7 @@ BOOST_AUTO_TEST_CASE(Tabdims)
 {
 #if HAVE_MPI
     Ewoms::Tabdims val1(1,2,3,4,5,6);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Tabdims)
 #endif
 }
@@ -857,7 +862,7 @@ BOOST_AUTO_TEST_CASE(EndpointScaling)
 {
 #if HAVE_MPI
     Ewoms::EndpointScaling val1(std::bitset<4>(13));
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(EndpointScaling)
 #endif
 }
@@ -866,7 +871,7 @@ BOOST_AUTO_TEST_CASE(Welldims)
 {
 #if HAVE_MPI
     Ewoms::Welldims val1(1,2,3,4);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Welldims)
 #endif
 }
@@ -875,7 +880,7 @@ BOOST_AUTO_TEST_CASE(WellSegmentDims)
 {
 #if HAVE_MPI
     Ewoms::WellSegmentDims val1(1,2,3);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WellSegmentDims)
 #endif
 }
@@ -884,7 +889,7 @@ BOOST_AUTO_TEST_CASE(UDQParams)
 {
 #if HAVE_MPI
     Ewoms::UDQParams val1(true, 1, 2.0, 3.0, 4.0);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(UDQParams)
 #endif
 }
@@ -893,7 +898,7 @@ BOOST_AUTO_TEST_CASE(EclHysterConfig)
 {
 #if HAVE_MPI
     Ewoms::EclHysterConfig val1(true, 1, 2);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(EclHysterConfig)
 #endif
 }
@@ -902,7 +907,7 @@ BOOST_AUTO_TEST_CASE(Actdims)
 {
 #if HAVE_MPI
     Ewoms::Actdims val1(1,2,3,4);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Actdims)
 #endif
 }
@@ -920,7 +925,7 @@ BOOST_AUTO_TEST_CASE(Runspec)
                       Ewoms::Actdims(1,2,3,4),
                       Ewoms::SatFuncControls(5.0e-7, Ewoms::SatFuncControls::ThreePhaseOilKrModel::Stone2));
 
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Runspec)
 #endif
 }
@@ -929,7 +934,7 @@ BOOST_AUTO_TEST_CASE(PvtgTable)
 {
 #if HAVE_MPI
     Ewoms::PvtgTable val1 = getPvtgTable();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(PvtgTable)
 #endif
 }
@@ -938,7 +943,7 @@ BOOST_AUTO_TEST_CASE(PvtoTable)
 {
 #if HAVE_MPI
     Ewoms::PvtoTable val1 = getPvtoTable();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(PvtoTable)
 #endif
 }
@@ -948,7 +953,7 @@ BOOST_AUTO_TEST_CASE(JFunc)
 #if HAVE_MPI
     Ewoms::JFunc val1(Ewoms::JFunc::Flag::BOTH, 1.0, 2.0,
                     3.0, 4.0, Ewoms::JFunc::Direction::XY);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(JFunc)
 #endif
 }
@@ -957,7 +962,7 @@ BOOST_AUTO_TEST_CASE(PVTWRecord)
 {
 #if HAVE_MPI
     Ewoms::PVTWRecord val1{1.0, 2.0, 3.0, 4.0, 5.0};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(PVTWRecord)
 #endif
 }
@@ -966,7 +971,7 @@ BOOST_AUTO_TEST_CASE(PvtwTable)
 {
 #if HAVE_MPI
     Ewoms::PvtwTable val1({Ewoms::PVTWRecord{1.0, 2.0, 3.0, 4.0, 5.0}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(PvtwTable)
 #endif
 }
@@ -975,7 +980,7 @@ BOOST_AUTO_TEST_CASE(PVCDORecord)
 {
 #if HAVE_MPI
     Ewoms::PVTWRecord val1{1.0, 2.0, 3.0, 4.0, 5.0};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(PVTWRecord)
 #endif
 }
@@ -984,7 +989,7 @@ BOOST_AUTO_TEST_CASE(PvcdoTable)
 {
 #if HAVE_MPI
     Ewoms::PvcdoTable val1({Ewoms::PVCDORecord{1.0, 2.0, 3.0, 4.0, 5.0}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(PvcdoTable)
 #endif
 }
@@ -993,7 +998,7 @@ BOOST_AUTO_TEST_CASE(DENSITYRecord)
 {
 #if HAVE_MPI
     Ewoms::DENSITYRecord val1{1.0, 2.0, 3.0};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(DENSITYRecord)
 #endif
 }
@@ -1002,7 +1007,7 @@ BOOST_AUTO_TEST_CASE(DensityTable)
 {
 #if HAVE_MPI
     Ewoms::DensityTable val1({Ewoms::DENSITYRecord{1.0, 2.0, 3.0}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(DensityTable)
 #endif
 }
@@ -1011,7 +1016,7 @@ BOOST_AUTO_TEST_CASE(VISCREFRecord)
 {
 #if HAVE_MPI
     Ewoms::VISCREFRecord val1{1.0, 2.0};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(VISCREFRecord)
 #endif
 }
@@ -1020,7 +1025,7 @@ BOOST_AUTO_TEST_CASE(ViscrefTable)
 {
 #if HAVE_MPI
     Ewoms::ViscrefTable val1({Ewoms::VISCREFRecord{1.0, 2.0}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(ViscrefTable)
 #endif
 }
@@ -1029,7 +1034,7 @@ BOOST_AUTO_TEST_CASE(WATDENTRecord)
 {
 #if HAVE_MPI
     Ewoms::WATDENTRecord val1{1.0, 2.0, 3.0};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WATDENTRecord)
 #endif
 }
@@ -1038,7 +1043,7 @@ BOOST_AUTO_TEST_CASE(WatdentTable)
 {
 #if HAVE_MPI
     Ewoms::WatdentTable val1({Ewoms::WATDENTRecord{1.0, 2.0, 3.0}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WatdentTable)
 #endif
 }
@@ -1047,7 +1052,7 @@ BOOST_AUTO_TEST_CASE(PlymwinjTable)
 {
 #if HAVE_MPI
     Ewoms::PlymwinjTable val1({1.0}, {2.0}, 1, {{1.0}, {2.0}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(PlymwinjTable)
 #endif
 }
@@ -1056,7 +1061,7 @@ BOOST_AUTO_TEST_CASE(SkprpolyTable)
 {
 #if HAVE_MPI
     Ewoms::SkprpolyTable val1({1.0}, {2.0}, 1, {{1.0}, {2.0}}, 3.0);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(SkprpolyTable)
 #endif
 }
@@ -1065,7 +1070,7 @@ BOOST_AUTO_TEST_CASE(SkprwatTable)
 {
 #if HAVE_MPI
     Ewoms::SkprwatTable val1({1.0}, {2.0}, 1, {{1.0}, {2.0}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(SkprwatTable)
 #endif
 }
@@ -1074,7 +1079,7 @@ BOOST_AUTO_TEST_CASE(Regdims)
 {
 #if HAVE_MPI
     Ewoms::Regdims val1(1,2,3,4,5);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Regdims)
 #endif
 }
@@ -1083,7 +1088,7 @@ BOOST_AUTO_TEST_CASE(Eqldims)
 {
 #if HAVE_MPI
     Ewoms::Eqldims val1(1,2,3,4,5);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Eqldims)
 #endif
 }
@@ -1092,7 +1097,7 @@ BOOST_AUTO_TEST_CASE(Aqudims)
 {
 #if HAVE_MPI
     Ewoms::Aqudims val1(1,2,3,4,5,6,7,8);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Aqudims)
 #endif
 }
@@ -1101,7 +1106,7 @@ BOOST_AUTO_TEST_CASE(ROCKRecord)
 {
 #if HAVE_MPI
     Ewoms::ROCKRecord val1{1.0,2.0};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(ROCKRecord)
 #endif
 }
@@ -1110,7 +1115,7 @@ BOOST_AUTO_TEST_CASE(RockTable)
 {
 #if HAVE_MPI
     Ewoms::RockTable val1({Ewoms::ROCKRecord{1.0,2.0}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(RockTable)
 #endif
 }
@@ -1158,7 +1163,7 @@ BOOST_AUTO_TEST_CASE(TableManager)
                            {7.0, 8.0},
                            77,
                            1.0);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(TableManager)
 #endif
 }
@@ -1170,12 +1175,12 @@ BOOST_AUTO_TEST_CASE(OilVaporizationProperties)
     Ewoms::OilVaporizationProperties val1(VapType::VAPPARS,
                                         1.0, 2.0, {5.0, 6.0},
                                         {false, true}, {7.0, 8.0});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(OilVaporizationProperties)
     val1 = Ewoms::OilVaporizationProperties(VapType::DRDT,
                                           1.0, 2.0, {5.0, 6.0},
                                           {false, true}, {7.0, 8.0});
-    val2 = PackUnpack(val1);
+    val2 = PackUnpack2(val1);
     DO_CHECKS(OilVaporizationProperties)
 #endif
 }
@@ -1184,7 +1189,7 @@ BOOST_AUTO_TEST_CASE(Events)
 {
 #ifdef HAVE_MPI
     Ewoms::Events val1(Ewoms::DynamicVector<uint64_t>({1,2,3,4,5}));
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Events)
 #endif
 }
@@ -1193,7 +1198,7 @@ BOOST_AUTO_TEST_CASE(MLimits)
 {
 #ifdef HAVE_MPI
     Ewoms::MLimits val1{1,2,3,4,5,6,7,8,9,10,11,12};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(MLimits)
 #endif
 }
@@ -1203,7 +1208,7 @@ BOOST_AUTO_TEST_CASE(MessageLimits)
 #ifdef HAVE_MPI
     std::vector<Ewoms::MLimits> limits{Ewoms::MLimits{1,2,3,4,5,6,7,8,9,10,11,12}};
     Ewoms::MessageLimits val1(Ewoms::DynamicState<Ewoms::MLimits>(limits,2));
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(MessageLimits)
 #endif
 }
@@ -1212,7 +1217,7 @@ BOOST_AUTO_TEST_CASE(VFPInjTable)
 {
 #ifdef HAVE_MPI
     Ewoms::VFPInjTable val1 = getVFPInjTable();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(VFPInjTable)
 #endif
 }
@@ -1221,7 +1226,7 @@ BOOST_AUTO_TEST_CASE(VFPProdTable)
 {
 #ifdef HAVE_MPI
     Ewoms::VFPProdTable val1 = getVFPProdTable();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(VFPProdTable)
 #endif
 }
@@ -1231,7 +1236,7 @@ BOOST_AUTO_TEST_CASE(WTESTWell)
 #ifdef HAVE_MPI
     Ewoms::WellTestConfig::WTESTWell val1{"test", Ewoms::WellTestConfig::ECONOMIC,
                                          1.0, 2, 3.0, 4};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WellTestConfig::WTESTWell)
 #endif
 }
@@ -1242,7 +1247,7 @@ BOOST_AUTO_TEST_CASE(WellTestConfig)
     Ewoms::WellTestConfig::WTESTWell tw{"test", Ewoms::WellTestConfig::ECONOMIC,
                                          1.0, 2, 3.0, 4};
     Ewoms::WellTestConfig val1({tw, tw, tw});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WellTestConfig)
 #endif
 }
@@ -1251,7 +1256,7 @@ BOOST_AUTO_TEST_CASE(WellPolymerProperties)
 {
 #ifdef HAVE_MPI
     Ewoms::WellPolymerProperties val1{1.0, 2.0, 3, 4, 5};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WellPolymerProperties)
 #endif
 }
@@ -1260,7 +1265,7 @@ BOOST_AUTO_TEST_CASE(WellFoamProperties)
 {
 #ifdef HAVE_MPI
     Ewoms::WellFoamProperties val1{1.0};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WellFoamProperties)
 #endif
 }
@@ -1269,7 +1274,7 @@ BOOST_AUTO_TEST_CASE(WellTracerProperties)
 {
 #ifdef HAVE_MPI
     Ewoms::WellTracerProperties val1({{"test", 1.0}, {"test2", 2.0}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WellTracerProperties)
 #endif
 }
@@ -1278,10 +1283,10 @@ BOOST_AUTO_TEST_CASE(UDAValue)
 {
 #ifdef HAVE_MPI
     Ewoms::UDAValue val1("test");
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(UDAValue)
     val1 = Ewoms::UDAValue(1.0);
-    val2 = PackUnpack(val1);
+    val2 = PackUnpack2(val1);
     DO_CHECKS(UDAValue)
 #endif
 }
@@ -1292,10 +1297,10 @@ BOOST_AUTO_TEST_CASE(Connection)
     Ewoms::Connection val1(Ewoms::Connection::Direction::Y,
                          1.0, Ewoms::Connection::State::SHUT,
                          2, 3, 4.0, 5.0, 6.0, 7.0, 8.0,
-                         {9, 10, 11}, Ewoms::Connection::CTFKind::Defaulted,
+                         {9, 10, 11}, 12345, Ewoms::Connection::CTFKind::Defaulted,
                          12, 13.0, 14.0, true,
                          15, 16, 17.0);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Connection)
 #endif
 }
@@ -1315,7 +1320,7 @@ BOOST_AUTO_TEST_CASE(WellInjectionProperties)
                                             8,
                                             Ewoms::InjectorType::OIL,
                                             Ewoms::Well::InjectorCMode::BHP);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Well::WellInjectionProperties)
 #endif
 }
@@ -1330,7 +1335,7 @@ BOOST_AUTO_TEST_CASE(WellEconProductionLimits)
                                        6.0,
                                        Ewoms::WellEconProductionLimits::EconWorkover::WELL,
                                        7.0, 8.0, 9.0, 10.0);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WellEconProductionLimits)
 #endif
 }
@@ -1339,7 +1344,7 @@ BOOST_AUTO_TEST_CASE(WellGuideRate)
 {
 #ifdef HAVE_MPI
     Ewoms::Well::WellGuideRate val1{true, 1.0, Ewoms::Well::GuideRateTarget::COMB, 2.0};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Well::WellGuideRate)
 #endif
 }
@@ -1350,11 +1355,11 @@ BOOST_AUTO_TEST_CASE(WellConnections)
     Ewoms::Connection conn(Ewoms::Connection::Direction::Y,
                          1.0, Ewoms::Connection::State::SHUT,
                          2, 3, 4.0, 5.0, 6.0, 7.0, 8.0,
-                         {9, 10, 11}, Ewoms::Connection::CTFKind::Defaulted,
+                         {9, 10, 11}, 12345, Ewoms::Connection::CTFKind::Defaulted,
                          12, 13.0, 14.0, true,
                          15, 16, 17.0);
-    Ewoms::WellConnections val1(1, 2, 3, {conn, conn});
-    auto val2 = PackUnpack(val1);
+    Ewoms::WellConnections val1(Ewoms::Connection::Order::TRACK, 1, 2, {conn, conn});
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WellConnections)
 #endif
 }
@@ -1377,7 +1382,7 @@ BOOST_AUTO_TEST_CASE(WellProductionProperties)
                                              true,
                                              Ewoms::Well::ProducerCMode::CRAT,
                                              Ewoms::Well::ProducerCMode::BHP, 11);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Well::WellProductionProperties)
 #endif
 }
@@ -1387,7 +1392,7 @@ BOOST_AUTO_TEST_CASE(SpiralICD)
 #ifdef HAVE_MPI
     Ewoms::SpiralICD val1(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8, 9.0,
                         Ewoms::ICDStatus::OPEN, 10.0);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(SpiralICD)
 #endif
 }
@@ -1396,7 +1401,7 @@ BOOST_AUTO_TEST_CASE(Valve)
 {
 #ifdef HAVE_MPI
     Ewoms::Valve val1(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, Ewoms::ICDStatus::OPEN);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Valve)
 #endif
 }
@@ -1408,7 +1413,7 @@ BOOST_AUTO_TEST_CASE(Segment)
                       Ewoms::Segment::SegmentType::SICD,
                       std::make_shared<Ewoms::SpiralICD>(),
                       std::make_shared<Ewoms::Valve>());
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Segment)
 #endif
 }
@@ -1417,7 +1422,7 @@ BOOST_AUTO_TEST_CASE(Dimension)
 {
 #ifdef HAVE_MPI
     Ewoms::Dimension val1(1.0, 2.0);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Dimension)
 #endif
 }
@@ -1426,7 +1431,7 @@ BOOST_AUTO_TEST_CASE(UnitSystem)
 {
 #ifdef HAVE_MPI
     Ewoms::UnitSystem val1(Ewoms::UnitSystem::UnitType::UNIT_TYPE_METRIC);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(UnitSystem)
 #endif
 }
@@ -1441,7 +1446,7 @@ BOOST_AUTO_TEST_CASE(WellSegments)
     Ewoms::WellSegments val1(Ewoms::WellSegments::CompPressureDrop::HF_,
                            {seg, seg});
 
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WellSegments)
 #endif
 }
@@ -1450,7 +1455,7 @@ BOOST_AUTO_TEST_CASE(Well)
 {
 #ifdef HAVE_MPI
     Ewoms::Well val1 = getFullWell();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Well)
 #endif
 }
@@ -1466,7 +1471,7 @@ BOOST_AUTO_TEST_CASE(GroupInjectionProperties)
                                               Ewoms::UDAValue(4.0),
                                               "test1", "test2", 5};
 
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Group::GroupInjectionProperties)
 #endif
 }
@@ -1483,7 +1488,7 @@ BOOST_AUTO_TEST_CASE(GroupProductionProperties)
                                                5.0, Ewoms::Group::GuideRateTarget::COMB,
                                                6.0, 7};
 
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Group::GroupProductionProperties)
 #endif
 }
@@ -1502,7 +1507,7 @@ BOOST_AUTO_TEST_CASE(Group)
                     injection,
                     Ewoms::Group::GroupProductionProperties());
 
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Group)
 #endif
 }
@@ -1511,7 +1516,7 @@ BOOST_AUTO_TEST_CASE(WList)
 {
 #ifdef HAVE_MPI
     Ewoms::WList val1({"test1", "test2", "test3"});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WList)
 #endif
 }
@@ -1522,7 +1527,7 @@ BOOST_AUTO_TEST_CASE(WListManager)
     Ewoms::WList wl({"test1", "test2", "test3"});
     std::map<std::string,Ewoms::WList> data{{"test", wl}, {"test2", wl}};
     Ewoms::WListManager val1(data);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WListManager)
 #endif
 }
@@ -1538,7 +1543,7 @@ BOOST_AUTO_TEST_CASE(UDQASTNode)
     Ewoms::UDQASTNode val1(Ewoms::UDQVarType::NONE,
                          Ewoms::UDQTokenType::error,
                          "test", 1.0, {"test3"}, n1, n1);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(UDQASTNode)
 #endif
 }
@@ -1552,7 +1557,7 @@ BOOST_AUTO_TEST_CASE(UDQDefine)
                        "test", 1.0, {"test1", "test2"}, n0, n0);
     Ewoms::UDQDefine val1("test", std::make_shared<Ewoms::UDQASTNode>(n1),
                         Ewoms::UDQVarType::NONE, "test2");
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(UDQDefine)
 #endif
 }
@@ -1563,7 +1568,7 @@ BOOST_AUTO_TEST_CASE(UDQAssign)
     Ewoms::UDQAssign val1("test", Ewoms::UDQVarType::NONE,
                         {Ewoms::UDQAssign::AssignRecord{{"test1"}, 1.0},
                          Ewoms::UDQAssign::AssignRecord{{"test2"}, 2.0}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(UDQAssign)
 #endif
 }
@@ -1572,7 +1577,7 @@ BOOST_AUTO_TEST_CASE(UDQIndex)
 {
 #ifdef HAVE_MPI
     Ewoms::UDQIndex val1(1, 2, Ewoms::UDQAction::ASSIGN, Ewoms::UDQVarType::WELL_VAR);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(UDQIndex)
 #endif
 }
@@ -1581,7 +1586,7 @@ BOOST_AUTO_TEST_CASE(UDQConfig)
 {
 #ifdef HAVE_MPI
     Ewoms::UDQConfig val1 = getUDQConfig();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(UDQConfig)
 #endif
 }
@@ -1591,7 +1596,7 @@ BOOST_AUTO_TEST_CASE(UDQActiveInputRecord)
 #ifdef HAVE_MPI
     Ewoms::UDQActive::InputRecord val1(1, "test1", "test2",
                                      Ewoms::UDAControl::WCONPROD_ORAT);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(UDQActive::InputRecord)
 #endif
 }
@@ -1601,7 +1606,7 @@ BOOST_AUTO_TEST_CASE(UDQActiveRecord)
 #ifdef HAVE_MPI
     Ewoms::UDQActive::Record val1("test1", 1, 2, "test2",
                                 Ewoms::UDAControl::WCONPROD_ORAT);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(UDQActive::Record)
 #endif
 }
@@ -1614,7 +1619,7 @@ BOOST_AUTO_TEST_CASE(UDQActive)
                         {Ewoms::UDQActive::Record("test1", 1, 2, "test2",
                                                   Ewoms::UDAControl::WCONPROD_ORAT)},
                         {{"test1", 1}}, {{"test2", 2}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(UDQActive)
 #endif
 }
@@ -1623,7 +1628,7 @@ BOOST_AUTO_TEST_CASE(AquiferCT)
 {
 #ifdef HAVE_MPI
     Ewoms::AquiferCT val1 = getAquiferCT();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(AquiferCT);
 #endif
 }
@@ -1632,7 +1637,7 @@ BOOST_AUTO_TEST_CASE(Aquifetp)
 {
 #ifdef HAVE_MPI
     Ewoms::Aquifetp val1 = getAquifetp();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Aquifetp);
 #endif
 }
@@ -1641,7 +1646,7 @@ BOOST_AUTO_TEST_CASE(Aquancon)
 {
 #ifdef HAVE_MPI
     Ewoms::Aquancon val1 = getAquancon();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Aquancon);
 #endif
 }
@@ -1653,7 +1658,7 @@ BOOST_AUTO_TEST_CASE(AquferConfig)
     Ewoms::AquiferCT ct = getAquiferCT();
     Ewoms::Aquancon conn = getAquancon();
     Ewoms::AquiferConfig val1(fetp, ct, conn);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(AquiferConfig);
 #endif
 }
@@ -1662,7 +1667,7 @@ BOOST_AUTO_TEST_CASE(GuideRateModel)
 {
 #ifdef HAVE_MPI
     Ewoms::GuideRateModel val1 = getGuideRateModel();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(GuideRateModel)
 #endif
 }
@@ -1671,7 +1676,7 @@ BOOST_AUTO_TEST_CASE(GuideRateConfigGroup)
 {
 #ifdef HAVE_MPI
     Ewoms::GuideRateConfig::GroupTarget val1 = getGuideRateConfigGroup();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(GuideRateConfig::GroupTarget)
 #endif
 }
@@ -1680,7 +1685,7 @@ BOOST_AUTO_TEST_CASE(GuideRateConfigWell)
 {
 #ifdef HAVE_MPI
     Ewoms::GuideRateConfig::WellTarget val1 = getGuideRateConfigWell();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(GuideRateConfig::WellTarget)
 #endif
 }
@@ -1692,7 +1697,7 @@ BOOST_AUTO_TEST_CASE(GuideRateConfig)
     Ewoms::GuideRateConfig val1(model,
                               {{"test1", getGuideRateConfigWell()}},
                               {{"test2", getGuideRateConfigGroup()}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(GuideRateConfig)
 #endif
 }
@@ -1705,7 +1710,7 @@ BOOST_AUTO_TEST_CASE(GConSaleGroup)
                                       Ewoms::UDAValue(3.0),
                                       Ewoms::GConSale::MaxProcedure::PLUG,
                                       4.0, Ewoms::UnitSystem()};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(GConSale::GCONSALEGroup)
 #endif
 }
@@ -1719,7 +1724,7 @@ BOOST_AUTO_TEST_CASE(GConSale)
                                        Ewoms::GConSale::MaxProcedure::PLUG,
                                        4.0, Ewoms::UnitSystem()};
     Ewoms::GConSale val1({{"test1", group}, {"test2", group}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(GConSale)
 #endif
 }
@@ -1731,7 +1736,7 @@ BOOST_AUTO_TEST_CASE(GConSumpGroup)
                                       Ewoms::UDAValue(2.0),
                                       "test",
                                       3.0, Ewoms::UnitSystem()};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(GConSump::GCONSUMPGroup)
 #endif
 }
@@ -1744,7 +1749,7 @@ BOOST_AUTO_TEST_CASE(GConSump)
                                        "test",
                                        3.0, Ewoms::UnitSystem()};
     Ewoms::GConSump val1({{"test1", group}, {"test2", group}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(GConSump)
 #endif
 }
@@ -1759,7 +1764,7 @@ BOOST_AUTO_TEST_CASE(RFTConfig)
                         {{"test3", 2}},
                         {{"test1", {{{Ewoms::RFTConfig::RFT::TIMESTEP, 3}}, 4}}},
                         {{"test2", {{{Ewoms::RFTConfig::PLT::REPT, 5}}, 6}}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(RFTConfig)
 #endif
 }
@@ -1774,7 +1779,7 @@ BOOST_AUTO_TEST_CASE(DeckItem)
                        {Ewoms::Dimension(7.0, 8.0)},
                        {Ewoms::Dimension(10.0, 11.0)});
 
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(DeckItem)
 #endif
 }
@@ -1783,7 +1788,7 @@ BOOST_AUTO_TEST_CASE(DeckRecord)
 {
 #ifdef HAVE_MPI
     Ewoms::DeckRecord val1 = getDeckRecord();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(DeckRecord)
 #endif
 }
@@ -1792,7 +1797,7 @@ BOOST_AUTO_TEST_CASE(Location)
 {
 #ifdef HAVE_MPI
     Ewoms::Location val1{"test", 1};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Location)
 #endif
 }
@@ -1802,7 +1807,7 @@ BOOST_AUTO_TEST_CASE(DeckKeyword)
 #ifdef HAVE_MPI
     Ewoms::DeckKeyword val1("test", {"test",1},
                           {getDeckRecord(), getDeckRecord()}, true, false);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(DeckKeyword)
 #endif
 }
@@ -1815,7 +1820,7 @@ BOOST_AUTO_TEST_CASE(Deck)
                                      {getDeckRecord(), getDeckRecord()}, true, false)},
                    Ewoms::UnitSystem(), unitSys.get(),
                    "test2", "test3", 2);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Deck)
 #endif
 }
@@ -1824,7 +1829,7 @@ BOOST_AUTO_TEST_CASE(Tuning)
 {
 #ifdef HAVE_MPI
     Ewoms::Tuning val1 = getTuning();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Tuning)
 #endif
 }
@@ -1834,7 +1839,7 @@ BOOST_AUTO_TEST_CASE(ASTNode)
 #ifdef HAVE_MPI
     Ewoms::Action::ASTNode child(number, FuncType::field, "test3", {"test2"}, 2.0, {});
     Ewoms::Action::ASTNode val1(number, FuncType::field, "test1", {"test2"}, 1.0, {child});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Action::ASTNode)
 #endif
 }
@@ -1846,7 +1851,7 @@ BOOST_AUTO_TEST_CASE(AST)
     node.reset(new Ewoms::Action::ASTNode(number, FuncType::field,
                                         "test1", {"test2"}, 1.0, {}));
     Ewoms::Action::AST val1(node);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Action::AST)
 #endif
 }
@@ -1857,7 +1862,7 @@ BOOST_AUTO_TEST_CASE(Quantity)
     Ewoms::Action::Quantity val1;
     val1.quantity = "test1";
     val1.args = {"test2", "test3"};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Action::Quantity)
 #endif
 }
@@ -1866,7 +1871,7 @@ BOOST_AUTO_TEST_CASE(Condition)
 {
 #ifdef HAVE_MPI
     Ewoms::Action::Condition val1 = getCondition();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Action::Condition)
 #endif
 }
@@ -1875,16 +1880,25 @@ BOOST_AUTO_TEST_CASE(ActionX)
 {
 #ifdef HAVE_MPI
     Ewoms::Action::ActionX val1 = getActionX();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Action::ActionX)
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(PyAction)
+{
+#ifdef HAVE_MPI
+    Ewoms::Action::PyAction val1("name", Ewoms::Action::PyAction::RunCount::single, "import opm");
+    auto val2 = PackUnpack2(val1);
+    DO_CHECKS(Action::PyAction)
 #endif
 }
 
 BOOST_AUTO_TEST_CASE(Actions)
 {
 #ifdef HAVE_MPI
-    Ewoms::Action::Actions val1({getActionX()});
-    auto val2 = PackUnpack(val1);
+    Ewoms::Action::Actions val1({getActionX()}, {{"name", Ewoms::Action::PyAction::RunCount::unlimited, "import numpy"}});
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Action::Actions)
 #endif
 }
@@ -1960,7 +1974,7 @@ BOOST_AUTO_TEST_CASE(Schedule)
                                      3.0, Ewoms::UnitSystem()};
     Ewoms::GConSump gcm({{"test1", grp}, {"test2", grp}});
 
-    Ewoms::Action::Actions acnts({getActionX()});
+    Ewoms::Action::Actions actions({getActionX()}, {{"pyaction", Ewoms::Action::PyAction::RunCount::single, "import os"}});
 
     Ewoms::RFTConfig rftc(getTimeMap(),
                         std::size_t{1729},
@@ -1989,13 +2003,13 @@ BOOST_AUTO_TEST_CASE(Schedule)
                        {{std::make_shared<Ewoms::GConSale>(gcs)}, 1},
                        {{std::make_shared<Ewoms::GConSump>(gcm)}, 1},
                        {{Ewoms::Well::ProducerCMode::CRAT}, 1},
-                       {{std::make_shared<Ewoms::Action::Actions>(acnts)}, 1},
+                       {{std::make_shared<Ewoms::Action::Actions>(actions)}, 1},
                        rftc,
                        {std::vector<int>{1}, 1},
                        getRestartConfig(),
                        {{"test", events}});
 
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Schedule)
 #endif
 }
@@ -2004,7 +2018,7 @@ BOOST_AUTO_TEST_CASE(BrineDensityTable)
 {
 #ifdef HAVE_MPI
     Ewoms::BrineDensityTable val1({1.0, 2.0, 3.0});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(BrineDensityTable)
 #endif
 }
@@ -2044,7 +2058,7 @@ BOOST_AUTO_TEST_CASE(PvtwsaltTable)
 {
 #ifdef HAVE_MPI
     Ewoms::PvtwsaltTable val1(1.0, 2.0, {3.0, 4.0, 5.0});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(PvtwsaltTable)
 #endif
 }
@@ -2053,7 +2067,7 @@ BOOST_AUTO_TEST_CASE(WellBrineProperties)
 {
 #ifdef HAVE_MPI
     Ewoms::WellBrineProperties val1{1.0};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WellBrineProperties)
 #endif
 }
@@ -2062,7 +2076,7 @@ BOOST_AUTO_TEST_CASE(MULTREGTRecord)
 {
 #ifdef HAVE_MPI
     Ewoms::MULTREGTRecord val1{1, 2, 3.0, 4, Ewoms::MULTREGT::ALL, "test"};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(MULTREGTRecord)
 #endif
 }
@@ -2080,7 +2094,7 @@ BOOST_AUTO_TEST_CASE(MULTREGTScanner)
                               {{"test3", {7,8}}},
                               "test4");
 
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(MULTREGTScanner)
 #endif
 }
@@ -2095,7 +2109,7 @@ BOOST_AUTO_TEST_CASE(EclipseConfig)
                          true, true, true, 20, "test1");
     Ewoms::EclipseConfig val1{init, io};
 
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(EclipseConfig)
 #endif
 }
@@ -2117,7 +2131,7 @@ BOOST_AUTO_TEST_CASE(TransMult)
                         {{Ewoms::FaceDir::YPlus, {4.0, 5.0}}},
                         {{Ewoms::FaceDir::ZPlus, "test1"}},
                         scanner);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(TransMult)
 #endif
 }
@@ -2126,7 +2140,7 @@ BOOST_AUTO_TEST_CASE(FaultFace)
 {
 #ifdef HAVE_MPI
     Ewoms::FaultFace val1({1,2,3,4,5,6}, Ewoms::FaceDir::YPlus);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(FaultFace)
 #endif
 }
@@ -2135,7 +2149,7 @@ BOOST_AUTO_TEST_CASE(Fault)
 {
 #ifdef HAVE_MPI
     Ewoms::Fault val1("test", 1.0, {{{1,2,3,4,5,6}, Ewoms::FaceDir::YPlus}});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(Fault)
 #endif
 }
@@ -2144,7 +2158,7 @@ BOOST_AUTO_TEST_CASE(WellType)
 {
 #ifdef HAVE_MPI
     Ewoms::WellType val1(true, Ewoms::Phase::OIL);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(WellType)
 #endif
 }
@@ -2153,7 +2167,7 @@ BOOST_AUTO_TEST_CASE(DenT)
 {
 #ifdef HAVE_MPI
     Ewoms::DenT val1 = getDenT();
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(DenT)
 #endif
 }
@@ -2165,7 +2179,7 @@ BOOST_AUTO_TEST_CASE(FaultCollection)
     Ewoms::OrderedMap<std::string, Ewoms::Fault> faults;
     faults.insert({"test2", fault});
     Ewoms::FaultCollection val1(faults);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(FaultCollection)
 #endif
 }
@@ -2174,7 +2188,7 @@ BOOST_AUTO_TEST_CASE(SolventDensityTable)
 {
 #ifdef HAVE_MPI
     Ewoms::SolventDensityTable val1({1.0, 2.0, 3.0});
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(SolventDensityTable)
 #endif
 }
@@ -2183,7 +2197,7 @@ BOOST_AUTO_TEST_CASE(GridDims)
 {
 #ifdef HAVE_MPI
     Ewoms::GridDims val1{ 1,  2,  3};
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(GridDims)
 #endif
 }
@@ -2194,7 +2208,7 @@ BOOST_AUTO_TEST_CASE(PlyshlogTable)
     Ewoms::OrderedMap<std::string, Ewoms::TableColumn> data;
     data.insert({"test3", getTableColumn()});
     Ewoms::PlyshlogTable val1(getTableSchema(), data, true, 1.0, 2.0, 3.0, true, true);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(PlyshlogTable)
 #endif
 }
@@ -2205,7 +2219,7 @@ BOOST_AUTO_TEST_CASE(RocktabTable)
     Ewoms::OrderedMap<std::string, Ewoms::TableColumn> data;
     data.insert({"test3", getTableColumn()});
     Ewoms::RocktabTable val1(getTableSchema(), data, true, true);
-    auto val2 = PackUnpack(val1);
+    auto val2 = PackUnpack2(val1);
     DO_CHECKS(RocktabTable)
 #endif
 }

@@ -25,9 +25,12 @@
 #include <cassert>
 #include <tuple>
 
+#include <ewoms/eclio/parser/eclipsestate/runspec.hh>
+
 #include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/wellteststate.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/group/guiderate.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/group/group.hh>
 
 #include <ewoms/eclsimulators/timestepping/simulatorreport.hh>
 #include <ewoms/eclsimulators/wells/perforationdata.hh>
@@ -180,6 +183,32 @@ namespace Ewoms {
 
             void initFromRestartFile(const RestartValue& restartValues);
 
+            Ewoms::data::Group groupData(const int reportStepIdx, Ewoms::Schedule& sched) const
+            {
+                Ewoms::data::Group dw;
+                for (const std::string gname :  sched.groupNames(reportStepIdx))  {
+                    const auto& grup = sched.getGroup(gname, reportStepIdx);
+                    const auto& grup_type = grup.getGroupType();
+                    Ewoms::data::currentGroupConstraints cgc;
+                    cgc.currentProdConstraint =  Ewoms::Group::ProductionCMode::NONE;
+                    cgc.currentGasInjectionConstraint = Ewoms::Group::InjectionCMode::NONE;
+                    cgc.currentWaterInjectionConstraint = Ewoms::Group::InjectionCMode::NONE;
+                    if (this->well_state_.hasProductionGroupControl(gname)) {
+                        cgc.currentProdConstraint = this->well_state_.currentProductionGroupControl(gname);
+                    }
+                    if ((grup_type == Ewoms::Group::GroupType::INJECTION) || (grup_type == Ewoms::Group::GroupType::MIXED))  {
+                        if (this->well_state_.hasInjectionGroupControl(Ewoms::Phase::WATER, gname)) {
+                            cgc.currentWaterInjectionConstraint = this->well_state_.currentInjectionGroupControl(Ewoms::Phase::WATER, gname);
+                        }
+                        if (this->well_state_.hasInjectionGroupControl(Ewoms::Phase::GAS, gname)) {
+                            cgc.currentGasInjectionConstraint = this->well_state_.currentInjectionGroupControl(Ewoms::Phase::GAS, gname);
+                        }
+                    }
+                    dw.emplace(gname, cgc);
+                }
+                return dw;
+            }
+
             Ewoms::data::Wells wellData() const
             { return well_state_.report(phase_usage_, Ewoms::UgGridHelpers::globalCell(grid())); }
 
@@ -188,6 +217,11 @@ namespace Ewoms {
 
             // subtract B*inv(D)*C * x from A*x
             void apply(const BVector& x, BVector& Ax) const;
+
+#if HAVE_CUDA
+            // accumulate the contributions of all Wells in the WellContributions object
+            void getWellContributions(WellContributions& x) const;
+#endif
 
             // apply well model with scaling of alpha
             void applyScaleAdd(const Scalar alpha, const BVector& x, BVector& Ax) const;

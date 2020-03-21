@@ -42,6 +42,7 @@
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
 #include <ewoms/eclio/parser/eclipsestate/checkdeck.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/arraydimchecker.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqassign.hh>
 
 //#include <ewoms/material/fluidsystems/blackoilfluidsystemsimple.hh>
 //#include <ewoms/material/fluidsystems/blackoilfluidsystemsimple.hh>
@@ -55,6 +56,11 @@
 #include <dune/common/parallel/mpihelper.hh>
 #endif
 
+#if HAVE_MPI
+#include <ewoms/eclsimulators/utils/paralleleclipsestate.hh>
+#include <ewoms/eclsimulators/utils/parallelserialization.hh>
+#endif
+
 BEGIN_PROPERTIES
 
 // this is a dummy type tag that is used to setup the parameters before the actual
@@ -65,11 +71,13 @@ END_PROPERTIES
 
 namespace Ewoms {
   template <class TypeTag>
-  void eflowSetDeck(Deck &deck, EclipseState& eclState)
+  void eflowSetDeck(Deck *deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig)
   {
     typedef typename GET_PROP_TYPE(TypeTag, Vanguard) Vanguard;
-    Vanguard::setExternalDeck(&deck);
+    Vanguard::setExternalDeck(deck);
     Vanguard::setExternalEclState(&eclState);
+    Vanguard::setExternalSchedule(&schedule);
+    Vanguard::setExternalSummaryConfig(&summaryConfig);
   }
 
 // ----------------- Main program -----------------
@@ -358,15 +366,29 @@ int mainEFlow(int argc, char** argv)
 
             Ewoms::EFlowMain<PreTypeTag>::printPRTHeader(outputCout);
 
-            deck.reset( new Ewoms::Deck( parser.parseFile(deckFilename , parseContext, errorGuard)));
-            Ewoms::MissingFeatures::checkKeywords(*deck, parseContext, errorGuard);
-            if ( outputCout )
-                Ewoms::checkDeck(*deck, parser, parseContext, errorGuard);
+            if (mpiRank == 0) {
+                deck.reset( new Ewoms::Deck( parser.parseFile(deckFilename , parseContext, errorGuard)));
+                Ewoms::MissingFeatures::checkKeywords(*deck, parseContext, errorGuard);
+                if ( outputCout )
+                    Ewoms::checkDeck(*deck, parser, parseContext, errorGuard);
 
-            eclipseState.reset( new Ewoms::EclipseState(*deck ));
-            schedule.reset(new Ewoms::Schedule(*deck, *eclipseState, parseContext, errorGuard));
-            summaryConfig.reset( new Ewoms::SummaryConfig(*deck, *schedule, eclipseState->getTableManager(), parseContext, errorGuard));
-            setupMessageLimiter(schedule->getMessageLimits(), "STDOUT_LOGGER");
+#if HAVE_MPI
+                eclipseState.reset(new Ewoms::ParallelEclipseState(*deck));
+#else
+                eclipseState.reset(new Ewoms::EclipseState(*deck));
+#endif
+                schedule.reset(new Ewoms::Schedule(*deck, *eclipseState, parseContext, errorGuard));
+                setupMessageLimiter(schedule->getMessageLimits(), "STDOUT_LOGGER");
+                summaryConfig.reset( new Ewoms::SummaryConfig(*deck, *schedule, eclipseState->getTableManager(), parseContext, errorGuard));
+            }
+#if HAVE_MPI
+            else {
+                summaryConfig.reset(new Ewoms::SummaryConfig);
+                schedule.reset(new Ewoms::Schedule);
+                eclipseState.reset(new Ewoms::ParallelEclipseState);
+            }
+            Ewoms::eclStateBroadcast(*eclipseState, *schedule, *summaryConfig);
+#endif
 
             Ewoms::checkConsistentArrayDimensions(*eclipseState, *schedule, parseContext, errorGuard);
 
@@ -378,7 +400,7 @@ int mainEFlow(int argc, char** argv)
             }
         }
         bool outputFiles = (outputMode != FileOutputMode::OUTPUT_NONE);
-        Ewoms::eflowSetDeck<TypeTag>(*deck, *eclipseState);
+        Ewoms::eflowSetDeck<TypeTag>(deck.get(), *eclipseState, *schedule, *summaryConfig);
         return Ewoms::eflowMain<TypeTag>(argc, argv, outputCout, outputFiles);
     }
   catch (const std::invalid_argument& e)

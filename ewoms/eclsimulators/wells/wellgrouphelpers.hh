@@ -19,6 +19,8 @@
 #ifndef EWOMS_WELLGROUPHELPERS_HH
 #define EWOMS_WELLGROUPHELPERS_HH
 
+#include <ewoms/eclio/output/data/groups.hh>
+
 #include <vector>
 #include <ewoms/eclio/parser/eclipsestate/schedule/scheduletypes.hh>
 

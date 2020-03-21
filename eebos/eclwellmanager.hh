@@ -42,6 +42,7 @@
 #include <ewoms/eclio/output/restartvalue.hh>
 
 #include <ewoms/eclio/output/data/wells.hh>
+#include <ewoms/eclio/output/data/groups.hh>
 #include <ewoms/common/exceptions.hh>
 
 #include <ewoms/common/propertysystem.hh>
@@ -566,6 +567,9 @@ public:
 
         return wellDat;
     }
+
+    Ewoms::data::Group groupData(const int /* reportStepIdx */, Ewoms::Schedule& /* sched */) const
+    { return {}; }
 
     /*!
      * \brief This method writes the complete state of all wells

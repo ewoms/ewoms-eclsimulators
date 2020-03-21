@@ -24,7 +24,6 @@
 
 #include <ewoms/eclio/utility/numeric/linearinterpolation.hh>
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
-#include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/opmlog/opmlog.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/ssfntable.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/misctable.hh>
@@ -53,11 +52,9 @@ namespace Ewoms {
         ///eclipse data file. Errors and warings will be
         ///output if they're found.
         ///\param[in] eclState  eclipse state.
-        ///\param[in] deck      ecliplise data file.
         ///\param[in] grid      unstructured grid.
         template <class GridT>
         void diagnosis(const EclipseState& eclState,
-                       const Deck& deck,
                        const GridT& grid);
 
     private:
@@ -95,8 +92,7 @@ namespace Ewoms {
         void unscaledEndPointsCheck_(const EclipseState& eclState);
 
         template <class GridT>
-        void scaledEndPointsCheck_(const Deck& deck,
-                                   const EclipseState& eclState,
+        void scaledEndPointsCheck_(const EclipseState& eclState,
                                    const GridT& grid);
 
         ///For every table, need to deal with case by case.

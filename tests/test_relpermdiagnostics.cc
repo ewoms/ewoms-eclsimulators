@@ -49,11 +49,7 @@ BOOST_AUTO_TEST_CASE(diagnosis)
     std::shared_ptr<CounterLog> counterLog = std::make_shared<CounterLog>(Log::DefaultMessageTypes);
     OpmLog::addBackend( "COUNTERLOG" , counterLog );
     RelpermDiagnostics diagnostics;
-    diagnostics.diagnosis(eclState, deck, grid);
-    // the test deck uses tables where the minimum water saturation is greater than one
-    // minus the maximum gas saturation: this results in one message for the unscaled
-    // tables plus one message per cell because no scaling keywords are specified in the
-    // deck, i.e. the scaled parameters are identical to the unscaled ones
-    BOOST_CHECK_EQUAL(1 + 300, counterLog->numMessages(Log::MessageType::Warning));
+    diagnostics.diagnosis(eclState, grid);
+    BOOST_CHECK_EQUAL(1, counterLog->numMessages(Log::MessageType::Warning));
 }
 BOOST_AUTO_TEST_SUITE_END()
