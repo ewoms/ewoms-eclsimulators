@@ -739,7 +739,6 @@ INSTANTIATE_PACK_VECTOR(std::map<std::string,int>)
 INSTANTIATE_PACK_VECTOR(std::pair<std::string,std::vector<size_t>>)
 INSTANTIATE_PACK_VECTOR(std::pair<int,std::vector<int>>)
 INSTANTIATE_PACK_VECTOR(std::pair<int,std::vector<size_t>>)
-INSTANTIATE_PACK_VECTOR(std::string)
 
 #undef INSTANTIATE_PACK_VECTOR
 

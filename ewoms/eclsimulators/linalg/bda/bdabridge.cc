@@ -16,7 +16,9 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
+#include "config.h"
+
+#if HAVE_CUDA
 #include <memory>
 #include <sstream>
 
@@ -237,3 +239,4 @@ Dune::BlockVector<Dune::FieldVector<double, 4>, std::allocator<Dune::FieldVector
 
 }
 
+#endif // HAVE_CUDA

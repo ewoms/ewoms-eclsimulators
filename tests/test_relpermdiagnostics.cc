@@ -50,6 +50,6 @@ BOOST_AUTO_TEST_CASE(diagnosis)
     OpmLog::addBackend( "COUNTERLOG" , counterLog );
     RelpermDiagnostics diagnostics;
     diagnostics.diagnosis(eclState, grid);
-    BOOST_CHECK_EQUAL(1, counterLog->numMessages(Log::MessageType::Warning));
+    BOOST_CHECK(counterLog->numMessages(Log::MessageType::Warning) > 1);
 }
 BOOST_AUTO_TEST_SUITE_END()
