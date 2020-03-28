@@ -210,7 +210,20 @@ namespace Ewoms {
             }
 
             Ewoms::data::Wells wellData() const
-            { return well_state_.report(phase_usage_, Ewoms::UgGridHelpers::globalCell(grid())); }
+            {
+                auto wsrpt = well_state_.report(phase_usage_, Ewoms::UgGridHelpers::globalCell(grid()));
+
+                for (const auto& well : this->wells_ecl_) {
+                    auto xwPos = wsrpt.find(well.name());
+                    if (xwPos == wsrpt.end()) { // No well results.  Unexpected.
+                        continue;
+                    }
+
+                    xwPos->second.current_control.isProducer = well.isProducer();
+                }
+
+                return wsrpt;
+            }
 
             // substract Binv(D)rw from r;
             void apply( BVector& r) const;

@@ -31,12 +31,10 @@
 #include <eflow/eflow_oilwater_polymer_injectivity.hh>
 #endif
 
-#include <ewoms/eclsimulators/eflow/simulatorfullyimplicitblackoil.hh>
 #include <ewoms/eclsimulators/eflow/eflowmain.hh>
 #include <ewoms/common/propertysystem.hh>
 #include <ewoms/common/parametersystem.hh>
 #include <ewoms/eclsimulators/eflow/missingfeatures.hh>
-#include <ewoms/common/resetlocale.hh>
 
 #include <ewoms/eclio/opmlog/opmlog.hh>
 #include <ewoms/eclio/opmlog/eclipseprtlog.hh>
@@ -52,12 +50,9 @@
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
 #include <ewoms/eclio/parser/eclipsestate/checkdeck.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
-#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqassign.hh>
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 
 #include <ewoms/eclio/parser/eclipsestate/schedule/arraydimchecker.hh>
-
-#include <ewoms/common/filesystem.hh>
 
 #if HAVE_DUNE_FEM
 #include <dune/fem/misc/mpimanager.hh>

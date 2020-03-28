@@ -19,6 +19,7 @@
 #define EWOMS_PARALLELOVERLAPPINGILU0_HH
 
 #include <ewoms/eclsimulators/linalg/graphcoloring.hh>
+#include <ewoms/eclsimulators/linalg/preconditionerwithupdate.hh>
 #include <ewoms/eclio/exceptions.hh>
 #include <ewoms/eclio/errormacros.hh>
 #include <dune/common/version.hh>
@@ -501,6 +502,9 @@ namespace Ewoms
 
         typedef typename M :: size_type size_type;
 
+        lower.clear();
+        upper.clear();
+        inv.clear();
         lower.resize( A.N() );
         upper.resize( A.N() );
         inv.resize( A.N() );
@@ -593,7 +597,7 @@ namespace Ewoms
 ///         used, e.g. Dune::OwnerOverlapCommunication
 template<class Matrix, class Domain, class Range, class ParallelInfoT>
 class ParallelOverlappingILU0
-    : public Dune::Preconditioner<Domain,Range>
+    : public Dune::PreconditionerWithUpdate<Domain,Range>
 {
     typedef ParallelInfoT ParallelInfo;
 
@@ -649,6 +653,14 @@ protected:
           cols_.push_back( index );
       }
 
+      void clear()
+      {
+          rows_.clear();
+          values_.clear();
+          cols_.clear();
+          nRows_= 0;
+      }
+
       std::vector< size_type  > rows_;
       std::vector< block_type > values_;
       std::vector< size_type  > cols_;
@@ -694,13 +706,14 @@ public:
           upper_(),
           inv_(),
           comm_(nullptr), w_(w),
-          relaxation_( std::abs( w - 1.0 ) > 1e-15 )
+          relaxation_( std::abs( w - 1.0 ) > 1e-15 ),
+          A_(&reinterpret_cast<const Matrix&>(A)), iluIteration_(n),
+          milu_(milu), redBlack_(redblack), reorderSphere_(reorder_sphere)
     {
         interiorSize_ = A.N();
         // BlockMatrix is a Subclass of FieldMatrix that just adds
         // methods. Therefore this cast should be safe.
-        init( reinterpret_cast<const Matrix&>(A), n, milu, redblack,
-              reorder_sphere  );
+        update();
     }
 
     /*! \brief Constructor gets all parameters to operate the prec.
@@ -724,13 +737,14 @@ public:
           upper_(),
           inv_(),
           comm_(&comm), w_(w),
-          relaxation_( std::abs( w - 1.0 ) > 1e-15 )
+          relaxation_( std::abs( w - 1.0 ) > 1e-15 ),
+          A_(&reinterpret_cast<const Matrix&>(A)), iluIteration_(n),
+          milu_(milu), redBlack_(redblack), reorderSphere_(reorder_sphere)
     {
         interiorSize_ = A.N();
         // BlockMatrix is a Subclass of FieldMatrix that just adds
         // methods. Therefore this cast should be safe.
-        init( reinterpret_cast<const Matrix&>(A), n, milu, redblack,
-              reorder_sphere );
+        update();
     }
 
     /*! \brief Constructor.
@@ -775,13 +789,14 @@ public:
           upper_(),
           inv_(),
           comm_(&comm), w_(w),
-          relaxation_( std::abs( w - 1.0 ) > 1e-15 )
+          relaxation_( std::abs( w - 1.0 ) > 1e-15 ),
+          A_(&reinterpret_cast<const Matrix&>(A)), iluIteration_(0),
+          milu_(milu), redBlack_(redblack), reorderSphere_(reorder_sphere)
     {
         interiorSize_ = A.N();
         // BlockMatrix is a Subclass of FieldMatrix that just adds
         // methods. Therefore this cast should be safe.
-        init( reinterpret_cast<const Matrix&>(A), 0, milu, redblack,
-              reorder_sphere );
+        update();
     }
 
     /*! \brief Constructor.
@@ -809,12 +824,13 @@ public:
           inv_(),
           comm_(&comm), w_(w),
           relaxation_( std::abs( w - 1.0 ) > 1e-15 ),
-          interiorSize_(interiorSize)
+          interiorSize_(interiorSize),
+          A_(&reinterpret_cast<const Matrix&>(A)), iluIteration_(0),
+          milu_(milu), redBlack_(redblack), reorderSphere_(reorder_sphere)
     {
         // BlockMatrix is a Subclass of FieldMatrix that just adds
         // methods. Therefore this cast should be safe.
-        init( reinterpret_cast<const Matrix&>(A), 0, milu, redblack,
-              reorder_sphere  );
+        update( );
     }
 
     /*!
@@ -908,15 +924,14 @@ public:
         DUNE_UNUSED_PARAMETER(x);
     }
 
-protected:
-    void init( const Matrix& A, const int iluIteration, MILU_VARIANT milu, bool redBlack, bool reorderSpheres )
+    virtual void update() override
     {
         // (For older DUNE versions the communicator might be
         // invalid if redistribution in AMG happened on the coarset level.
         // Therefore we check for nonzero size
         if ( comm_ && comm_->communicator().size()<=0 )
         {
-            if ( A.N() > 0 )
+            if ( A_->N() > 0 )
             {
                 EWOMS_THROW(std::logic_error, "Expected a matrix with zero rows for an invalid communicator.");
             }
@@ -933,15 +948,15 @@ protected:
 
         std::unique_ptr< Matrix > ILU;
 
-        if ( redBlack )
+        if ( redBlack_ )
         {
             using Graph = Dune::Amg::MatrixGraph<const Matrix>;
-            Graph graph(A);
+            Graph graph(*A_);
             auto colorsTuple = colorVerticesWelshPowell(graph);
             const auto& colors = std::get<0>(colorsTuple);
             const auto& verticesPerColor = std::get<2>(colorsTuple);
             auto noColors = std::get<1>(colorsTuple);
-            if ( reorderSpheres )
+            if ( reorderSphere_ )
             {
                 ordering_ = reorderVerticesSpheres(colors, noColors, verticesPerColor,
                                                    graph, 0);
@@ -962,27 +977,27 @@ protected:
 
         try
         {
-            if( iluIteration == 0 ) {
+            if( iluIteration_ == 0 ) {
                 // create ILU-0 decomposition
                 if ( ordering_.empty() )
                 {
-                    ILU.reset( new Matrix( A ) );
+                    ILU.reset( new Matrix( *A_ ) );
                 }
                 else
                 {
-                    ILU.reset( new Matrix(A.N(), A.M(), A.nonzeroes(), Matrix::row_wise));
+                    ILU.reset( new Matrix(A_->N(), A_->M(), A_->nonzeroes(), Matrix::row_wise));
                     auto& newA = *ILU;
                     // Create sparsity pattern
                     for(auto iter=newA.createbegin(), iend = newA.createend(); iter != iend; ++iter)
                     {
-                        const auto& row = A[inverseOrdering[iter.index()]];
+                        const auto& row = (*A_)[inverseOrdering[iter.index()]];
                         for(auto col = row.begin(), cend = row.end(); col != cend; ++col)
                         {
                             iter.insert(ordering_[col.index()]);
                         }
                     }
                     // Copy values
-                    for(auto iter = A.begin(), iend = A.end(); iter != iend; ++iter)
+                    for(auto iter = A_->begin(), iend = A_->end(); iter != iend; ++iter)
                     {
                         auto& newRow = newA[ordering_[iter.index()]];
                         for(auto col = iter->begin(), cend = iter->end(); col != cend; ++col)
@@ -992,7 +1007,7 @@ protected:
                     }
                 }
 
-                switch ( milu )
+                switch ( milu_ )
                 {
                 case MILU_VARIANT::MILU_1:
                     detail::milu0_decomposition ( *ILU);
@@ -1010,7 +1025,7 @@ protected:
                                                   detail::IsPositiveFunctor() );
                     break;
                 default:
-                    if (interiorSize_ == A.N())
+                    if (interiorSize_ == A_->N())
                         bilu0_decomposition( *ILU );
                     else
                         detail::ghost_last_bilu0_decomposition(*ILU, interiorSize_);
@@ -1019,7 +1034,7 @@ protected:
             }
             else {
                 // create ILU-n decomposition
-                ILU.reset( new Matrix( A.N(), A.M(), Matrix::row_wise) );
+                ILU.reset( new Matrix( A_->N(), A_->M(), Matrix::row_wise) );
                 std::unique_ptr<detail::Reorderer> reorderer, inverseReorderer;
                 if ( ordering_.empty() )
                 {
@@ -1032,7 +1047,7 @@ protected:
                     inverseReorderer.reset(new detail::RealReorderer(inverseOrdering));
                 }
 
-                milun_decomposition( A, iluIteration, milu, *ILU, *reorderer, *inverseReorderer );
+                milun_decomposition( *A_, iluIteration_, milu_, *ILU, *reorderer, *inverseReorderer );
             }
         }
         catch (const Dune::MatrixBlockError& error)
@@ -1056,6 +1071,7 @@ protected:
         detail::convertToCRS( *ILU, lower_, upper_, inv_ );
     }
 
+protected:
     /// \brief Reorder D if needed and return a reference to it.
     Range& reorderD(const Range& d)
     {
@@ -1126,6 +1142,11 @@ protected:
     const field_type w_;
     const bool relaxation_;
     size_type interiorSize_;
+    const Matrix* A_;
+    int iluIteration_;
+    MILU_VARIANT milu_;
+    bool redBlack_;
+    bool reorderSphere_;
 };
 
 } // end namespace Ewoms

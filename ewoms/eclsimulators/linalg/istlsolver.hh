@@ -22,6 +22,7 @@
 #include <ewoms/eclsimulators/linalg/matrixutils.hh>
 #include <ewoms/eclsimulators/linalg/blackoilamg.hh>
 #include <ewoms/eclsimulators/linalg/cprpreconditioner.hh>
+#include <ewoms/eclsimulators/linalg/getquasiimpesweights.hh>
 #include <ewoms/eclsimulators/linalg/parallelrestrictedadditiveschwarz.hh>
 #include <ewoms/eclsimulators/linalg/paralleloverlappingilu0.hh>
 #include <ewoms/eclsimulators/linalg/extractparallelgridinformationtoistl.hh>
@@ -235,7 +236,7 @@ public:
 #endif
     }
 
-    virtual void apply( const X& x, Y& y ) const
+    virtual void apply( const X& x, Y& y ) const override
     {
         for (auto row = A_.begin(); row.index() < interiorSize_; ++row)
         {
@@ -252,7 +253,7 @@ public:
     }
 
     // y += \alpha * A * x
-    virtual void applyscaleadd (field_type alpha, const X& x, Y& y) const
+    virtual void applyscaleadd (field_type alpha, const X& x, Y& y) const override
     {
         for (auto row = A_.begin(); row.index() < interiorSize_; ++row)
         {
@@ -266,7 +267,7 @@ public:
         ghostLastProject( y );
     }
 
-    virtual const matrix_type& getmat() const { return A_for_precond_; }
+    virtual const matrix_type& getmat() const override { return A_for_precond_; }
 
     communication_type* comm()
     {
@@ -999,29 +1000,7 @@ protected:
 
         Vector getQuasiImpesWeights()
         {
-            Matrix& A = *matrix_;
-            Vector weights(rhs_->size());
-            BlockVector rhs(0.0);
-            rhs[pressureVarIndex] = 1;
-            const auto endi = A.end();
-            for (auto i = A.begin(); i!=endi; ++i) {
-                const auto endj = (*i).end();
-                MatrixBlockType diag_block(0.0);
-                for (auto j=(*i).begin(); j!=endj; ++j) {
-                    if (i.index() == j.index()) {
-                        diag_block = (*j);
-                        break;
-                    }
-                }
-                BlockVector bweights;
-                auto diag_block_transpose = Ewoms::transposeDenseMatrix(diag_block);
-                diag_block_transpose.solve(bweights, rhs);
-                double abs_max =
-                    *std::max_element(bweights.begin(), bweights.end(), [](double a, double b){ return std::abs(a) < std::abs(b); } );
-                bweights /= std::abs(abs_max);
-                weights[i.index()] = bweights;
-            }
-            return weights;
+            return Amg::getQuasiImpesWeights<Matrix,Vector>(*matrix_, pressureVarIndex, /* transpose=*/ true);
         }
 
         Vector getSimpleWeights(const BlockVector& rhs)

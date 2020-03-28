@@ -21,7 +21,6 @@
 #include <sys/utsname.h>
 
 #include <ewoms/eclsimulators/eflow/blackoilmodel.hh>
-#include <ewoms/eclsimulators/eflow/missingfeatures.hh>
 #include <ewoms/eclsimulators/eflow/simulatorfullyimplicitblackoil.hh>
 #include <ewoms/eclsimulators/utils/parallelfilemerger.hh>
 #include <ewoms/eclsimulators/linalg/extractparallelgridinformationtoistl.hh>
@@ -247,7 +246,7 @@ namespace Ewoms
                 if (status)
                     return status;
 
-                setupEebosSimulator(output_cout);
+                setupEebosSimulator();
                 runDiagnostics(output_cout);
                 createSimulator();
 
@@ -353,17 +352,13 @@ namespace Ewoms
                                                      EWOMS_GET_PARAM(TypeTag, bool, EnableLoggingFalloutWarning)));
         }
 
-        void setupEebosSimulator(bool output_cout)
+        void setupEebosSimulator()
         {
             eebosSimulator_.reset(new EebosSimulator(/*verbose=*/false));
             eebosSimulator_->executionTimer().start();
             eebosSimulator_->model().applyInitialSolution();
 
             try {
-                if (output_cout) {
-                    MissingFeatures::checkKeywords(deck());
-                }
-
                 // Possible to force initialization only behavior (NOSIM).
                 const std::string& dryRunString = EWOMS_GET_PARAM(TypeTag, std::string, EnableDryRun);
                 if (dryRunString != "" && dryRunString != "auto") {
