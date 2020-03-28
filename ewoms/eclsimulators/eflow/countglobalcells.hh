@@ -22,7 +22,7 @@
 #include <ewoms/eclsimulators/linalg/parallelistlinformation.hh>
 #include <ewoms/eclsimulators/deprecated/props/blackoilphases.hh>
 
-#include <any>
+#include <ewoms/common/any.hh>
 
 namespace Ewoms {
 namespace detail {
@@ -92,7 +92,7 @@ namespace detail {
         /// \param pinfo           In a parallel this holds the information about the data distribution.
         template <class Iterator>
         inline
-        double euclidianNormSquared( Iterator it, const Iterator end, int num_components, const std::any& pinfo = std::any() )
+        double euclidianNormSquared( Iterator it, const Iterator end, int num_components, const Ewoms::any& pinfo = Ewoms::any() )
         {
             static_cast<void>(num_components); // Suppress warning in the serial case.
             static_cast<void>(pinfo); // Suppress warning in non-MPI case.
@@ -100,7 +100,7 @@ namespace detail {
             if ( pinfo.type() == typeid(ParallelISTLInformation) )
             {
                 const ParallelISTLInformation& info =
-                    std::any_cast<const ParallelISTLInformation&>(pinfo);
+                    Ewoms::any_cast<const ParallelISTLInformation&>(pinfo);
                 typedef typename Iterator::value_type Scalar;
                 Scalar product = 0.0;
                 int size_per_component = (end - it);
@@ -112,8 +112,8 @@ namespace detail {
                     auto component_container =
                         boost::make_iterator_range(it, end);
                     info.computeReduction(component_container,
-                                           Ewoms::Reduction::makeInnerProductFunctor<double>(),
-                                           product);
+                                          Ewoms::Reduction::makeInnerProductFunctor<double>(),
+                                          product);
                 }
                 else
                 {

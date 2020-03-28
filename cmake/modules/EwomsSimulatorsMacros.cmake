@@ -5,3 +5,6 @@
 #
 
 find_package(Boost REQUIRED)
+
+# either std::any or std::experimental::any needs to be supported
+find_package(StdAny REQUIRED)

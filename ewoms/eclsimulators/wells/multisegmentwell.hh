@@ -20,6 +20,7 @@
 #define EWOMS_MULTISEGMENTWELL_HH
 
 #include <ewoms/eclsimulators/wells/wellinterface.hh>
+#include <ewoms/common/optional.hh>
 
 namespace Ewoms
 {
@@ -451,15 +452,15 @@ namespace Ewoms
         // be able to produce/inject .
         bool allDrawDownWrongDirection(const Simulator& eebos_simulator) const;
 
-        std::optional<double> computeBhpAtThpLimitProd(const Simulator& eebos_simulator,
-                                                       const std::vector<Scalar>& B_avg,
-                                                       const SummaryState& summary_state,
-                                                       DeferredLogger& deferred_logger) const;
+        Ewoms::optional<double> computeBhpAtThpLimitProd(const Simulator& eebos_simulator,
+                                                         const std::vector<Scalar>& B_avg,
+                                                         const SummaryState& summary_state,
+                                                         DeferredLogger& deferred_logger) const;
 
-        std::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
-                                                      const std::vector<Scalar>& B_avg,
-                                                      const SummaryState& summary_state,
-                                                      DeferredLogger& deferred_logger) const;
+        Ewoms::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
+                                                        const std::vector<Scalar>& B_avg,
+                                                        const SummaryState& summary_state,
+                                                        DeferredLogger& deferred_logger) const;
 
         double maxPerfPress(const Simulator& eebos_simulator) const;
 

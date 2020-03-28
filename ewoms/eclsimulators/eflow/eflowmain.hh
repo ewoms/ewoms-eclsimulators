@@ -507,7 +507,7 @@ namespace Ewoms
         std::unique_ptr<EebosSimulator> eebosSimulator_;
         int  mpi_rank_ = 0;
         int  mpi_size_ = 1;
-        std::any parallel_information_;
+        Ewoms::any parallel_information_;
         std::unique_ptr<Simulator> simulator_;
     };
 } // namespace Ewoms

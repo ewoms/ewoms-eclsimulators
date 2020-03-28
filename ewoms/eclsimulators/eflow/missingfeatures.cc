@@ -45,6 +45,14 @@ namespace MissingFeatures {
         map.insert(pair);
     }
 
+template <class T>
+std::string optionToString_(std::enable_if_t<std::is_arithmetic<T>::value, T>& val)
+{ return std::to_string(val); }
+
+template <class T>
+std::string optionToString_(std::enable_if_t<!std::is_arithmetic<T>::value, T>& val)
+{ return val; }
+
     template <typename T>
     void checkOptions(const DeckKeyword& keyword, std::multimap<std::string , PartiallySupported<T> >& map, const ParseContext& parseContext, ErrorGuard& errorGuard)
     {
@@ -56,11 +64,7 @@ namespace MissingFeatures {
             const auto& record = keyword.getRecord(0);
             if (record.getItem(it->second.item).template get<T>(0) != it->second.item_value) {
                 const auto& location = keyword.location();
-                std::string val;
-                if constexpr (std::is_arithmetic<T>::value)
-                    val = std::to_string(it->second.item_value);
-                else
-                    val = it->second.item_value;
+                std::string val = optionToString_<decltype(it->second.item_value)>(it->second.item_value);
 
                 std::string msg = "For keyword '" + it->first + "' only value " + val
                     + " in item " + it->second.item + " is supported by eflow.\n"

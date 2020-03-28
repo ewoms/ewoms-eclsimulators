@@ -3564,7 +3564,7 @@ namespace Ewoms
     }
 
     template<typename TypeTag>
-    std::optional<double>
+    Ewoms::optional<double>
     StandardWell<TypeTag>::
     computeBhpAtThpLimitProd(const Simulator& eebos_simulator,
                              const SummaryState& summary_state,
@@ -3728,7 +3728,7 @@ namespace Ewoms
 
         // Handle the no solution case.
         if (sign_change_index == -1) {
-            return std::optional<double>();
+            return Ewoms::optional<double>();
         }
 
         // Solve for the proper solution in the given interval.
@@ -3747,7 +3747,7 @@ namespace Ewoms
             assert(low == controls.bhp_limit);
             deferred_logger.warning("FAILED_ROBUST_BHP_THP_SOLVE",
                                     "Robust bhp(thp) solve failed for well " + name());
-            return std::optional<double>();
+            return Ewoms::optional<double>();
         }
         try {
             const double solved_bhp = RegulaFalsiBisection<>::
@@ -3761,13 +3761,13 @@ namespace Ewoms
         catch (...) {
             deferred_logger.warning("FAILED_ROBUST_BHP_THP_SOLVE",
                                     "Robust bhp(thp) solve failed for well " + name());
-            return std::optional<double>();
+            return Ewoms::optional<double>();
         }
 
     }
 
     template<typename TypeTag>
-    std::optional<double>
+    Ewoms::optional<double>
     StandardWell<TypeTag>::
     computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
                             const SummaryState& summary_state,
@@ -3926,7 +3926,7 @@ namespace Ewoms
 
         // Handle the no solution case.
         if (sign_change_index == -1) {
-            return std::optional<double>();
+            return Ewoms::optional<double>();
         }
 
         // Solve for the proper solution in the given interval.
@@ -3945,7 +3945,7 @@ namespace Ewoms
             assert(low == controls.bhp_limit);
             deferred_logger.warning("FAILED_ROBUST_BHP_THP_SOLVE",
                                     "Robust bhp(thp) solve failed for well " + name());
-            return std::optional<double>();
+            return Ewoms::optional<double>();
         }
         try {
             const double solved_bhp = RegulaFalsiBisection<>::
@@ -3959,7 +3959,7 @@ namespace Ewoms
         catch (...) {
             deferred_logger.warning("FAILED_ROBUST_BHP_THP_SOLVE",
                                     "Robust bhp(thp) solve failed for well " + name());
-            return std::optional<double>();
+            return Ewoms::optional<double>();
         }
 
     }

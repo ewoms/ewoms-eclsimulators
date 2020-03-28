@@ -25,7 +25,7 @@
 #if defined(HAVE_EWOMS_ECLGRIDS)
 #if defined(HAVE_MPI) && defined(HAVE_DUNE_ISTL)
 // Extracts the information about the data decomposition from the grid for dune-istl
-void extractParallelGridInformationToISTL(const Dune::CpGrid& grid, std::any& anyComm)
+void extractParallelGridInformationToISTL(const Dune::CpGrid& grid, Ewoms::any& anyComm)
 {
     if(grid.comm().size()>1)
     {
@@ -33,14 +33,14 @@ void extractParallelGridInformationToISTL(const Dune::CpGrid& grid, std::any& an
         Dune::CpGrid& mgrid=const_cast<Dune::CpGrid&>(grid);
         Dune::CpGrid::ParallelIndexSet& idx=mgrid.getCellIndexSet();
         Dune::CpGrid::RemoteIndices& ridx=mgrid.getCellRemoteIndices();
-        anyComm=std::any(Ewoms::ParallelISTLInformation(Dune::stackobject_to_shared_ptr(idx),
-                                                        Dune::stackobject_to_shared_ptr(ridx),
-                                                        grid.comm()));
+        anyComm=Ewoms::any(Ewoms::ParallelISTLInformation(Dune::stackobject_to_shared_ptr(idx),
+                                                          Dune::stackobject_to_shared_ptr(ridx),
+                                                          grid.comm()));
     }
 }
 #else
 // Missing support for MPI or dune-istl -> do nothing.
-void extractParallelGridInformationToISTL(const Dune::CpGrid&, std::any&)
+void extractParallelGridInformationToISTL(const Dune::CpGrid&, Ewoms::any&)
 {}
 #endif //defined(HAVE_MPI) && defined(HAVE_DUNE_ISTL)
 #endif //defined(HAVE_EWOMS_ECLGRIDS)

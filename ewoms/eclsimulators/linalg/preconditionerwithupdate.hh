@@ -20,6 +20,7 @@
 #define EWOMS_PRECONDITIONERWITHUPDATE_HH
 
 #include <dune/istl/preconditioner.hh>
+#include <dune/istl/solvercategory.hh>
 #include <memory>
 
 namespace Dune

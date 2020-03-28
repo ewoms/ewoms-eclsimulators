@@ -88,9 +88,16 @@ public:
                 Grid::dimensionworld;
             const auto& idSet = m_grid.localIdSet();
             const auto& gridView = m_grid.levelGridView(0);
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
             using ElementMapper =
                 Dune::MultipleCodimMultipleGeomTypeMapper<typename Grid::LevelGridView>;
             ElementMapper elemMapper(gridView, Dune::mcmgElementLayout());
+#else
+            using ElementMapper =
+                Dune::MultipleCodimMultipleGeomTypeMapper<typename Grid::LevelGridView,
+                                                          Dune::MCMGElementLayout>;
+            ElementMapper elemMapper(gridView);
+#endif
 
             for( const auto &element : elements( gridView, Dune::Partitions::interiorBorder ) )
             {
@@ -139,9 +146,17 @@ public:
         // copy data for the persistent mao to the field properties
         const auto& idSet = m_grid.localIdSet();
         const auto& gridView = m_grid.levelGridView(0);
-        using ElementMapper =
-            Dune::MultipleCodimMultipleGeomTypeMapper<typename Grid::LevelGridView>;
-        ElementMapper elemMapper(gridView, Dune::mcmgElementLayout());
+
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
+            using ElementMapper =
+                Dune::MultipleCodimMultipleGeomTypeMapper<typename Grid::LevelGridView>;
+            ElementMapper elemMapper(gridView, Dune::mcmgElementLayout());
+#else
+            using ElementMapper =
+                Dune::MultipleCodimMultipleGeomTypeMapper<typename Grid::LevelGridView,
+                                                          Dune::MCMGElementLayout>;
+            ElementMapper elemMapper(gridView);
+#endif
 
         for( const auto &element : elements( gridView, Dune::Partitions::all ) )
         {

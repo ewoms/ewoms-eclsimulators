@@ -78,7 +78,10 @@ std::size_t packSize(const T& data, Dune::MPIHelper::MPICommunicator comm)
 }
 
 template<class T1, class T2>
-std::size_t packSize(const std::pair<T1,T2>& data, Dune::MPIHelper::MPICommunicator comm);
+std::size_t packSize(const std::pair<T1,T2>& data, Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.first, comm) + packSize(data.second, comm);
+}
 
 template<class T, class A>
 std::size_t packSize(const std::vector<T,A>& data, Dune::MPIHelper::MPICommunicator comm);
@@ -103,6 +106,12 @@ std::size_t packSize(const std::array<T,N>& data, Dune::MPIHelper::MPICommunicat
 std::size_t packSize(const char* str, Dune::MPIHelper::MPICommunicator comm);
 
 std::size_t packSize(const std::string& str, Dune::MPIHelper::MPICommunicator comm);
+
+inline void pack(const std::string& str, std::vector<char>& buffer, int& position,
+                 Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(str.c_str(), buffer, position, comm);
+}
 
 template<class T1, class T2, class C, class A>
 std::size_t packSize(const std::map<T1,T2,C,A>& data, Dune::MPIHelper::MPICommunicator comm);
@@ -155,7 +164,11 @@ void pack(const T& data, std::vector<char>& buffer, int& position,
 
 template<class T1, class T2>
 void pack(const std::pair<T1,T2>& data, std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm);
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.first, buffer, position, comm);
+    pack(data.second, buffer, position, comm);
+}
 
 template<class T, class A>
 void pack(const std::vector<T,A>& data, std::vector<char>& buffer, int& position,
@@ -240,7 +253,11 @@ void unpack(T& data, std::vector<char>& buffer, int& position,
 
 template<class T1, class T2>
 void unpack(std::pair<T1,T2>& data, std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm);
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    unpack(data.first, buffer, position, comm);
+    unpack(data.second, buffer, position, comm);
+}
 
 template<class T, class A>
 void unpack(std::vector<T,A>& data, std::vector<char>& buffer, int& position,

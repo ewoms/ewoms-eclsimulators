@@ -132,7 +132,11 @@ public:
         const auto& cartDims = cartMapper.cartesianDimensions();
         auto& transMult = eclState.getTransMult();
         const auto& comm = vanguard_.gridView().comm();
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
         ElementMapper elemMapper(gridView, Dune::mcmgElementLayout());
+#else
+        ElementMapper elemMapper(gridView);
+#endif
 
         // get the ntg values, the ntg values are modified for the cells merged with minpv
         const std::vector<double>& ntg = eclState.fieldProps().get_double("NTG");

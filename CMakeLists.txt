@@ -24,6 +24,9 @@ ewoms_project()
 # find the packages needed to compile the unit tests
 find_package(Boost OPTIONAL_COMPONENTS unit_test_framework REQUIRED)
 
+# either std::any or std::experimental::any needs to be supported
+find_package(StdAny REQUIRED)
+
 # we want all features detected by the build system to be enabled,
 # thank you!
 dune_enable_all_packages()

@@ -29,6 +29,7 @@
 #include <ewoms/numerics/models/blackoil/blackoilbrinemodules.hh>
 
 #include <ewoms/common/densead/dynamicevaluation.hh>
+#include <ewoms/common/optional.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/scheduletypes.hh>
 
 #include <dune/common/dynvector.hh>
@@ -508,13 +509,13 @@ namespace Ewoms
                                         const int perf,
                                         DeferredLogger& deferred_logger);
 
-        std::optional<double> computeBhpAtThpLimitProd(const Simulator& eebos_simulator,
-                                                       const SummaryState& summary_state,
-                                                       DeferredLogger& deferred_logger) const;
+        Ewoms::optional<double> computeBhpAtThpLimitProd(const Simulator& eebos_simulator,
+                                                         const SummaryState& summary_state,
+                                                         DeferredLogger& deferred_logger) const;
 
-        std::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
-                                                      const SummaryState& summary_state,
-                                                      DeferredLogger& deferred_logger) const;
+        Ewoms::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
+                                                        const SummaryState& summary_state,
+                                                        DeferredLogger& deferred_logger) const;
 
     };
 

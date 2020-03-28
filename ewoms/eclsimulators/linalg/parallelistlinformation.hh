@@ -20,9 +20,10 @@
 
 #include <ewoms/eclgrids/unstructuredgrid.h>
 #include <ewoms/eclio/errormacros.hh>
-#include <any>
+#include <ewoms/common/any.hh>
 #include <exception>
 
+#include <experimental/any>
 #include <algorithm>
 #include <functional>
 #include <limits>
@@ -586,7 +587,7 @@ private:
                 return std::max(t1, t2);
             }
         };
-        return MaskToMinOperator(MaxOp());
+        return MaskToMinOperator<MaxOp>(MaxOp());
     }
 
     namespace detail
@@ -630,7 +631,6 @@ private:
     /// \brief Create a functor for computing a global minimum.
     ///
     /// To be used with ParallelISTLInformation::computeReduction.
-#if DUNE_VERSION_NEWER(DUNE_ISTL, 2,6)
     template<class T>
     auto
     makeGlobalMinFunctor()
@@ -643,8 +643,9 @@ private:
                 return std::min(t1, t2);
             }
         };
-        return MaskToMaxOperator(MinOp());
+        return MaskToMaxOperator<MinOp>(MinOp());
     }
+
     template<class T>
     InnerProductFunctor<T>
     makeInnerProductFunctor()
@@ -653,8 +654,6 @@ private:
     }
     } // end namespace Reduction
 } // end namespace Ewoms
-
-#endif
 
 namespace Ewoms
 {
@@ -668,7 +667,7 @@ namespace Ewoms
 /// then this will ecapsulate an instance of ParallelISTLInformation.
 /// \param grid The grid to inspect.
 
-inline void extractParallelGridInformationToISTL(std::any& anyComm, const UnstructuredGrid& grid)
+inline void extractParallelGridInformationToISTL(Ewoms::any& anyComm, const UnstructuredGrid& grid)
 {
     (void)anyComm; (void)grid;
 }

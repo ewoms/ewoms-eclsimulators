@@ -22,6 +22,7 @@
 
 #include "parallelrestart.hh"
 #include <dune/common/parallel/mpitraits.hh>
+#include <ewoms/eclio/parser/eclipsestate/aquancon.hh>
 
 #define HANDLE_AS_POD(T) \
   std::size_t packSize(const T& data, Dune::MPIHelper::MPICommunicator comm) \
@@ -70,12 +71,6 @@ template<class T>
 std::size_t packSize(const T* data, std::size_t l, Dune::MPIHelper::MPICommunicator comm)
 {
     return packSize(data, l, comm, typename std::is_pod<T>::type());
-}
-
-template<class T1, class T2>
-std::size_t packSize(const std::pair<T1,T2>& data, Dune::MPIHelper::MPICommunicator comm)
-{
-    return packSize(data.first, comm) + packSize(data.second, comm);
 }
 
 template<class T, class A>
@@ -273,14 +268,6 @@ void pack(const T* data, std::size_t l, std::vector<char>& buffer, int& position
     pack(data, l, buffer, position, comm, typename std::is_pod<T>::type());
 }
 
-template<class T1, class T2>
-void pack(const std::pair<T1,T2>& data, std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm)
-{
-    pack(data.first, buffer, position, comm);
-    pack(data.second, buffer, position, comm);
-}
-
 template<class T, class A>
 void pack(const std::vector<T, A>& data, std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm)
@@ -381,12 +368,6 @@ void pack(const char* str, std::vector<char>& buffer, int& position,
     (void) buffer;
     (void) position;
 #endif
-}
-
-void pack(const std::string& str, std::vector<char>& buffer, int& position,
-          Dune::MPIHelper::MPICommunicator comm)
-{
-    pack(str.c_str(), buffer, position, comm);
 }
 
 template<class T1, class T2, class C, class A>
@@ -499,14 +480,6 @@ void unpack(T* data, const std::size_t& l, std::vector<char>& buffer, int& posit
             Dune::MPIHelper::MPICommunicator comm)
 {
     unpack(data, l, buffer, position, comm, typename std::is_pod<T>::type());
-}
-
-template<class T1, class T2>
-void unpack(std::pair<T1,T2>& data, std::vector<char>& buffer, int& position,
-            Dune::MPIHelper::MPICommunicator comm)
-{
-    unpack(data.first, buffer, position, comm);
-    unpack(data.second, buffer, position, comm);
 }
 
 template<class T, class A>
@@ -739,6 +712,7 @@ INSTANTIATE_PACK_VECTOR(std::map<std::string,int>)
 INSTANTIATE_PACK_VECTOR(std::pair<std::string,std::vector<size_t>>)
 INSTANTIATE_PACK_VECTOR(std::pair<int,std::vector<int>>)
 INSTANTIATE_PACK_VECTOR(std::pair<int,std::vector<size_t>>)
+INSTANTIATE_PACK_VECTOR(Ewoms::Aquancon::AquancCell);
 
 #undef INSTANTIATE_PACK_VECTOR
 

@@ -129,14 +129,14 @@ public:
   WellModelMatrixAdapter (const M& A,
                           const M& A_for_precond,
                           const WellModel& wellMod,
-                          const std::any& parallelInformation EWOMS_UNUSED_NOMPI = std::any() )
+                          const Ewoms::any& parallelInformation EWOMS_UNUSED_NOMPI = Ewoms::any() )
       : A_( A ), A_for_precond_(A_for_precond), wellMod_( wellMod ), comm_()
   {
 #if HAVE_MPI
     if( parallelInformation.type() == typeid(ParallelISTLInformation) )
     {
       const ParallelISTLInformation& info =
-          std::any_cast<const ParallelISTLInformation&>( parallelInformation);
+          Ewoms::any_cast<const ParallelISTLInformation&>( parallelInformation);
       comm_.reset( new communication_type( info.communicator() ) );
     }
 #endif
@@ -212,25 +212,34 @@ public:
     typedef Dune::CollectiveCommunication< int > communication_type;
 #endif
 
-    Dune::SolverCategory::Category category() const override
-    {
-        return overlapping ?
-            Dune::SolverCategory::overlapping : Dune::SolverCategory::sequential;
-    }
+#if DUNE_VERSION_NEWER(DUNE_ISTL, 2, 6)
+  Dune::SolverCategory::Category category() const override
+  {
+    return overlapping ?
+           Dune::SolverCategory::overlapping : Dune::SolverCategory::sequential;
+  }
+#else
+  enum {
+    //! \brief The solver category.
+    category = overlapping ?
+        Dune::SolverCategory::overlapping :
+        Dune::SolverCategory::sequential
+  };
+#endif
 
     //! constructor: just store a reference to a matrix
     WellModelGhostLastMatrixAdapter (const M& A,
                                      const M& A_for_precond,
                                      const WellModel& wellMod,
                                      const size_t interiorSize,
-                                     const std::any& parallelInformation EWOMS_UNUSED_NOMPI = std::any() )
+                                     const Ewoms::any& parallelInformation EWOMS_UNUSED_NOMPI = Ewoms::any() )
         : A_( A ), A_for_precond_(A_for_precond), wellMod_( wellMod ), interiorSize_(interiorSize), comm_()
     {
 #if HAVE_MPI
         if( parallelInformation.type() == typeid(ParallelISTLInformation) )
         {
             const ParallelISTLInformation& info =
-                std::any_cast<const ParallelISTLInformation&>( parallelInformation);
+                Ewoms::any_cast<const ParallelISTLInformation&>( parallelInformation);
             comm_.reset( new communication_type( info.communicator() ) );
         }
 #endif
@@ -369,9 +378,17 @@ protected:
                 // For some reason simulator_.model().elementMapper() is not initialized at this stage
                 // Hence const auto& elemMapper = simulator_.model().elementMapper(); does not work.
                 // Set it up manually
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
                 using ElementMapper =
                     Dune::MultipleCodimMultipleGeomTypeMapper<GridView>;
                 ElementMapper elemMapper(simulator_.vanguard().grid().leafGridView(), Dune::mcmgElementLayout());
+#else
+                using ElementMapper =
+                    Dune::MultipleCodimMultipleGeomTypeMapper<GridView,
+                                                              Dune::MCMGElementLayout>;
+                ElementMapper elemMapper(simulator_.vanguard().grid().leafGridView());
+#endif
+
                 detail::findOverlapAndInterior(gridForConn, elemMapper, overlapRows_, interiorRows_);
                 if (gridForConn.comm().size() > 1) {
 
@@ -505,7 +522,7 @@ protected:
         int iterations () const { return iterations_; }
 
         /// \copydoc NewtonIterationBlackoilInterface::parallelInformation
-        const std::any& parallelInformation() const { return parallelInformation_; }
+        const Ewoms::any& parallelInformation() const { return parallelInformation_; }
 
     protected:
         /// \brief construct the CPR preconditioner and the solver.
@@ -720,7 +737,7 @@ protected:
             if (parallelInformation_.type() == typeid(ParallelISTLInformation))
             {
                 const ParallelISTLInformation& info =
-                    std::any_cast<const ParallelISTLInformation&>( parallelInformation_);
+                    Ewoms::any_cast<const ParallelISTLInformation&>( parallelInformation_);
                 Comm istlComm(info.communicator());
 
                 // Construct operator, scalar product and vectors needed.
@@ -756,7 +773,7 @@ protected:
             {
                 const size_t size = opA.getmat().N();
                 const ParallelISTLInformation& info =
-                    std::any_cast<const ParallelISTLInformation&>( parallelInformation_);
+                    Ewoms::any_cast<const ParallelISTLInformation&>( parallelInformation_);
 
                 // As we use a dune-istl with block size np the number of components
                 // per parallel is only one.
@@ -819,9 +836,16 @@ protected:
             // For some reason simulator_.model().elementMapper() is not initialized at this stage.
             // Hence const auto& elemMapper = simulator_.model().elementMapper(); does not work.
             // Set it up manually
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
             using ElementMapper =
                 Dune::MultipleCodimMultipleGeomTypeMapper<GridView>;
             ElementMapper elemMapper(simulator_.vanguard().grid().leafGridView(), Dune::mcmgElementLayout());
+#else
+            using ElementMapper =
+                Dune::MultipleCodimMultipleGeomTypeMapper<GridView,
+                                                          Dune::MCMGElementLayout>;
+            ElementMapper elemMapper(simulator_.vanguard().grid().leafGridView());
+#endif
             typedef typename Matrix::size_type size_type;
             size_type numCells = grid.size( 0 );
             noGhostMat_.reset(new Matrix(numCells, numCells, Matrix::random));
@@ -1074,7 +1098,7 @@ protected:
         const Simulator& simulator_;
         mutable int iterations_;
         mutable bool converged_;
-        std::any parallelInformation_;
+        Ewoms::any parallelInformation_;
 
         std::unique_ptr<Matrix> matrix_;
         std::unique_ptr<Matrix> noGhostMat_;
