@@ -692,7 +692,7 @@ public:
             drift_ = 0.0;
         }
 
-        if (enableExperiments)
+        if (enableExperiments && this->gridView().comm().rank() == 0)
             checkDeckCompatibility_();
 
         // write the static output files (EGRID, INIT, SMSPEC, etc.)
@@ -2747,7 +2747,7 @@ private:
         if (!eclState.fieldProps().has_int(name))
             return;
 
-        const auto& numData = eclState.fieldProps().template get_copy<int>(name);
+        const auto& numData = eclState.fieldProps().get_int(name);
         const auto& vanguard = simulator.vanguard();
 
         unsigned numElems = vanguard.gridView().size(/*codim=*/0);

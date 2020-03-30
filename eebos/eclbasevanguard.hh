@@ -27,6 +27,9 @@
 #ifndef EWOMS_ECL_BASE_VANGUARD_HH
 #define EWOMS_ECL_BASE_VANGUARD_HH
 
+#include <ewoms/eclsimulators/utils/paralleleclipsestate.hh>
+#include <ewoms/eclsimulators/utils/parallelserialization.hh>
+
 #include <ewoms/numerics/io/basevanguard.hh>
 #include <ewoms/common/propertysystem.hh>
 #include <ewoms/common/parametersystem.hh>
@@ -438,23 +441,52 @@ public:
         else
             errorGuard_ = externalErrorGuard_;
 
+        if (myRank == 0)
+            setupEclObjectsOnMaster_(fileName);
+        else {
+            internalEclSummaryConfig_.reset(new Ewoms::SummaryConfig);
+            internalEclSchedule_.reset(new Ewoms::Schedule);
+            internalEclState_.reset(new Ewoms::ParallelEclipseState);
+
+            eclSummaryConfig_ = internalEclSummaryConfig_.get();
+            eclSchedule_ = internalEclSchedule_.get();
+            eclState_ = internalEclState_.get();
+        }
+#if HAVE_MPI
+        Ewoms::eclStateBroadcast(*eclState_, *eclSchedule_, *eclSummaryConfig_);
+#endif
+
+        summaryState_.reset(new Ewoms::SummaryState(std::chrono::system_clock::from_time_t(this->eclSchedule_->getStartTime())));
+
+        // Possibly override IOConfig setting for how often RESTART files should get
+        // written to disk (every N report steps)
+        int outputInterval = EWOMS_GET_PARAM(TypeTag, int, EclOutputInterval);
+        if (outputInterval >= 0)
+            schedule().restart().overrideRestartWriteInterval(outputInterval);
+    }
+
+    void setupEclObjectsOnMaster_(const std::string& fileName)
+    {
         if (!externalDeck_) {
-            if (myRank == 0)
-                std::cout << "Reading the deck file '" << fileName << "'" << std::endl;
+            std::cout << "Reading the deck file '" << fileName << "'" << std::endl;
 
             Ewoms::Parser parser;
             internalDeck_.reset(new Ewoms::Deck(parser.parseFile(fileName, *parseContext_, *errorGuard_)));
             deck_ = internalDeck_.get();
 
-            if (enableExperiments && myRank == 0)
+            if (enableExperiments)
                 Ewoms::checkDeck(*deck_, parser,  *parseContext_, *errorGuard_);
         }
-        else {
+        else
             deck_ = externalDeck_;
-        }
 
         if (!externalEclState_) {
+#if HAVE_MPI
+            internalEclState_.reset(new Ewoms::ParallelEclipseState(*deck_));
+#else
             internalEclState_.reset(new Ewoms::EclipseState(*deck_));
+#endif
+
             eclState_ = internalEclState_.get();
         }
         else {
@@ -468,22 +500,33 @@ public:
             // create the schedule object. Note that if eclState is supposed to represent
             // the internalized version of the deck, this constitutes a layering
             // violation.
-            internalEclSchedule_.reset(new Ewoms::Schedule(*deck_, *eclState_, *parseContext_, *errorGuard_));
+
+            const bool initFromRestartFile = !EWOMS_GET_PARAM(TypeTag, bool, SchedRestart);
+            const auto& initConfig = eclState_->getInitConfig();
+            if (initConfig.restartRequested() && initFromRestartFile) {
+                int reportStepNum = initConfig.getRestartStep();
+                const auto& rstFileName = eclState_->getIOConfig().getRestartFileName(initConfig.getRestartRootName(), reportStepNum, false);
+                Ewoms::EclIO::ERst rstFile(rstFileName);
+                const auto& rstState = Ewoms::RestartIO::RstState::load(rstFile, reportStepNum);
+                internalEclSchedule_.reset(new Ewoms::Schedule(*deck_, *eclState_, *parseContext_, *errorGuard_, &rstState));
+            }
+            else
+                internalEclSchedule_.reset(new Ewoms::Schedule(*deck_, *eclState_, *parseContext_, *errorGuard_));
+
             eclSchedule_ = internalEclSchedule_.get();
         }
         else
             eclSchedule_ = externalEclSchedule_;
-        this->summaryState_.reset( new Ewoms::SummaryState( std::chrono::system_clock::from_time_t(this->eclSchedule_->getStartTime() )));
 
         if (!externalEclSummaryConfig_) {
             // create the schedule object. Note that if eclState is supposed to represent
             // the internalized version of the deck, this constitutes a layering
             // violation.
             internalEclSummaryConfig_.reset(new Ewoms::SummaryConfig(*deck_,
-                                                                   *eclSchedule_,
-                                                                   eclState_->getTableManager(),
-                                                                   *parseContext_,
-                                                                   *errorGuard_));
+                                                                     *eclSchedule_,
+                                                                     eclState_->getTableManager(),
+                                                                     *parseContext_,
+                                                                     *errorGuard_));
 
             eclSummaryConfig_ = internalEclSummaryConfig_.get();
         }
@@ -496,12 +539,6 @@ public:
 
             throw std::runtime_error("Unrecoverable errors were encountered while loading input.");
         }
-
-        // Possibly override IOConfig setting for how often RESTART files should get
-        // written to disk (every N report step)
-        int outputInterval = EWOMS_GET_PARAM(TypeTag, int, EclOutputInterval);
-        if (outputInterval >= 0)
-            schedule().restart().overrideRestartWriteInterval(outputInterval);
     }
 
     /*!
@@ -680,7 +717,12 @@ protected:
         asImp_().updateOutputDir_();
         asImp_().finalizeInit_();
 
-        if (enableExperiments) {
+        int myRank = 0;
+#if HAVE_MPI
+        MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+#endif
+
+        if (enableExperiments && myRank == 0) {
             Ewoms::RelpermDiagnostics relpermDiagnostics;
             relpermDiagnostics.diagnosis(*eclState_, asImp_().grid());
         }

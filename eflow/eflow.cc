@@ -374,9 +374,9 @@ int main(int argc, char** argv)
                 eclipseState.reset(new Ewoms::ParallelEclipseState);
             }
             Ewoms::eclStateBroadcast(*eclipseState, *schedule, *summaryConfig);
-#endif
 
-            Ewoms::checkConsistentArrayDimensions(*eclipseState, *schedule, parseContext, errorGuard);
+            this->summaryState_.reset(new Ewoms::SummaryState(std::chrono::system_clock::from_time_t(this->eclSchedule_->getStartTime())));
+#endif
 
             if (errorGuard) {
                 errorGuard.dump();

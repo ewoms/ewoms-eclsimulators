@@ -25,12 +25,54 @@
 
 namespace Ewoms {
 
-/*! \brief Class for (de-)serializing and broadcasting data in parallel.
+/*! \brief Class for (de-)serializing and broadcasting data for MPI runs.
  *!  \details Can be called on any class with a serializeOp member. Such classes
  *!           are referred to as 'complex types' in the documentation.
 */
 
-class EclMpiSerializer {
+class EclMpiSerializer
+{
+    //! \brief Predicate for detecting pairs.
+    template<class T>
+    struct is_pair : std::false_type {};
+
+    template<class T1, class T2>
+    struct is_pair<std::pair<T1,T2>> : std::true_type {};
+
+    //! \brief Predicate for detecting vectors.
+    template<class T>
+    struct is_vector : std::false_type {};
+
+    template<class T1>
+    struct is_vector<std::vector<T1>> : std::true_type {};
+
+    //! \brief Predicate for smart pointers.
+    template<class T>
+    struct is_ptr : std::false_type {};
+
+    template<class T1>
+    struct is_ptr<std::shared_ptr<T1>> : std::true_type {};
+
+    template<class T1, class Deleter>
+    struct is_ptr<std::unique_ptr<T1, Deleter>> : std::true_type {};
+
+    //! \brief Predicate for DynamicState.
+    template<class T>
+    struct is_dynamic_state : std::false_type { };
+
+    template<class T1>
+    struct is_dynamic_state<DynamicState<T1>>  : std::true_type { };
+
+    //! \brief Predicate for determining wheter an onbject has a template method called serializeOp().
+    template <typename... Ts>
+    using void_t = void;
+
+    template <typename T, typename = void>
+    struct hasSerializeOp : std::false_type {};
+
+    template <typename T>
+    struct hasSerializeOp<T, void_t<decltype(&T::template serializeOp<EclMpiSerializer>)>> : std::true_type {};
+
 public:
     //! \brief Constructor.
     //! \param comm The global communicator to broadcast using
@@ -44,67 +86,86 @@ public:
     template<class T>
     void operator()(const T& data)
     {
+        bool isHandled = false;
+
+        isHandled = isHandled || ptr_(data, is_ptr<T>());
+        isHandled = isHandled || pair_(data, is_pair<T>());
+        isHandled = isHandled || vector_(data, is_vector<T>());
+        isHandled = isHandled || serializeOp_(data, hasSerializeOp<T>());
+
+        if (!isHandled)
+            primitive(data);
+    }
+
+    template<class T>
+    bool primitive(const T& data)
+    {
         if (m_op == Operation::PACKSIZE)
             m_packSize += Mpi::packSize(data, comm_);
         else if (m_op == Operation::PACK)
             Mpi::pack(data, m_buffer, m_position, comm_);
         else if (m_op == Operation::UNPACK)
             Mpi::unpack(const_cast<T&>(data), m_buffer, m_position, comm_);
+
+        return true;
     }
 
     //! \brief Handler for vectors.
     //! \tparam T Type for vector elements
     //! \param data The vector to (de-)serialize
-    template<class T>
-    void vector(std::vector<T>& data)
-    {
-        auto handle = [&](auto& d)
-        {
-            for (auto& it : d) {
-                (*this)(it);
-            }
-        };
+    template<class T, bool dummy = true>
+    void vector(const std::vector<T>& data)
+    { vector_(data, std::true_type()); }
 
+private:
+    template<class T>
+    bool vector_(T& data, std::true_type)
+    {
         if (m_op == Operation::PACKSIZE) {
             m_packSize += Mpi::packSize(data.size(), comm_);
-            handle(data);
+            for (const auto& it : data)
+                (*this)(it);
         } else if (m_op == Operation::PACK) {
             Mpi::pack(data.size(), m_buffer, m_position, comm_);
-            handle(data);
+            for (const auto& it : data)
+                (*this)(it);
         } else if (m_op == Operation::UNPACK) {
             size_t size;
             Mpi::unpack(size, m_buffer, m_position, comm_);
-            data.resize(size);
-            handle(data);
+            const_cast<std::remove_const_t<T>&>(data).resize(size);
+            for (const auto& it : data)
+                (*this)(it);
         }
+
+        return true;
     }
 
+    template<class T>
+    bool vector_(T& data, std::false_type)
+    { return false; }
+
+public:
     //! \brief Handler for maps.
     //! \tparam Map map type
     //! \tparam complexType Whether or not Data in map is a complex type
     //! \param map The map to (de-)serialize
     template<class Map, bool complexType = true>
-    void map(Map& data)
+    bool map(Map& data)
     {
         using Key = typename Map::key_type;
         using Data = typename Map::mapped_type;
-
-        auto handle = [&](auto& d)
-        {
-            (*this)(d);
-        };
 
         if (m_op == Operation::PACKSIZE) {
             m_packSize += Mpi::packSize(data.size(), comm_);
             for (auto& it : data) {
                 m_packSize += Mpi::packSize(it.first, comm_);
-                handle(it.second);
+                (*this)(it.second);
             }
         } else if (m_op == Operation::PACK) {
             Mpi::pack(data.size(), m_buffer, m_position, comm_);
             for (auto& it : data) {
                 Mpi::pack(it.first, m_buffer, m_position, comm_);
-                handle(it.second);
+                (*this)(it.second);
             }
         } else if (m_op == Operation::UNPACK) {
             size_t size;
@@ -113,12 +174,83 @@ public:
                 Key key;
                 Mpi::unpack(key, m_buffer, m_position, comm_);
                 Data entry;
-                handle(entry);
+                (*this)(entry);
                 data.insert(std::make_pair(key, entry));
             }
         }
+
+        return true;
     }
 
+    //! \brief Handler for pairs.
+    //! \details If data is POD or a string, we pass it to the underlying serializer,
+    //!          if not we assume a complex type.
+    template<class T1, class T2>
+    void pair(const std::pair<T1,T2>& data)
+    { pair_(data, std::true_type()); }
+
+private:
+    template<class T1, class T2>
+    bool pair_(const std::pair<T1,T2>& data, std::true_type)
+    {
+        if constexpr (hasSerializeOp<T1>::value)
+            data.first.serializeOp(*this);
+        else
+            (*this)(data.first);
+
+        if constexpr (hasSerializeOp<T2>::value)
+            const_cast<T2&>(data.second).serializeOp(*this);
+        else
+            (*this)(data.second);
+
+        return true;
+    }
+
+    template<class T>
+    bool pair_(const T& data, std::false_type)
+    { return false; }
+
+public:
+    //! \brief Handler for smart pointers.
+    //! \details If data is POD or a string, we pass it to the underlying serializer,
+    //!          if not we assume a complex type.
+    template<class PtrType>
+    void ptr(const PtrType& data)
+    { ptr_(data, std::true_type()); }
+
+private:
+    template<class PtrType>
+    bool ptr_(const PtrType& data, std::true_type)
+    {
+        using T1 = typename PtrType::element_type;
+        bool value = data ? true : false;
+        (*this)(value);
+        if (m_op == Operation::UNPACK && value)
+            const_cast<PtrType&>(data).reset(new T1);
+        if (data)
+            data->serializeOp(*this);
+
+        return true;
+    }
+
+    template<class PtrType>
+    bool ptr_(const PtrType& data, std::false_type)
+    { return false; }
+
+
+    template<class T>
+    bool serializeOp_(const T& data, std::true_type)
+    {
+        const_cast<T&>(data).serializeOp(*this);
+
+        return true;
+    }
+
+    template<class PtrType>
+    bool serializeOp_(const PtrType& data, std::false_type)
+    { return false; }
+
+public:
     //! \brief Call this to serialize data.
     //! \tparam T Type of class to serialize
     //! \param data Class to serialize
@@ -154,7 +286,6 @@ public:
         if (comm_.size() == 1)
             return;
 
-#if HAVE_MPI
         if (comm_.rank() == 0) {
             pack(data);
             comm_.broadcast(&m_position, 1, 0);
@@ -165,7 +296,6 @@ public:
             comm_.broadcast(m_buffer.data(), m_packSize, 0);
             unpack(data);
         }
-#endif
     }
 
     //! \brief Returns current position in buffer.
@@ -181,13 +311,14 @@ public:
     }
 
 protected:
+    //! \brief Enumeration of operations.
     enum class Operation {
-        PACKSIZE,
-        PACK,
-        UNPACK
+        PACKSIZE, //!< Calculating serialization buffer size
+        PACK,     //!< Performing serialization
+        UNPACK    //!< Performing de-serialization
     };
 
-    Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator> comm_;  //!< Communicator to broadcast using
+    Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator> comm_; //!< Communicator to broadcast using
 
     Operation m_op = Operation::PACKSIZE; //!< Current operation
     size_t m_packSize = 0; //!< Required buffer size after PACKSIZE has been done
