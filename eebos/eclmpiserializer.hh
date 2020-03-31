@@ -193,15 +193,8 @@ private:
     template<class T1, class T2>
     bool pair_(const std::pair<T1,T2>& data, std::true_type)
     {
-        if constexpr (hasSerializeOp<T1>::value)
-            data.first.serializeOp(*this);
-        else
-            (*this)(data.first);
-
-        if constexpr (hasSerializeOp<T2>::value)
-            const_cast<T2&>(data.second).serializeOp(*this);
-        else
-            (*this)(data.second);
+        (*this)(data.first);
+        (*this)(data.second);
 
         return true;
     }
