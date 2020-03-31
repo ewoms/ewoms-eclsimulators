@@ -290,7 +290,6 @@ private:
         const auto& gridView = vanguard.gridView();
         const auto& elementMapper = simulator_.model().elementMapper();
         const auto& eclState = simulator_.vanguard().eclState();
-        const auto& deck = simulator_.vanguard().deck();
         const Ewoms::SimulationConfig& simConfig = eclState.getSimulationConfig();
         const auto& thpres = simConfig.getThresholdPressure();
 
@@ -343,30 +342,32 @@ private:
             }
         }
 
-        if (enableExperiments) {
+        if (enableExperiments)
             // apply threshold pressures accross faults (experimental!)
-            if (deck.hasKeyword("THPRESFT"))
-                extractThpresft_(deck.getKeyword("THPRESFT"));
-        }
+            extractThpresft_();
 
     }
 
-    void extractThpresft_(const Ewoms::DeckKeyword& thpresftKeyword)
+    void extractThpresft_()
     {
         // retrieve the faults collection.
         const Ewoms::EclipseState& eclState = simulator_.vanguard().eclState();
         const Ewoms::FaultCollection& faults = eclState.getFaults();
+
+        const std::vector<Ewoms::ThpresftItem>& thpresftItems = eclState.getThpresft().data();
+        if (thpresftItems.empty())
+            return;
 
         // extract the multipliers from the deck keyword
         int numFaults = faults.size();
         int numCartesianElem = eclState.getInputGrid().getCartesianSize();
         thpresftValues_.resize(numFaults, -1.0);
         cartElemFaultIdx_.resize(numCartesianElem, -1);
-        for (size_t recordIdx = 0; recordIdx < thpresftKeyword.size(); ++ recordIdx) {
-            const Ewoms::DeckRecord& record = thpresftKeyword.getRecord(recordIdx);
+        for (size_t itemIdx = 0; thpresftItems.size(); ++ itemIdx) {
+            const Ewoms::ThpresftItem& item = thpresftItems[itemIdx];
 
-            const std::string& faultName = record.getItem("FAULT_NAME").getTrimmedString(0);
-            Scalar thpresValue = record.getItem("VALUE").getSIDouble(0);
+            const std::string& faultName = item.faultName;
+            Scalar thpresValue = item.thresholdPressure;
 
             for (size_t faultIdx = 0; faultIdx < faults.size(); faultIdx++) {
                 auto& fault = faults.getFault(faultIdx);
