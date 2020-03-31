@@ -543,15 +543,30 @@ public:
      */
     static std::string briefDescription()
     {
-        if (briefDescription_.empty())
-            return
-                "The Ecl-deck Black-Oil reservoir Simulator (eebos); a hydrocarbon "
-                "reservoir simulation program that processes ECL-formatted input "
-                "files that is part of the eWoms project "
-                "(https://ewoms.org).\n"
-                "\n"
-                "THE GOAL OF THE `eebos` SIMULATOR IS TO CATER FOR THE NEEDS OF "
-                "DEVELOPMENT AND RESEARCH. No guarantees are made for production use!";
+        if (briefDescription_.empty()) {
+            // return the default description. this is different for releases and
+            // development versions.
+            std::string result =
+                "The Ewoms Ecl Black-Oil Simulator (eebos); an advanced"
+                "ECL-compatible simulation program for hydrocarbon reservoirs "
+                "developed in the context of the eWoms project (https://ewoms.org).";
+
+            bool isDevelVersion =
+                std::string(EWOMS_COMMON_VERSION).find("pre") != std::string::npos ||
+                std::string(EWOMS_MATERIAL_VERSION).find("pre") != std::string::npos ||
+                std::string(EWOMS_NUMERICS_VERSION).find("pre") != std::string::npos ||
+                std::string(EWOMS_ECLIO_VERSION).find("pre") != std::string::npos ||
+                std::string(EWOMS_ECLGRIDS_VERSION).find("pre") != std::string::npos ||
+                std::string(EWOMS_ECLSIMULATORS_VERSION).find("pre") != std::string::npos;
+
+            if (isDevelVersion)
+                result +=
+                    "\n\n"
+                    "YOU ARE USING A DEVELOPMENT VERSION OF THE SIMULATOR. No "
+                    "assumptions whatsoever can made for productive use!";
+
+            return result;
+        }
         else
             return briefDescription_;
     }

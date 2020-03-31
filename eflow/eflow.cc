@@ -274,7 +274,11 @@ int main(int argc, char** argv)
     typedef TTAG(EFlowEarlyBird) PreTypeTag;
     typedef GET_PROP_TYPE(PreTypeTag, Problem) PreProblem;
 
-    PreProblem::setBriefDescription("EFlow, an advanced reservoir simulator for ECL-decks provided by the eWoms project.");
+    // Make it clear that eFlow may eat children!
+    PreProblem::setBriefDescription(
+        "eFlow, an advanced reservoir simulator for ECL-decks provided by the eWoms project.\n\n"
+        "EFLOW IS NOT MAINTAINED WITHIN eWoms. ONLY USE IT IF YOU KNOW EXACTLY WHAT YOU ARE DOING"
+        "AND WHAT IT IS GOOD FOR (i.e., a development tool for changes from OPM)!");
     int status = Ewoms::EFlowMain<PreTypeTag>::setupParameters_(argc, argv);
     if (status != 0) {
         // if setupParameters_ returns a value smaller than 0, there was no error, but
@@ -374,8 +378,6 @@ int main(int argc, char** argv)
                 eclipseState.reset(new Ewoms::ParallelEclipseState);
             }
             Ewoms::eclStateBroadcast(*eclipseState, *schedule, *summaryConfig);
-
-            this->summaryState_.reset(new Ewoms::SummaryState(std::chrono::system_clock::from_time_t(this->eclSchedule_->getStartTime())));
 #endif
 
             if (errorGuard) {
