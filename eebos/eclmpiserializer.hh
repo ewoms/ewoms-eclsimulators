@@ -281,7 +281,8 @@ public:
 
         if (comm_.rank() == 0) {
             pack(data);
-            comm_.broadcast(&m_position, 1, 0);
+            m_packSize = m_position;
+            comm_.broadcast(&m_packSize, 1, 0);
             comm_.broadcast(m_buffer.data(), m_position, 0);
         } else {
             comm_.broadcast(&m_packSize, 1, 0);
