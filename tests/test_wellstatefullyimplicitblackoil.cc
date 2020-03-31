@@ -85,7 +85,7 @@ struct Setup
                     } else {
                         Ewoms::PerforationData pd;
                         pd.cell_index = active_index;
-                        pd.connection_transmissibility_factor = completion.CF() * completion.wellPi();
+                        pd.connection_transmissibility_factor = completion.CF();
                         pd.satnum_id = completion.satTableId();
                         well_perf_data[well_index].push_back(pd);
                     }
