@@ -423,7 +423,7 @@ public:
                     std::string logstring = "Keyword '";
                     logstring.append(keyValue.first);
                     logstring.append("' is unhandled for output to file.");
-                    Ewoms::OpmLog::warning("Unhandled output keyword", logstring);
+                    Ewoms::OpmLog::note("Unhandled output keyword", logstring);
                 }
             }
         }
@@ -719,7 +719,7 @@ public:
                         std::string logstring = "Keyword '";
                         logstring.append(key.first);
                         logstring.append("' is unhandled for output to file.");
-                        Ewoms::OpmLog::warning("Unhandled output keyword", logstring);
+                        Ewoms::OpmLog::note("Unhandled output keyword", logstring);
                     }
                 }
             }
