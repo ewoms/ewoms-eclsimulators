@@ -22,7 +22,7 @@
 #include <dune/istl/preconditioner.hh>
 #include <dune/istl/solvercategory.hh>
 #include <memory>
-
+#include <boost/property_tree/ptree.hpp>
 namespace Dune
 {
 

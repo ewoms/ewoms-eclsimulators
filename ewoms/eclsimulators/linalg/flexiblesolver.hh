@@ -25,12 +25,27 @@
 #include <dune/istl/bcrsmatrix.hh>
 #include <dune/istl/solvers.hh>
 #include <dune/istl/umfpack.hh>
+#include <dune/istl/owneroverlapcopy.hh>
+#include <dune/istl/paamg/pinfo.hh>
 
 #include <boost/property_tree/ptree.hpp>
 
 namespace Dune
 {
 
+template<class C>
+struct IsComm : std::false_type
+{};
+
+template<>
+struct IsComm<Dune::Amg::SequentialInformation> : std::true_type
+{};
+
+#if HAVE_MPI
+template<class Index>
+struct IsComm<Dune::OwnerOverlapCopyCommunication<Index>> : std::true_type
+{};
+#endif
 /// A solver class that encapsulates all needed objects for a linear solver
 /// (operator, scalar product, iterative solver and preconditioner) and sets
 /// them up based on runtime parameters, using the PreconditionerFactory for
@@ -43,16 +58,27 @@ public:
     using VectorType = VectorTypeT;
 
     /// Create a sequential solver.
-    FlexibleSolver(const boost::property_tree::ptree& prm, const MatrixType& matrix)
+    FlexibleSolver(const boost::property_tree::ptree& prm, const MatrixType& matrix,
+                   const std::function<VectorTypeT()>& weightsCalculator = std::function<VectorTypeT()>())
     {
-        init(prm, matrix, Dune::Amg::SequentialInformation());
+        init(prm, matrix, weightsCalculator, Dune::Amg::SequentialInformation());
     }
 
     /// Create a parallel solver (if Comm is e.g. OwnerOverlapCommunication).
     template <class Comm>
-    FlexibleSolver(const boost::property_tree::ptree& prm, const MatrixType& matrix, const Comm& comm)
+    FlexibleSolver(const boost::property_tree::ptree& prm,
+                   const MatrixType& matrix,
+                   const typename std::enable_if<IsComm<Comm>::value, Comm>::type& comm)
     {
-        init(prm, matrix, comm);
+        init(prm, matrix, std::function<VectorTypeT()>(), comm);
+    }
+
+    /// Create a parallel solver (if Comm is e.g. OwnerOverlapCommunication).
+    template <class Comm>
+    FlexibleSolver(const boost::property_tree::ptree& prm, const MatrixType& matrix,
+                   const std::function<VectorTypeT()>& weightsCalculator, const Comm& comm)
+    {
+        init(prm, matrix, weightsCalculator, comm);
     }
 
     virtual void apply(VectorType& x, VectorType& rhs, Dune::InverseOperatorResult& res) override
@@ -86,33 +112,41 @@ private:
 
     // Machinery for making sequential or parallel operators/preconditioners/scalar products.
     template <class Comm>
-    void initOpPrecSp(const MatrixType& matrix, const boost::property_tree::ptree& prm, const Comm& comm)
+    void initOpPrecSp(const MatrixType& matrix, const boost::property_tree::ptree& prm,
+                      const std::function<VectorTypeT()> weightsCalculator, const Comm& comm)
     {
         // Parallel case.
         using ParOperatorType = Dune::OverlappingSchwarzOperator<MatrixType, VectorType, VectorType, Comm>;
+        using pt = const boost::property_tree::ptree;
         auto linop = std::make_shared<ParOperatorType>(matrix, comm);
         linearoperator_ = linop;
+        auto child = prm.get_child_optional("preconditioner");
         preconditioner_
-            = Ewoms::PreconditionerFactory<ParOperatorType, Comm>::create(*linop, prm.get_child("preconditioner"), comm);
+            = Ewoms::PreconditionerFactory<ParOperatorType, Comm>::create(*linop, child? *child : pt(),
+                                                                        weightsCalculator, comm);
         scalarproduct_ = Dune::createScalarProduct<VectorType, Comm>(comm, linearoperator_->category());
     }
 
-    void initOpPrecSp(const MatrixType& matrix, const boost::property_tree::ptree& prm, const Dune::Amg::SequentialInformation&)
+    void initOpPrecSp(const MatrixType& matrix, const boost::property_tree::ptree& prm,
+                      const std::function<VectorTypeT()> weightsCalculator, const Dune::Amg::SequentialInformation&)
     {
         // Sequential case.
         using SeqOperatorType = Dune::MatrixAdapter<MatrixType, VectorType, VectorType>;
+        using pt = const boost::property_tree::ptree;
         auto linop = std::make_shared<SeqOperatorType>(matrix);
         linearoperator_ = linop;
-        preconditioner_ = Ewoms::PreconditionerFactory<SeqOperatorType>::create(*linop, prm.get_child("preconditioner"));
+        auto child = prm.get_child_optional("preconditioner");
+        preconditioner_ = Ewoms::PreconditionerFactory<SeqOperatorType>::create(*linop, child? *child : pt(),
+                                                                              weightsCalculator);
         scalarproduct_ = std::make_shared<Dune::SeqScalarProduct<VectorType>>();
     }
 
     void initSolver(const boost::property_tree::ptree& prm)
     {
-        const double tol = prm.get<double>("tol");
-        const int maxiter = prm.get<int>("maxiter");
-        const int verbosity = prm.get<int>("verbosity");
-        const std::string solver_type = prm.get<std::string>("solver");
+        const double tol = prm.get<double>("tol", 1e-2);
+        const int maxiter = prm.get<int>("maxiter", 200);
+        const int verbosity = prm.get<int>("verbosity", 0);
+        const std::string solver_type = prm.get<std::string>("solver", "bicgstab");
         if (solver_type == "bicgstab") {
             linsolver_.reset(new Dune::BiCGSTABSolver<VectorType>(*linearoperator_,
                                                                   *scalarproduct_,
@@ -128,7 +162,7 @@ private:
                                                               maxiter, // maximum number of iterations
                                                               verbosity));
         } else if (solver_type == "gmres") {
-            int restart = prm.get<int>("restart");
+            int restart = prm.get<int>("restart", 15);
             linsolver_.reset(new Dune::RestartedGMResSolver<VectorType>(*linearoperator_,
                                                                         *scalarproduct_,
                                                                         *preconditioner_,
@@ -142,18 +176,17 @@ private:
             linsolver_.reset(new Dune::UMFPack<MatrixType>(linearoperator_->getmat(), verbosity, dummy));
 #endif
         } else {
-            std::string msg("Solver not known ");
-            msg += solver_type;
-            throw std::runtime_error(msg);
+            EWOMS_THROW(std::invalid_argument, "Properties: Solver " << solver_type << " not known.");
         }
     }
 
     // Main initialization routine.
     // Call with Comm == Dune::Amg::SequentialInformation to get a serial solver.
     template <class Comm>
-    void init(const boost::property_tree::ptree& prm, const MatrixType& matrix, const Comm& comm)
+    void init(const boost::property_tree::ptree& prm, const MatrixType& matrix,
+              const std::function<VectorTypeT()> weightsCalculator, const Comm& comm)
     {
-        initOpPrecSp(matrix, prm, comm);
+        initOpPrecSp(matrix, prm, weightsCalculator, comm);
         initSolver(prm);
     }
 

@@ -26,8 +26,11 @@
 namespace Ewoms
 {
 
+template<class TypeTag>
 boost::property_tree::ptree setupPropertyTree(const EFlowLinearSolverParameters& p);
 
 } // namespace Ewoms
+
+#include "setuppropertytree_impl.hh"
 
 #endif // EWOMS_SETUPPROPERTYTREE_HH
