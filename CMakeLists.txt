@@ -16,7 +16,7 @@ find_package(ewoms-common REQUIRED)
 list(APPEND CMAKE_MODULE_PATH ${ewoms-common_MODULE_PATH})
 
 # include the eWoms cmake macros
-include(EwomsMacros)
+include(EwomsMacros NO_POLICY_SCOPE)
 
 # do most of the book-keeping required
 ewoms_project()
