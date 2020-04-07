@@ -316,7 +316,11 @@ private:
 	doAddCreator("kamg", [](const O& op, const P& prm, const std::function<Vector()>&) {
             const std::string smoother = prm.get<std::string>("smoother", "ParOverILU0");
             if (smoother == "ILU0" || smoother == "ParOverILU0") {
+#if DUNE_VERSION_NEWER(DUNE_ISTL, 2,7)
+                using Smoother = SeqILU<M, V, V>;
+#else
                 using Smoother = SeqILU0<M, V, V>;
+#endif
                 return makeAmgPreconditioner<Smoother>(op, prm, true);
             } else if (smoother == "Jac") {
                 using Smoother = SeqJac<M, V, V>;
@@ -331,7 +335,11 @@ private:
                 using Smoother = SeqSSOR<M, V, V>;
                 return makeAmgPreconditioner<Smoother>(op, prm, true);
             } else if (smoother == "ILUn") {
+#if DUNE_VERSION_NEWER(DUNE_ISTL, 2,7)
+                using Smoother = SeqILU<M, V, V>;
+#else
                 using Smoother = SeqILUn<M, V, V>;
+#endif
                 return makeAmgPreconditioner<Smoother>(op, prm, true);
             } else {
                 EWOMS_THROW(std::invalid_argument, "Properties: No smoother with name " << smoother <<".");
