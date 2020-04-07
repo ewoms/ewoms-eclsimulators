@@ -31,30 +31,22 @@
 #include "collecttoiorank.hh"
 #include "ecloutputblackoilmodule.hh"
 
+#include <eebos/nncsorter.hh>
+#include <ewoms/eclsimulators/utils/parallelrestart.hh>
 #include <ewoms/numerics/models/blackoil/blackoilmodel.hh>
-
 #include <ewoms/eclsimulators/wells/blackoilwellmodel.hh>
-
 #include <ewoms/numerics/discretizations/ecfv/ecfvdiscretization.hh>
 #include <ewoms/numerics/io/baseoutputwriter.hh>
-#include <ewoms/common/parallel/tasklets.hh>
-
-#include <eebos/nncsorter.hh>
-
+#include <ewoms/eclgrids/gridhelpers.hh>
+#include <ewoms/eclgrids/utility/cartesiantocompressed.hh>
 #include <ewoms/eclio/output/eclipseio.hh>
-
 #include <ewoms/eclio/output/restartvalue.hh>
 #include <ewoms/eclio/output/summary.hh>
 #include <ewoms/eclio/parser/units/unitsystem.hh>
-
-#include <ewoms/eclsimulators/utils/parallelrestart.hh>
-#include <ewoms/eclgrids/gridhelpers.hh>
-#include <ewoms/eclgrids/utility/cartesiantocompressed.hh>
-
+#include <ewoms/eclio/opmlog/opmlog.hh>
+#include <ewoms/common/parallel/tasklets.hh>
 #include <ewoms/common/valgrind.hh>
 #include <ewoms/common/exceptions.hh>
-
-#include <ewoms/eclio/opmlog/opmlog.hh>
 
 #include <list>
 #include <utility>

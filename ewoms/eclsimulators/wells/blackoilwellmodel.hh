@@ -19,7 +19,6 @@
 #ifndef EWOMS_BLACKOILWELLMODEL_HH
 #define EWOMS_BLACKOILWELLMODEL_HH
 
-#include <eebos/eclproblem.hh>
 #include <ewoms/eclio/opmlog/opmlog.hh>
 
 #include <cassert>

@@ -23,6 +23,8 @@
 
 #include <ewoms/eclsimulators/utils/parallelrestart.hh>
 
+#include <ewoms/eclio/parser/eclipsestate/schedule/dynamicstate.hh>
+
 namespace Ewoms {
 
 /*! \brief Class for (de-)serializing and broadcasting data for MPI runs.

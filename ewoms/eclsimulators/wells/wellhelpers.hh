@@ -19,6 +19,8 @@
 #ifndef EWOMS_WELLHELPERS_HH
 #define EWOMS_WELLHELPERS_HH
 
+#include <ewoms/eclgrids/gridhelpers.hh>
+
 #include <vector>
 
 namespace Ewoms {

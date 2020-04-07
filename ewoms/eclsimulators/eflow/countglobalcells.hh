@@ -21,8 +21,9 @@
 
 #include <ewoms/eclsimulators/linalg/parallelistlinformation.hh>
 #include <ewoms/eclsimulators/deprecated/props/blackoilphases.hh>
-
 #include <ewoms/common/any.hh>
+
+#include <boost/range/iterator_range.hpp>
 
 namespace Ewoms {
 namespace detail {

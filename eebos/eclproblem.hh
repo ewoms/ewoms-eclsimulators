@@ -30,9 +30,9 @@
 
 #include "eclcpgridvanguard.hh"
 
+#include "eclwriter.hh"
 #include "eclwellmanager.hh"
 #include "eclequilinitializer.hh"
-#include "eclwriter.hh"
 #include "ecloutputblackoilmodule.hh"
 #include "ecltransmissibility.hh"
 #include "eclthresholdpressure.hh"
@@ -131,6 +131,21 @@ NEW_PROP_TAG(EclAquiferModel);
 
 // In experimental mode, decides if the aquifer model should be enabled or not
 NEW_PROP_TAG(EclEnableAquifers);
+
+// Global switch to enable or disable all ECL-style simulation output
+NEW_PROP_TAG(EnableEclOutput);
+
+// Switch to determining whether to write ECL-style asynchronously
+//
+// I.e., in a non-blocking way. Writing asynsynchronously may lead to race conditions and
+// other "fun" issues for debugging and only really makes a noticeable difference if the
+// mass storage to be written to is slow (e.g., if it is on a network file system), but
+// the code for this feature is quite mature, so it is enabled by default.
+NEW_PROP_TAG(EnableAsyncEclOutput);
+
+// Determines whether to write ECL output using double or single-precision floating point
+// value.
+NEW_PROP_TAG(EclOutputDoublePrecision);
 
 // time stepping parameters
 NEW_PROP_TAG(EclMaxTimeStepSizeAfterWellEvent);
@@ -418,14 +433,9 @@ class EclProblem : public GET_PROP_TYPE(TypeTag, BaseProblem)
     typedef BlackOilBrineModule<TypeTag> BrineModule;
 
     typedef typename EclEquilInitializer<TypeTag>::ScalarFluidState InitialFluidState;
-
     typedef Dune::FieldMatrix<Scalar, dimWorld, dimWorld> DimMatrix;
-
     typedef EclWriter<TypeTag> EclWriterType;
-
     typedef EclTracerModel<TypeTag> TracerModel;
-
-
     typedef Ewoms::UniformXTabulated2DFunction<Scalar> TabulatedTwoDFunction;
 
     struct RockParams {

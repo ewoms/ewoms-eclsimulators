@@ -55,6 +55,7 @@ NEW_PROP_TAG(SparseMatrixAdapter);
 NEW_PROP_TAG(Indices);
 NEW_PROP_TAG(Simulator);
 NEW_PROP_TAG(EclWellModel);
+NEW_PROP_TAG(OwnerCellsFirst);
 
 //! Set the type of a global jacobian matrix for linear solvers that are based on
 //! dune-istl.
