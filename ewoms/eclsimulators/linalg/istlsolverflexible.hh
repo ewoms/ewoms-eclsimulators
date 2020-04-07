@@ -75,7 +75,6 @@ class ISTLSolverFlexible
     typedef typename SparseMatrixAdapter::MatrixBlock MatrixBlockType;
     typedef typename Vector::block_type BlockVector;
     typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
-    typedef typename GET_PROP_TYPE(TypeTag, ThreadManager) ThreadManager;
     typedef typename GridView::template Codim<0>::Entity Element;
     typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
 
@@ -256,11 +255,12 @@ protected:
 
     VectorType getTrueImpesWeights(const VectorType& b,const int pressureVarIndex)
     {
+        unsigned threadId = std::max(0, simulator_.taskletRunner().workerThreadIndex());
         VectorType weights(b.size());
         ElementContext elemCtx(simulator_);
         Ewoms::Amg::getTrueImpesWeights(pressureVarIndex, weights, simulator_.vanguard().gridView(),
                                       elemCtx, simulator_.model(),
-                                      ThreadManager::threadId());
+                                      threadId);
         return weights;
     }
 

@@ -48,8 +48,8 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/summarystate.hh>
-#include <ewoms/common/string.hh>
 
+#include <ewoms/common/string.hh>
 #include <ewoms/eclio/opmlog/opmlog.hh>
 #include <ewoms/eclio/opmlog/eclipseprtlog.hh>
 #include <ewoms/eclio/opmlog/logutil.hh>
