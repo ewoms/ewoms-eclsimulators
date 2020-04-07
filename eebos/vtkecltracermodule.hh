@@ -64,12 +64,9 @@ namespace Ewoms {
         typedef BaseOutputModule<TypeTag> ParentType;
 
         typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-        typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-        typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
         typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
 
         typedef typename GET_PROP_TYPE(TypeTag, GridView) GridView;
-        typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
 
         static const int vtkFormat = GET_PROP_VALUE(TypeTag, VtkOutputFormat);
         typedef Ewoms::VtkMultiWriter<GridView, vtkFormat> VtkMultiWriter;

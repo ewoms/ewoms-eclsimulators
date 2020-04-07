@@ -61,9 +61,7 @@ template <class TypeTag>
 class EclPolyhedralGridVanguard : public EclBaseVanguard<TypeTag>
 {
     friend class EclBaseVanguard<TypeTag>;
-    typedef EclBaseVanguard<TypeTag> ParentType;
 
-    typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
     typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
 
 public:
@@ -73,7 +71,6 @@ public:
 
 private:
     typedef Grid* GridPointer;
-    typedef EquilGrid* EquilGridPointer;
     typedef Dune::CartesianIndexMapper<Grid> CartesianIndexMapper;
     typedef CartesianIndexMapper* CartesianIndexMapperPointer;
 

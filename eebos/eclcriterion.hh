@@ -62,7 +62,6 @@ template <class TypeTag, class Vector>
 class EclCriterion : public ConvergenceCriterion<Vector>
 {
     typedef typename Vector::field_type Scalar;
-    typedef typename Vector::block_type BlockType;
 
     typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
     typedef typename GET_PROP_TYPE(TypeTag, Model) Model;

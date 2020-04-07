@@ -155,7 +155,6 @@ class EclWriter
     typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
     typedef typename GET_PROP_TYPE(TypeTag, Vanguard) Vanguard;
     typedef typename GET_PROP_TYPE(TypeTag, GridView) GridView;
-    typedef typename GET_PROP_TYPE(TypeTag, Grid) Grid;
     typedef typename GET_PROP_TYPE(TypeTag, EquilGrid) EquilGrid;
     typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
     typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
@@ -165,7 +164,6 @@ class EclWriter
 
     typedef CollectDataToIORank<Vanguard> CollectDataToIORankType;
 
-    typedef std::vector<Scalar> ScalarBuffer;
 
     enum { enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy) };
     enum { enableSolvent = GET_PROP_VALUE(TypeTag, EnableSolvent) };

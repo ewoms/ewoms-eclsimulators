@@ -379,13 +379,10 @@ class EclProblem : public GET_PROP_TYPE(TypeTag, BaseProblem)
     // copy some indices for convenience
     enum { numEq = GET_PROP_VALUE(TypeTag, NumEq) };
     enum { numPhases = FluidSystem::numPhases };
-    enum { numComponents = FluidSystem::numComponents };
     enum { enableExperiments = GET_PROP_VALUE(TypeTag, EnableExperiments) };
     enum { enableSolvent = GET_PROP_VALUE(TypeTag, EnableSolvent) };
     enum { enablePolymer = GET_PROP_VALUE(TypeTag, EnablePolymer) };
     enum { enablePolymerMolarWeight = GET_PROP_VALUE(TypeTag, EnablePolymerMW) };
-    enum { enableFoam = GET_PROP_VALUE(TypeTag, EnableFoam) };
-    enum { enableTemperature = GET_PROP_VALUE(TypeTag, EnableTemperature) };
     enum { enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy) };
     enum { enableThermalFluxBoundaries = GET_PROP_VALUE(TypeTag, EnableThermalFluxBoundaries) };
     enum { enableApiTracking = GET_PROP_VALUE(TypeTag, EnableApiTracking) };
@@ -422,14 +419,12 @@ class EclProblem : public GET_PROP_TYPE(TypeTag, BaseProblem)
 
     typedef typename EclEquilInitializer<TypeTag>::ScalarFluidState InitialFluidState;
 
-    typedef Ewoms::MathToolbox<Evaluation> Toolbox;
     typedef Dune::FieldMatrix<Scalar, dimWorld, dimWorld> DimMatrix;
 
     typedef EclWriter<TypeTag> EclWriterType;
 
     typedef EclTracerModel<TypeTag> TracerModel;
 
-    typedef typename GridView::template Codim<0>::Iterator ElementIterator;
 
     typedef Ewoms::UniformXTabulated2DFunction<Scalar> TabulatedTwoDFunction;
 

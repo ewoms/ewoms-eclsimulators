@@ -56,21 +56,12 @@ class EclNewtonMethod : public BlackOilNewtonMethod<TypeTag>
     typedef typename GET_PROP_TYPE(TypeTag, DiscNewtonMethod) DiscNewtonMethod;
 
     typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     typedef typename GET_PROP_TYPE(TypeTag, SolutionVector) SolutionVector;
     typedef typename GET_PROP_TYPE(TypeTag, GlobalEqVector) GlobalEqVector;
-    typedef typename GET_PROP_TYPE(TypeTag, PrimaryVariables) PrimaryVariables;
-    typedef typename GET_PROP_TYPE(TypeTag, EqVector) EqVector;
-    typedef typename GET_PROP_TYPE(TypeTag, Indices) Indices;
     typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef typename GET_PROP_TYPE(TypeTag, Linearizer) Linearizer;
-    typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
 
     static const unsigned numEq = GET_PROP_VALUE(TypeTag, NumEq);
 
-    static constexpr int contiSolventEqIdx = Indices::contiSolventEqIdx;
-    static constexpr int contiPolymerEqIdx = Indices::contiPolymerEqIdx;
-    static constexpr int contiEnergyEqIdx = Indices::contiEnergyEqIdx;
 
     friend NewtonMethod<TypeTag>;
     friend DiscNewtonMethod;

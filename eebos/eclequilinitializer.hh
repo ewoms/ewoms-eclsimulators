@@ -73,14 +73,7 @@ class EclEquilInitializer
     typedef typename GET_PROP_TYPE(TypeTag, Indices) Indices;
 
     enum { numPhases = FluidSystem::numPhases };
-    enum { oilPhaseIdx = FluidSystem::oilPhaseIdx };
-    enum { gasPhaseIdx = FluidSystem::gasPhaseIdx };
-    enum { waterPhaseIdx = FluidSystem::waterPhaseIdx };
 
-    enum { numComponents = FluidSystem::numComponents };
-    enum { oilCompIdx = FluidSystem::oilCompIdx };
-    enum { gasCompIdx = FluidSystem::gasCompIdx };
-    enum { waterCompIdx = FluidSystem::waterCompIdx };
 
     enum { dimWorld = GridView::dimensionworld };
     enum { enableTemperature = GET_PROP_VALUE(TypeTag, EnableTemperature) };
