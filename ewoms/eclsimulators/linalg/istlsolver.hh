@@ -382,12 +382,11 @@ protected:
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
                 using ElementMapper =
                     Dune::MultipleCodimMultipleGeomTypeMapper<GridView>;
-                ElementMapper elemMapper(simulator_.vanguard().grid().leafGridView(), Dune::mcmgElementLayout());
+                ElementMapper elemMapper(simulator_.vanguard().gridView(), Dune::mcmgElementLayout());
 #else
                 using ElementMapper =
-                    Dune::MultipleCodimMultipleGeomTypeMapper<GridView,
-                                                              Dune::MCMGElementLayout>;
-                ElementMapper elemMapper(simulator_.vanguard().grid().leafGridView());
+                    Dune::MultipleCodimMultipleGeomTypeMapper<GridView, Dune::MCMGElementLayout>;
+                ElementMapper elemMapper(simulator_.vanguard().gridView());
 #endif
 
                 detail::findOverlapAndInterior(gridForConn, elemMapper, overlapRows_, interiorRows_);
@@ -826,12 +825,11 @@ protected:
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
             using ElementMapper =
                 Dune::MultipleCodimMultipleGeomTypeMapper<GridView>;
-            ElementMapper elemMapper(simulator_.vanguard().grid().leafGridView(), Dune::mcmgElementLayout());
+            ElementMapper elemMapper(simulator_.vanguard().gridView(), Dune::mcmgElementLayout());
 #else
             using ElementMapper =
-                Dune::MultipleCodimMultipleGeomTypeMapper<GridView,
-                                                          Dune::MCMGElementLayout>;
-            ElementMapper elemMapper(simulator_.vanguard().grid().leafGridView());
+                Dune::MultipleCodimMultipleGeomTypeMapper<GridView, Dune::MCMGElementLayout>;
+            ElementMapper elemMapper(simulator_.vanguard().gridView());
 #endif
             typedef typename Matrix::size_type size_type;
             size_type numCells = grid.size( 0 );
