@@ -402,10 +402,10 @@ namespace Ewoms
 
         void updateThp(WellState& well_state, Ewoms::DeferredLogger& deferred_logger) const;
 
-        void assembleControlEq(const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState, Ewoms::DeferredLogger& deferred_logger);
-
-        void assembleGroupProductionControl(const Group& group, const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState, EvalWell& control_eq, double efficincyFactor, Ewoms::DeferredLogger& deferred_logger);
-        void assembleGroupInjectionControl(const Group& group, const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState,  const InjectorType& injectorType, EvalWell& control_eq, double efficincyFactor, Ewoms::DeferredLogger& deferred_logger);
+        void assembleControlEq(const WellState& well_state,
+                               const Ewoms::Schedule& schedule,
+                               const SummaryState& summaryState,
+                               Ewoms::DeferredLogger& deferred_logger);
 
         // handle the non reasonable fractions due to numerical overshoot
         void processFractions() const;

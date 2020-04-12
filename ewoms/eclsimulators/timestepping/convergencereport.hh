@@ -84,6 +84,7 @@ namespace Ewoms
             : status_{AllGood}
             , res_failures_{}
             , well_failures_{}
+            , groupConverged_(true)
         {
         }
 
@@ -92,6 +93,7 @@ namespace Ewoms
             status_ = AllGood;
             res_failures_.clear();
             well_failures_.clear();
+            groupConverged_ = true;
         }
 
         void setReservoirFailed(const ReservoirFailure& rf)
@@ -104,6 +106,11 @@ namespace Ewoms
         {
             status_ = static_cast<Status>(status_ | WellFailed);
             well_failures_.push_back(wf);
+        }
+
+        void setGroupConverged(const bool groupConverged)
+        {
+            groupConverged_ = groupConverged;
         }
 
         ConvergenceReport& operator+=(const ConvergenceReport& other)
@@ -120,7 +127,7 @@ namespace Ewoms
 
         bool converged() const
         {
-            return status_ == AllGood;
+            return status_ == AllGood && groupConverged_;
         }
 
         bool reservoirFailed() const
@@ -165,6 +172,7 @@ namespace Ewoms
         Status status_;
         std::vector<ReservoirFailure> res_failures_;
         std::vector<WellFailure> well_failures_;
+        bool groupConverged_;
     };
 
 } // namespace Ewoms

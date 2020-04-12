@@ -239,7 +239,7 @@ namespace Ewoms {
             void applyScaleAdd(const Scalar alpha, const BVector& x, BVector& Ax) const;
 
             // Check if well equations is converged.
-            ConvergenceReport getWellConvergence(const std::vector<Scalar>& B_avg) const;
+            ConvergenceReport getWellConvergence(const std::vector<Scalar>& B_avg, const bool checkGroupConvergence = false) const;
 
             // return the internal well state, ignore the passed one.
             // Used by the legacy code to make it compatible with the legacy well models.
@@ -344,7 +344,9 @@ namespace Ewoms {
             // xw to update Well State
             void recoverWellSolutionAndUpdateWellState(const BVector& x);
 
-            void updateWellControls(Ewoms::DeferredLogger& deferred_logger, const bool checkGroupControl, const bool checkCurrentGroupControl);
+            void updateWellControls(Ewoms::DeferredLogger& deferred_logger, const bool checkGroupControls);
+
+            void updateAndCommunicateGroupData();
 
             // setting the well_solutions_ based on well_state.
             void updatePrimaryVariables(Ewoms::DeferredLogger& deferred_logger);
@@ -416,11 +418,18 @@ namespace Ewoms {
 
             const Well& getWellEcl(const std::string& well_name) const;
 
-            void checkGroupConstraints(const Group& group, const bool checkCurrentControl, Ewoms::DeferredLogger& deferred_logger);
+            void updateGroupIndividualControls(Ewoms::DeferredLogger& deferred_logger, std::set<std::string>& switched_groups);
+            void updateGroupIndividualControl(const Group& group, Ewoms::DeferredLogger& deferred_logger, std::set<std::string>& switched_groups);
+            bool checkGroupConstraints(const Group& group, Ewoms::DeferredLogger& deferred_logger) const;
+            Group::ProductionCMode checkGroupProductionConstraints(const Group& group, Ewoms::DeferredLogger& deferred_logger) const;
+            Group::InjectionCMode checkGroupInjectionConstraints(const Group& group, const Phase& phase) const;
 
-            void actionOnBrokenConstraints(const Group& group, const Group::ExceedAction& exceed_action, const Group::ProductionCMode& newControl, const int reportStepIdx, Ewoms::DeferredLogger& deferred_logger);
+            void updateGroupHigherControls(Ewoms::DeferredLogger& deferred_logger, std::set<std::string>& switched_groups);
+            void checkGroupHigherConstraints(const Group& group, Ewoms::DeferredLogger& deferred_logger, std::set<std::string>& switched_groups);
 
-            void actionOnBrokenConstraints(const Group& group, const Group::InjectionCMode& newControl, const Phase& topUpPhase, const int reportStepIdx, Ewoms::DeferredLogger& deferred_logger);
+            void actionOnBrokenConstraints(const Group& group, const Group::ExceedAction& exceed_action, const Group::ProductionCMode& newControl, Ewoms::DeferredLogger& deferred_logger);
+
+            void actionOnBrokenConstraints(const Group& group, const Group::InjectionCMode& newControl, const Phase& topUpPhase, Ewoms::DeferredLogger& deferred_logger);
 
             WellInterfacePtr getWell(const std::string& well_name) const;
 

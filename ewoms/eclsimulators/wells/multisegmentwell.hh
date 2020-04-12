@@ -276,11 +276,10 @@ namespace Ewoms
 
         void initMatrixAndVectors(const int num_cells) const;
 
-        // protected functions
-        // EvalWell getBhp(); this one should be something similar to getSegmentPressure();
-        // EvalWell getQs(); this one should be something similar to getSegmentRates()
-        // EValWell wellVolumeFractionScaled, wellVolumeFraction, wellSurfaceVolumeFraction ... these should have different names, and probably will be needed.
-        // bool crossFlowAllowed(const Simulator& eebosSimulator) const; probably will be needed
+        EvalWell getBhp() const;
+        EvalWell getQs(const int comp_idx) const;
+        EvalWell getWQTotal() const;
+
         // xw = inv(D)*(rw - C*x)
         void recoverSolutionWell(const BVector& x, BVectorWell& xw) const;
 
@@ -371,9 +370,6 @@ namespace Ewoms
                                const Well::InjectionControls& inj_controls,
                                const Well::ProductionControls& prod_controls,
                                Ewoms::DeferredLogger& deferred_logger);
-
-        void assembleGroupProductionControl(const Group& group, const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState, EvalWell& control_eq, double efficincyFactor, Ewoms::DeferredLogger& deferred_logger);
-        void assembleGroupInjectionControl(const Group& group, const WellState& well_state, const Ewoms::Schedule& schedule, const SummaryState& summaryState,  const InjectorType& injectorType, EvalWell& control_eq, double efficincyFactor, Ewoms::DeferredLogger& deferred_logger);
 
         void assemblePressureEq(const int seg) const;
 

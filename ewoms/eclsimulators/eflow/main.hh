@@ -398,7 +398,7 @@ namespace Ewoms
 #if HAVE_MPI
                     else {
                         summaryConfig.reset(new Ewoms::SummaryConfig);
-                        schedule.reset(new Ewoms::Schedule);
+                        schedule.reset(new Ewoms::Schedule());
                         eclipseState.reset(new Ewoms::ParallelEclipseState);
                     }
                     Ewoms::eclStateBroadcast(*eclipseState, *schedule, *summaryConfig);
