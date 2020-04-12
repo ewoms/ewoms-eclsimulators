@@ -2065,7 +2065,7 @@ namespace Ewoms {
         if (!skip && group.isInjectionGroup()) {
             // Obtain rates for group.
             for (int phasePos = 0; phasePos < phase_usage_.num_phases; ++phasePos) {
-                const double local_current_rate = WellGroupHelpers::sumWellRates(
+                double local_current_rate = WellGroupHelpers::sumWellRates(
                     group, schedule(), well_state_, reportStepIdx, phasePos, /* isInjector */ true);
                 // Sum over all processes
                 rates[phasePos] = comm.sum(local_current_rate);
@@ -2102,7 +2102,7 @@ namespace Ewoms {
         if (!skip && group.isProductionGroup()) {
             // Obtain rates for group.
             for (int phasePos = 0; phasePos < phase_usage_.num_phases; ++phasePos) {
-                const double local_current_rate = WellGroupHelpers::sumWellRates(
+                double local_current_rate = WellGroupHelpers::sumWellRates(
                     group, schedule(), well_state_, reportStepIdx, phasePos, /* isInjector */ false);
                 // Sum over all processes
                 rates[phasePos] = -comm.sum(local_current_rate);

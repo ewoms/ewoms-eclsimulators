@@ -23,7 +23,7 @@
 #define BOOST_TEST_MODULE RelpermDiagnostics
 
 #include <boost/test/unit_test.hpp>
-#include <boost/test/tools/floating_point_comparison.hpp>
+
 #include <ewoms/eclio/opmlog/opmlog.hh>
 #include <ewoms/eclio/opmlog/counterlog.hh>
 

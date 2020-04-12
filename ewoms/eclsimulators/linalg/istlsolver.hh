@@ -635,13 +635,7 @@ protected:
             }
         }
 
-        // 3x3 matrix block inversion was unstable at least 2.3 until and including
-        // 2.5.0. There may still be some issue with the 4x4 matrix block inversion
-        // we therefore still use the custom block inversion of eWoms
-        typedef ParallelOverlappingILU0<Dune::BCRSMatrix<Dune::FieldMatrix<typename Matrix::field_type,
-                                                                           Matrix::block_type::rows,
-                                                                           Matrix::block_type::cols> >,
-                                        Vector, Vector> SeqPreconditioner;
+        typedef ParallelOverlappingILU0<Matrix, Vector, Vector> SeqPreconditioner;
 
         template <class Operator>
         std::unique_ptr<SeqPreconditioner> constructPrecond(Operator& opA, const Dune::Amg::SequentialInformation&) const
@@ -657,16 +651,8 @@ protected:
 
 #if HAVE_MPI
         typedef Dune::OwnerOverlapCopyCommunication<int, int> Comm;
-#if DUNE_VERSION_NEWER_REV(DUNE_ISTL, 2 , 5, 1)
-        // 3x3 matrix block inversion was unstable from at least 2.3 until and
-        // including 2.5.0
         typedef ParallelOverlappingILU0<Matrix,Vector,Vector,Comm> ParPreconditioner;
-#else
-        typedef ParallelOverlappingILU0<Dune::BCRSMatrix<Dune::MatrixBlock<typename Matrix::field_type,
-                                                                           Matrix::block_type::rows,
-                                                                           Matrix::block_type::cols> >,
-                                        Vector, Vector, Comm> ParPreconditioner;
-#endif
+
         template <class Operator>
         std::unique_ptr<ParPreconditioner>
         constructPrecond(Operator& opA, const Comm& comm) const

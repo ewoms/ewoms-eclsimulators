@@ -35,8 +35,6 @@
 #include <dune/common/dynvector.hh>
 #include <dune/common/dynmatrix.hh>
 
-#include <optional>
-
 namespace Ewoms
 {
 

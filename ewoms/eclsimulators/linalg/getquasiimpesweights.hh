@@ -89,7 +89,11 @@ namespace Amg
         using VectorBlockType = typename Vector::block_type;
         using Matrix = typename std::decay_t<decltype(model.linearizer().jacobian())>;
         using MatrixBlockType = typename Matrix::MatrixBlock;
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2,5)
         constexpr int numEq = VectorBlockType::size();
+#else
+        constexpr int numEq = VectorBlockType::dimension;
+#endif
         using Evaluation = typename std::decay_t<decltype(model.localLinearizer(threadId).localResidual().residual(0))>
             ::block_type;
         VectorBlockType rhs(0.0);
