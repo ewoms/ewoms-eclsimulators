@@ -301,7 +301,7 @@ namespace Ewoms
 
             PreProblem::setBriefDescription(
                 "eFlow, an advanced reservoir simulator for ECL-decks provided by the eWoms project.\n\n"
-                "EFLOW IS NOT ACTIVELY MAINTAINED WITHIN eWoms. ONLY USE IT IF YOU KNOW EXACTLY WHAT YOU ARE DOING"
+                "EFLOW IS NOT ACTIVELY MAINTAINED WITHIN eWoms. ONLY USE IT IF YOU KNOW EXACTLY WHAT YOU ARE DOING "
                 "AND WHAT IT IS GOOD FOR!");
             int status = Ewoms::EFlowMain<PreTypeTag>::setupParameters_(argc, argv);
             if (status != 0) {

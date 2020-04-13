@@ -709,6 +709,7 @@ public:
     {
         return centroids_;
     }
+
 protected:
     void callImplementationInit()
     {

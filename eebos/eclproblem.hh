@@ -552,9 +552,9 @@ public:
             // return the default description. this is different for releases and
             // development versions.
             std::string result =
-                "The Ewoms Ecl Black-Oil Simulator (eebos); an advanced"
+                "The Ewoms Ecl Black-Oil Simulator (eebos); an advanced "
                 "ECL-compatible simulation program for hydrocarbon reservoirs "
-                "developed in the context of the eWoms project (https://ewoms.org).";
+                "developed by the eWoms project (https://ewoms.org).";
 
             bool isDevelVersion =
                 std::string(EWOMS_COMMON_VERSION).find("pre") != std::string::npos ||

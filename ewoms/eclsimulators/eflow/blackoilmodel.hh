@@ -122,13 +122,13 @@ namespace Ewoms {
         static const int contiEnergyEqIdx = Indices::contiEnergyEqIdx;
         static const int contiPolymerMWEqIdx = Indices::contiPolymerMWEqIdx;
         static const int contiFoamEqIdx = Indices::contiFoamEqIdx;
-	static const int contiBrineEqIdx = Indices::contiBrineEqIdx;
+        static const int contiBrineEqIdx = Indices::contiBrineEqIdx;
         static const int solventSaturationIdx = Indices::solventSaturationIdx;
         static const int polymerConcentrationIdx = Indices::polymerConcentrationIdx;
         static const int polymerMoleWeightIdx = Indices::polymerMoleWeightIdx;
         static const int temperatureIdx = Indices::temperatureIdx;
         static const int foamConcentrationIdx = Indices::foamConcentrationIdx;
-	static const int saltConcentrationIdx = Indices::saltConcentrationIdx;
+        static const int saltConcentrationIdx = Indices::saltConcentrationIdx;
 
         typedef Dune::FieldVector<Scalar, numEq >        VectorBlockType;
         typedef typename SparseMatrixAdapter::MatrixBlock MatrixBlockType;
@@ -876,7 +876,7 @@ namespace Ewoms {
         const bool has_polymermw_;
         const bool has_energy_;
         const bool has_foam_;
-	const bool has_brine_;
+        const bool has_brine_;
 
         ModelParameters                 param_;
         SimulatorReport failureReport_;

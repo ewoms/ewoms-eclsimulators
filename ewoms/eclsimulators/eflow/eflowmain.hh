@@ -199,20 +199,22 @@ namespace Ewoms
 
         static void printBanner()
         {
-            const int lineLen = 70;
+            const int lineLen = 71;
             const std::string version = EWOMS_ECLSIMULATORS_VERSION;
             const std::string banner = "This is eflow "+version;
             const int bannerPreLen = (lineLen - 2 - banner.size())/2;
             const int bannerPostLen = bannerPreLen + (lineLen - 2 - banner.size())%2;
-            std::cout << "**********************************************************************\n";
-            std::cout << "*                                                                    *\n";
+            std::cout << "***********************************************************************\n";
+            std::cout << "*                                                                     *\n";
             std::cout << "*" << std::string(bannerPreLen, ' ') << banner << std::string(bannerPostLen, ' ') << "*\n";
-            std::cout << "*                                                                    *\n";
+            std::cout << "*                                                                     *\n";
             std::cout << "* EFlow is a simulator for fully implicit three-phase black-oil flow, *\n";
-            std::cout << "*             including solvent and polymer capabilities.            *\n";
-            std::cout << "*          For more information, visit https://ewoms-project.org         *\n";
-            std::cout << "*                                                                    *\n";
-            std::cout << "**********************************************************************\n\n";
+            std::cout << "*             including solvent and polymer capabilities.             *\n";
+            std::cout << "*            For more information, visit https://ewoms.org            *\n";
+            std::cout << "*                                                                     *\n";
+            std::cout << "*  EFLOW IS NOT ACTIVELY MAINTAINED WITHIN eWoms. ONLY USE IT IF YOU  *\n";
+            std::cout << "*       KNOW EXACTLY WHAT YOU ARE DOING AND WHAT IT IS GOOD FOR!      *\n";
+            std::cout << "***********************************************************************\n\n";
 
             int threads = 1;
             int mpiSize = 1;
@@ -301,7 +303,11 @@ namespace Ewoms
               ss << " #          #         #         #      #     # # # #   \n";
               ss << " ########   #         #######    ######       #   #    \n\n";
               ss << "EFlow is a simulator for fully implicit three-phase black-oil flow,";
-              ss << "For more information, visit https://ewoms-project.org\n\n";
+              ss << "For more information, visit https://ewoms.org\n\n";
+              ss << "\n";
+              ss << "EFLOW IS NOT ACTIVELY MAINTAINED WITHIN eWoms. ONLY USE IT IF YOU KNOW EXACTLY\n";
+              ss << "WHAT YOU ARE DOING AND WHAT IT IS GOOD FOR!\n";
+              ss << "\n";
               ss << "EFlow Version     =  " + version + "\n";
               if (uname(&arch) == 0) {
                  ss << "Machine name     =  " << arch.nodename << " (Number of logical cores: " << num_cpu;
