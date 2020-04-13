@@ -567,8 +567,7 @@ public:
             if (isDevelVersion)
                 result +=
                     "\n\n"
-                    "YOU ARE USING A DEVELOPMENT VERSION OF THE SIMULATOR. No "
-                    "assumptions whatsoever can made for productive use!";
+                    "YOU ARE USING A DEVELOPMENT VERSION OF THE SIMULATOR. Do not use it for production runs!";
 
             return result;
         }
