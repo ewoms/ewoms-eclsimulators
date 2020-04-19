@@ -6,10 +6,12 @@ cmake_minimum_required(VERSION 3.5)
 # set up project and specify the minimum cmake version
 project("ewoms-eclsimulators" C CXX)
 
-option(BUILD_EFLOW "Build the production oriented eflow simulator?" OFF)
 option(BUILD_EEBOS "Build the research-oriented eebos simulator?" ON)
 option(BUILD_EEBOS_EXTENSIONS "Build the variants for various extensions of eebos by default?" ON)
 option(BUILD_EEBOS_DEBUG_EXTENSIONS "Build the debugging variants of eebos by default?" OFF)
+
+option(BUILD_EFLOW "Build the production oriented eflow simulator?" OFF)
+option(BUILD_EFLOW_DEBUG_EXTENSIONS "Build the debugging variants of eflow by default?" OFF)
 
 # find the build system (i.e., ewoms-common) and set cmake's module path
 find_package(ewoms-common REQUIRED)
@@ -110,21 +112,33 @@ ewoms_add_application(eflow
   SOURCES
    eflow/eflow.cc
    eflow/eflow_blackoil.cc
+   eflow/eflow_brine.cc
+   eflow/eflow_energy.cc
+   eflow/eflow_foam.cc
    eflow/eflow_gasoil.cc
    eflow/eflow_oilwater.cc
-   eflow/eflow_foam.cc
-   eflow/eflow_polymer.cc
-   eflow/eflow_solvent.cc
-   eflow/eflow_energy.cc
-   eflow/eflow_brine.cc
    eflow/eflow_oilwater_polymer.cc
    eflow/eflow_oilwater_polymer_injectivity.cc
+   eflow/eflow_polymer.cc
+   eflow/eflow_solvent.cc
    )
 
 ewoms_add_application(eflow_blackoil_dunecpr
-  DEFAULT_ENABLE_IF ${BUILD_EFLOW}
+  DEFAULT_ENABLE_IF ${BUILD_EFLOW_DEBUG_EXTENSIONS}
   SOURCES
   eflow/eflow_blackoil_dunecpr.cc
+  )
+
+ewoms_add_application(eflow_onephase
+  DEFAULT_ENABLE_IF ${BUILD_EFLOW_DEBUG_EXTENSIONS}
+  SOURCES
+  eflow/eflow_onephase.cc
+  )
+
+ewoms_add_application(eflow_onephase_energy
+  DEFAULT_ENABLE_IF ${BUILD_EFLOW_DEBUG_EXTENSIONS}
+  SOURCES
+  eflow/eflow_onephase_energy.cc
   )
 
 if(TARGET eflow)
