@@ -20,41 +20,33 @@
 
 #include <eflow/eflow_blackoil.hh>
 
-#ifndef FLOW_BLACKOIL_ONLY
-#include <eflow/eflow_gasoil.hh>
-#include <eflow/eflow_oilwater.hh>
-#include <eflow/eflow_solvent.hh>
-#include <eflow/eflow_polymer.hh>
-#include <eflow/eflow_foam.hh>
-#include <eflow/eflow_brine.hh>
-#include <eflow/eflow_energy.hh>
-#include <eflow/eflow_oilwater_polymer.hh>
-#include <eflow/eflow_oilwater_polymer_injectivity.hh>
-#endif
-
-#include <ewoms/eclsimulators/eflow/main.hh>
-#include <ewoms/eclsimulators/eflow/eflowmain.hh>
-#include <ewoms/common/propertysystem.hh>
-#include <ewoms/common/parametersystem.hh>
-#include <ewoms/eclsimulators/eflow/missingfeatures.hh>
+# ifndef FLOW_BLACKOIL_ONLY
+#  include <eflow/eflow_gasoil.hh>
+#  include <eflow/eflow_oilwater.hh>
+#  include <eflow/eflow_solvent.hh>
+#  include <eflow/eflow_polymer.hh>
+#  include <eflow/eflow_foam.hh>
+#  include <eflow/eflow_brine.hh>
+#  include <eflow/eflow_energy.hh>
+#  include <eflow/eflow_oilwater_polymer.hh>
+#  include <eflow/eflow_oilwater_polymer_injectivity.hh>
+# endif
 
 #include <ewoms/eclio/opmlog/opmlog.hh>
 #include <ewoms/eclio/opmlog/eclipseprtlog.hh>
 #include <ewoms/eclio/opmlog/logutil.hh>
 
-#include <ewoms/eclio/io/rst/state.hh>
-#include <ewoms/eclio/io/erst.hh>
-
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/parser.hh>
-#include <ewoms/eclio/parser/parsecontext.hh>
-#include <ewoms/eclio/parser/errorguard.hh>
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
 #include <ewoms/eclio/parser/eclipsestate/checkdeck.hh>
-#include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
-#include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
-
 #include <ewoms/eclio/parser/eclipsestate/schedule/arraydimchecker.hh>
+
+#include <ewoms/common/propertysystem.hh>
+#include <ewoms/common/parametersystem.hh>
+
+#include <ewoms/eclsimulators/eflow/eflowmain.hh>
+#include <ewoms/eclsimulators/eflow/missingfeatures.hh>
 
 #if HAVE_DUNE_FEM
 #include <dune/fem/misc/mpimanager.hh>
@@ -67,6 +59,8 @@
 #include <ewoms/eclsimulators/utils/parallelserialization.hh>
 #endif
 
+#include <type_traits>
+
 BEGIN_PROPERTIES
 
 // this is a dummy type tag that is used to setup the parameters before the actual
@@ -74,6 +68,35 @@ BEGIN_PROPERTIES
 NEW_TYPE_TAG(EFlowEarlyBird, INHERITS_FROM(EclEFlowProblem));
 
 END_PROPERTIES
+
+namespace Ewoms {
+  template <class TypeTag>
+  void eflowSetDeck(Deck *deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig)
+  {
+    using Vanguard = typename GET_PROP_TYPE(TypeTag, Vanguard);
+    Vanguard::setExternalDeck(deck);
+    Vanguard::setExternalEclState(&eclState);
+    Vanguard::setExternalSchedule(&schedule);
+    Vanguard::setExternalSummaryConfig(&summaryConfig);
+  }
+
+// ----------------- Main program -----------------
+  template <class TypeTag>
+  int eflowMain(int argc, char** argv, bool outputCout, bool outputFiles)
+  {
+    // we always want to use the default locale, and thus spare us the trouble
+    // with incorrect locale settings.
+    Ewoms::resetLocale();
+
+# if HAVE_DUNE_FEM
+    Dune::Fem::MPIManager::initialize(argc, argv);
+# else
+    Dune::MPIHelper::instance(argc, argv);
+# endif
+    Ewoms::EFlowMain<TypeTag> mainfunc;
+    return mainfunc.execute(argc, argv, outputCout, outputFiles);
+  }
+}
 
 namespace Ewoms
 {
@@ -102,12 +125,312 @@ namespace Ewoms
         };
     public:
         EFlowNihMain(int argc, char** argv) : argc_(argc), argv_(argv)  {  }
+        EFlowNihMain(int argc,
+             char** argv,
+             std::shared_ptr<Ewoms::Deck> deck,
+             std::shared_ptr<Ewoms::EclipseState> eclipseState,
+             std::shared_ptr<Ewoms::Schedule> schedule,
+             std::shared_ptr<Ewoms::SummaryConfig> summaryConfig)
+            : argc_(argc)
+            , argv_(argv)
+            , deck_(deck)
+            , eclipseState_(eclipseState)
+            , schedule_(schedule)
+            , summaryConfig_(summaryConfig)
+        {
+        }
 
-        int run() {
-            return main_(argc_, argv_);
+        int runDynamic()
+        {
+            int exitCode = EXIT_SUCCESS;
+            if (initialize_(exitCode)) {
+                return dispatchDynamic_();
+            } else {
+                return exitCode;
+            }
+        }
+
+        template <class TypeTag>
+        int runStatic()
+        {
+            int exitCode = EXIT_SUCCESS;
+            if (initialize_(exitCode)) {
+                return dispatchStatic_<TypeTag>();
+            } else {
+                return exitCode;
+            }
         }
 
     private:
+        int dispatchDynamic_()
+        {
+            const auto& phases = eclipseState_->runspec().phases();
+            // run the actual simulator
+            //
+            // TODO: make sure that no illegal combinations like thermal and twophase are
+            //       requested.
+
+            if ( false ) {}
+#ifndef FLOW_BLACKOIL_ONLY
+            // Twophase cases
+            else if( phases.size() == 2 ) {
+                // oil-gas
+                if (phases.active( Ewoms::Phase::GAS )) {
+                    Ewoms::eflowGasOilSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                    return Ewoms::eflowGasOilMain(argc_, argv_, outputCout_, outputFiles_);
+                }
+                // oil-water
+                else if ( phases.active( Ewoms::Phase::WATER ) ) {
+                    Ewoms::eflowOilWaterSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                    return Ewoms::eflowOilWaterMain(argc_, argv_, outputCout_, outputFiles_);
+                }
+                else {
+                    if (outputCout_)
+                        std::cerr << "No suitable configuration found, valid are Twophase (oilwater and oilgas), polymer, solvent, or blackoil" << std::endl;
+                    return EXIT_FAILURE;
+                }
+            }
+            // Polymer case
+            else if ( phases.active( Ewoms::Phase::POLYMER ) ) {
+                if ( !phases.active( Ewoms::Phase::WATER) ) {
+                    if (outputCout_)
+                        std::cerr << "No valid configuration is found for polymer simulation, valid options include "
+                                  << "oilwater + polymer and blackoil + polymer" << std::endl;
+                    return EXIT_FAILURE;
+                }
+
+                // Need to track the polymer molecular weight
+                // for the injectivity study
+                if ( phases.active( Ewoms::Phase::POLYMW ) ) {
+                    // only oil water two phase for now
+                    assert( phases.size() == 4);
+                    return Ewoms::eflowOilWaterPolymerInjectivityMain(argc_, argv_, outputCout_, outputFiles_);
+                }
+
+                if ( phases.size() == 3 ) { // oil water polymer case
+                    Ewoms::eflowOilWaterPolymerSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                    return Ewoms::eflowOilWaterPolymerMain(argc_, argv_, outputCout_, outputFiles_);
+                } else {
+                    Ewoms::eflowPolymerSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                    return Ewoms::eflowPolymerMain(argc_, argv_, outputCout_, outputFiles_);
+                }
+            }
+            // Foam case
+            else if ( phases.active( Ewoms::Phase::FOAM ) ) {
+                Ewoms::eflowFoamSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                return Ewoms::eflowFoamMain(argc_, argv_, outputCout_, outputFiles_);
+            }
+            // Brine case
+            else if ( phases.active( Ewoms::Phase::BRINE ) ) {
+                Ewoms::eflowBrineSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                return Ewoms::eflowBrineMain(argc_, argv_, outputCout_, outputFiles_);
+            }
+            // Solvent case
+            else if ( phases.active( Ewoms::Phase::SOLVENT ) ) {
+                Ewoms::eflowSolventSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                return Ewoms::eflowSolventMain(argc_, argv_, outputCout_, outputFiles_);
+            }
+            // Energy case
+            else if (eclipseState_->getSimulationConfig().isThermal()) {
+                Ewoms::eflowEnergySetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                return Ewoms::eflowEnergyMain(argc_, argv_, outputCout_, outputFiles_);
+            }
+#endif // FLOW_BLACKOIL_ONLY
+            // Blackoil case
+            else if( phases.size() == 3 ) {
+                Ewoms::eflowBlackoilSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                return Ewoms::eflowBlackoilMain(argc_, argv_, outputCout_, outputFiles_);
+            }
+            else {
+                if (outputCout_)
+                    std::cerr << "No suitable configuration found, valid are Twophase, polymer, foam, brine, solvent, energy, blackoil." << std::endl;
+                return EXIT_FAILURE;
+            }
+        }
+
+        template <class TypeTag>
+        int dispatchStatic_()
+        {
+            Ewoms::eflowSetDeck<TypeTag>(deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+            return Ewoms::eflowMain<TypeTag>(argc_, argv_, outputCout_, outputFiles_);
+        }
+
+        bool initialize_(int& exitCode)
+        {
+            Dune::Timer externalSetupTimer;
+            externalSetupTimer.start();
+
+            handleVersionCmdLine_(argc_, argv_);
+            // MPI setup.
+#if HAVE_DUNE_FEM
+            Dune::Fem::MPIManager::initialize(argc_, argv_);
+            int mpiRank = Dune::Fem::MPIManager::rank();
+#else
+            // the design of the plain dune MPIHelper class is quite flawed: there is no way to
+            // get the instance without having the argc and argv parameters available and it is
+            // not possible to determine the MPI rank and size without an instance. (IOW: the
+            // rank() and size() methods are supposed to be static.)
+            const auto& mpiHelper = Dune::MPIHelper::instance(argc_, argv_);
+            int mpiRank = mpiHelper.rank();
+#endif
+
+            // we always want to use the default locale, and thus spare us the trouble
+            // with incorrect locale settings.
+            Ewoms::resetLocale();
+
+            // this is a work-around for a catch 22: we do not know what code path to use without
+            // parsing the deck, but we don't know the deck without having access to the
+            // parameters and this requires to know the type tag to be used. To solve this, we
+            // use a type tag just for parsing the parameters before we instantiate the actual
+            // simulator object. (Which parses the parameters again, but since this is done in an
+            // identical manner it does not matter.)
+            typedef TTAG(EFlowEarlyBird) PreTypeTag;
+            typedef GET_PROP_TYPE(PreTypeTag, Problem) PreProblem;
+
+            PreProblem::setBriefDescription("EFlow, an advanced reservoir simulator for ECL-decks provided by the eWoms project.");
+            int status = Ewoms::EFlowMain<PreTypeTag>::setupParameters_(argc_, argv_);
+            if (status != 0) {
+                // if setupParameters_ returns a value smaller than 0, there was no error, but
+                // the program should abort. This is the case e.g. for the --help and the
+                // --print-properties parameters.
+#if HAVE_MPI
+                MPI_Finalize();
+#endif
+                exitCode = (status >= 0) ? status : EXIT_SUCCESS;
+                return false;
+            }
+
+            FileOutputMode outputMode = FileOutputMode::OUTPUT_NONE;
+            outputCout_ = false;
+            if (mpiRank == 0)
+                outputCout_ = EWOMS_GET_PARAM(PreTypeTag, bool, EnableTerminalOutput);
+
+            std::string deckFilename;
+            std::string outputDir;
+            if ( eclipseState_ ) {
+                deckFilename = eclipseState_->getIOConfig().fullBasePath();
+                outputDir = eclipseState_->getIOConfig().getOutputDir();
+            }
+            else {
+                deckFilename = EWOMS_GET_PARAM(PreTypeTag, std::string, EclDeckFileName);
+            }
+
+            typedef typename GET_PROP_TYPE(PreTypeTag, Vanguard) PreVanguard;
+            try {
+                deckFilename = PreVanguard::canonicalDeckPath(deckFilename).string();
+            }
+            catch (const std::exception& e) {
+                if ( mpiRank == 0 ) {
+                    std::cerr << "Exception received: " << e.what() << ". Try '--help' for a usage description.\n";
+                }
+#if HAVE_MPI
+                MPI_Finalize();
+#endif
+                exitCode = EXIT_FAILURE;
+                return false;
+            }
+            if (outputCout_) {
+                Ewoms::EFlowMain<PreTypeTag>::printBanner();
+            }
+            // Create Deck and EclipseState.
+            try {
+                if (outputCout_) {
+                    std::cout << "Reading deck file '" << deckFilename << "'\n";
+                    std::cout.flush();
+
+                    Ewoms::Parser parser;
+                    Ewoms::ParseContext parseContext({{Ewoms::ParseContext::PARSE_RANDOM_SLASH, Ewoms::InputError::IGNORE},
+                                                    {Ewoms::ParseContext::PARSE_MISSING_DIMS_KEYWORD, Ewoms::InputError::WARN},
+                                                    {Ewoms::ParseContext::SUMMARY_UNKNOWN_WELL, Ewoms::InputError::WARN},
+                                                    {Ewoms::ParseContext::SUMMARY_UNKNOWN_GROUP, Ewoms::InputError::WARN}});
+                    Ewoms::ErrorGuard errorGuard;
+                    if (outputDir.empty())
+                        outputDir = EWOMS_GET_PARAM(PreTypeTag, std::string, OutputDir);
+                    outputMode = setupLogging_(mpiRank,
+                                      deckFilename,
+                                      outputDir,
+                                      EWOMS_GET_PARAM(PreTypeTag, std::string, OutputMode),
+                                      outputCout_, "STDOUT_LOGGER");
+
+                    if (EWOMS_GET_PARAM(PreTypeTag, bool, EclStrictParsing))
+                        parseContext.update( Ewoms::InputError::DELAYED_EXIT1);
+
+                    Ewoms::EFlowMain<PreTypeTag>::printPRTHeader(outputCout_);
+
+                    if (mpiRank == 0) {
+                        if (!deck_)
+                            deck_.reset( new Ewoms::Deck( parser.parseFile(deckFilename , parseContext, errorGuard)));
+                        Ewoms::MissingFeatures::checkKeywords(*deck_, parseContext, errorGuard);
+                        if ( outputCout_ )
+                            Ewoms::checkDeck(*deck_, parser, parseContext, errorGuard);
+
+                        if (!eclipseState_) {
+#if HAVE_MPI
+                            eclipseState_.reset(new Ewoms::ParallelEclipseState(*deck_));
+#else
+                            eclipseState_.reset(new Ewoms::EclipseState(*deck_));
+#endif
+                        }
+                        /*
+                          For the time being initializing wells and groups from the
+                          restart file is not possible, but work is underways and it is
+                          included here as a switch.
+                        */
+                        const bool init_from_restart_file = !EWOMS_GET_PARAM(PreTypeTag, bool, SchedRestart);
+                        const auto& init_config = eclipseState_->getInitConfig();
+                        if (init_config.restartRequested() && init_from_restart_file) {
+                            int report_step = init_config.getRestartStep();
+                            const auto& rst_filename = eclipseState_->getIOConfig().getRestartFileName( init_config.getRestartRootName(), report_step, false );
+                            Ewoms::EclIO::ERst rst_file(rst_filename);
+                            const auto& rst_state = Ewoms::RestartIO::RstState::load(rst_file, report_step);
+                            if (!schedule_)
+                                schedule_.reset(new Ewoms::Schedule(*deck_, *eclipseState_, parseContext, errorGuard, &rst_state) );
+                        }
+                        else {
+                            if (!schedule_)
+                                schedule_.reset(new Ewoms::Schedule(*deck_, *eclipseState_, parseContext, errorGuard));
+                        }
+                        setupMessageLimiter_(schedule_->getMessageLimits(), "STDOUT_LOGGER");
+                        if (!summaryConfig_)
+                            summaryConfig_.reset( new Ewoms::SummaryConfig(*deck_, *schedule_, eclipseState_->getTableManager(), parseContext, errorGuard));
+                    }
+#if HAVE_MPI
+                    else {
+                        if (!summaryConfig_)
+                            summaryConfig_.reset(new Ewoms::SummaryConfig);
+                        if (!schedule_)
+                            schedule_.reset(new Ewoms::Schedule());
+                        if (!eclipseState_)
+                            eclipseState_.reset(new Ewoms::ParallelEclipseState);
+                    }
+                    Ewoms::eclStateBroadcast(*eclipseState_, *schedule_, *summaryConfig_);
+#endif
+
+                    Ewoms::checkConsistentArrayDimensions(*eclipseState_, *schedule_, parseContext, errorGuard);
+
+                    if (errorGuard) {
+                        errorGuard.dump();
+                        errorGuard.clear();
+
+                        throw std::runtime_error("Unrecoverable errors were encountered while loading input.");
+                    }
+                }
+                setupTime_ = externalSetupTimer.elapsed();
+                outputFiles_ = (outputMode != FileOutputMode::OUTPUT_NONE);
+            }
+            catch (const std::invalid_argument& e)
+            {
+                if (outputCout_) {
+                    std::cerr << "Failed to create valid EclipseState object." << std::endl;
+                    std::cerr << "Exception caught: " << e.what() << std::endl;
+                }
+                exitCode = EXIT_FAILURE;
+                return false;
+            }
+
+            exitCode = EXIT_SUCCESS;
+            return true;
+        }
 
         Ewoms::filesystem::path simulationCaseName_( const std::string& casename ) {
             namespace fs = Ewoms::filesystem;
@@ -266,255 +589,15 @@ namespace Ewoms
             stream_log->setMessageLimiter(std::make_shared<Ewoms::MessageLimiter>(10, limits));
         }
 
-        // ----------------- Main program -----------------
-        int main_(int argc, char** argv)
-        {
-            Dune::Timer externalSetupTimer;
-            externalSetupTimer.start();
-
-            handleVersionCmdLine_(argc, argv);
-            // MPI setup.
-#if HAVE_DUNE_FEM
-            Dune::Fem::MPIManager::initialize(argc, argv);
-            int mpiRank = Dune::Fem::MPIManager::rank();
-#else
-            // the design of the plain dune MPIHelper class is quite flawed: there is no way to
-            // get the instance without having the argc and argv parameters available and it is
-            // not possible to determine the MPI rank and size without an instance. (IOW: the
-            // rank() and size() methods are supposed to be static.)
-            const auto& mpiHelper = Dune::MPIHelper::instance(argc, argv);
-            int mpiRank = mpiHelper.rank();
-#endif
-
-            // we always want to use the default locale, and thus spare us the trouble
-            // with incorrect locale settings.
-            Ewoms::resetLocale();
-
-            // this is a work-around for a catch 22: we do not know what code path to use without
-            // parsing the deck, but we don't know the deck without having access to the
-            // parameters and this requires to know the type tag to be used. To solve this, we
-            // use a type tag just for parsing the parameters before we instantiate the actual
-            // simulator object. (Which parses the parameters again, but since this is done in an
-            // identical manner it does not matter.)
-            typedef TTAG(EFlowEarlyBird) PreTypeTag;
-            typedef GET_PROP_TYPE(PreTypeTag, Problem) PreProblem;
-
-            PreProblem::setBriefDescription(
-                "eFlow, an advanced reservoir simulator for ECL-decks provided by the eWoms project.\n\n"
-                "EFLOW IS NOT ACTIVELY MAINTAINED WITHIN eWoms. ONLY USE IT IF YOU KNOW EXACTLY WHAT YOU ARE DOING "
-                "AND WHAT IT IS GOOD FOR!");
-            int status = Ewoms::EFlowMain<PreTypeTag>::setupParameters_(argc, argv);
-            if (status != 0) {
-                // if setupParameters_ returns a value smaller than 0, there was no error, but
-                // the program should abort. This is the case e.g. for the --help and the
-                // --print-properties parameters.
-#if HAVE_MPI
-                MPI_Finalize();
-#endif
-                return (status >= 0)?status:0;
-            }
-
-            FileOutputMode outputMode = FileOutputMode::OUTPUT_NONE;
-            bool outputCout = false;
-            if (mpiRank == 0)
-                outputCout = EWOMS_GET_PARAM(PreTypeTag, bool, EnableTerminalOutput);
-
-            std::string deckFilename = EWOMS_GET_PARAM(PreTypeTag, std::string, EclDeckFileName);
-            typedef typename GET_PROP_TYPE(PreTypeTag, Vanguard) PreVanguard;
-            try {
-                deckFilename = PreVanguard::canonicalDeckPath(deckFilename).string();
-            }
-            catch (const std::exception& e) {
-                if ( mpiRank == 0 )
-                    std::cerr << "Exception received: " << e.what() << ". Try '--help' for a usage description.\n";
-#if HAVE_MPI
-                MPI_Finalize();
-#endif
-                return 1;
-            }
-
-            if (outputCout) {
-                Ewoms::EFlowMain<PreTypeTag>::printBanner();
-            }
-
-            // Create Deck and EclipseState.
-            try {
-                if (outputCout) {
-                    std::cout << "Reading deck file '" << deckFilename << "'\n";
-                    std::cout.flush();
-                }
-                std::shared_ptr<Ewoms::Deck> deck;
-                std::shared_ptr<Ewoms::EclipseState> eclipseState;
-                std::shared_ptr<Ewoms::Schedule> schedule;
-                std::shared_ptr<Ewoms::SummaryConfig> summaryConfig;
-                {
-                    Ewoms::Parser parser;
-                    Ewoms::ParseContext parseContext({{Ewoms::ParseContext::PARSE_RANDOM_SLASH, Ewoms::InputError::IGNORE},
-                                                    {Ewoms::ParseContext::PARSE_MISSING_DIMS_KEYWORD, Ewoms::InputError::WARN},
-                                                    {Ewoms::ParseContext::SUMMARY_UNKNOWN_WELL, Ewoms::InputError::WARN},
-                                                    {Ewoms::ParseContext::SUMMARY_UNKNOWN_GROUP, Ewoms::InputError::WARN}});
-                    Ewoms::ErrorGuard errorGuard;
-                    outputMode = setupLogging_(mpiRank,
-                                      deckFilename,
-                                      EWOMS_GET_PARAM(PreTypeTag, std::string, OutputDir),
-                                      EWOMS_GET_PARAM(PreTypeTag, std::string, OutputMode),
-                                      outputCout, "STDOUT_LOGGER");
-
-                    if (EWOMS_GET_PARAM(PreTypeTag, bool, EclStrictParsing))
-                        parseContext.update( Ewoms::InputError::DELAYED_EXIT1);
-
-                    Ewoms::EFlowMain<PreTypeTag>::printPRTHeader(outputCout);
-
-                    if (mpiRank == 0) {
-                        deck.reset( new Ewoms::Deck( parser.parseFile(deckFilename , parseContext, errorGuard)));
-                        Ewoms::MissingFeatures::checkKeywords(*deck, parseContext, errorGuard);
-                        if ( outputCout )
-                            Ewoms::checkDeck(*deck, parser, parseContext, errorGuard);
-
-#if HAVE_MPI
-                        eclipseState.reset(new Ewoms::ParallelEclipseState(*deck));
-#else
-                        eclipseState.reset(new Ewoms::EclipseState(*deck));
-#endif
-                        /*
-                          For the time being initializing wells and groups from the
-                          restart file is not possible, but work is underways and it is
-                          included here as a switch.
-                        */
-                        const bool init_from_restart_file = !EWOMS_GET_PARAM(PreTypeTag, bool, SchedRestart);
-                        const auto& init_config = eclipseState->getInitConfig();
-                        if (init_config.restartRequested() && init_from_restart_file) {
-                            int report_step = init_config.getRestartStep();
-                            const auto& rst_filename = eclipseState->getIOConfig().getRestartFileName( init_config.getRestartRootName(), report_step, false );
-                            Ewoms::EclIO::ERst rst_file(rst_filename);
-                            const auto& rst_state = Ewoms::RestartIO::RstState::load(rst_file, report_step);
-                            schedule.reset(new Ewoms::Schedule(*deck, *eclipseState, parseContext, errorGuard, &rst_state) );
-                        } else
-                            schedule.reset(new Ewoms::Schedule(*deck, *eclipseState, parseContext, errorGuard));
-
-                        setupMessageLimiter_(schedule->getMessageLimits(), "STDOUT_LOGGER");
-                        summaryConfig.reset( new Ewoms::SummaryConfig(*deck, *schedule, eclipseState->getTableManager(), parseContext, errorGuard));
-                    }
-#if HAVE_MPI
-                    else {
-                        summaryConfig.reset(new Ewoms::SummaryConfig);
-                        schedule.reset(new Ewoms::Schedule());
-                        eclipseState.reset(new Ewoms::ParallelEclipseState);
-                    }
-                    Ewoms::eclStateBroadcast(*eclipseState, *schedule, *summaryConfig);
-#endif
-
-                    Ewoms::checkConsistentArrayDimensions(*eclipseState, *schedule, parseContext, errorGuard);
-
-                    if (errorGuard) {
-                        errorGuard.dump();
-                        errorGuard.clear();
-
-                        throw std::runtime_error("Unrecoverable errors were encountered while loading input.");
-                    }
-                }
-                const auto& phases = eclipseState->runspec().phases();
-                bool outputFiles = (outputMode != FileOutputMode::OUTPUT_NONE);
-                // run the actual simulator
-                //
-                // TODO: make sure that no illegal combinations like thermal and twophase are
-                //       requested.
-
-                if ( false ) {}
-#ifndef FLOW_BLACKOIL_ONLY
-                // Twophase cases
-                else if( phases.size() == 2 ) {
-                    // oil-gas
-                    if (phases.active( Ewoms::Phase::GAS ))
-                    {
-                        Ewoms::eflowGasOilSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
-                        return Ewoms::eflowGasOilMain(argc, argv, outputCout, outputFiles);
-                    }
-                    // oil-water
-                    else if ( phases.active( Ewoms::Phase::WATER ) )
-                    {
-                        Ewoms::eflowOilWaterSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
-                        return Ewoms::eflowOilWaterMain(argc, argv, outputCout, outputFiles);
-                    }
-                    else {
-                        if (outputCout)
-                            std::cerr << "No suitable configuration found, valid are Twophase (oilwater and oilgas), polymer, solvent, or blackoil" << std::endl;
-                        return EXIT_FAILURE;
-                    }
-                }
-                // Polymer case
-                else if ( phases.active( Ewoms::Phase::POLYMER ) ) {
-
-                    if ( !phases.active( Ewoms::Phase::WATER) ) {
-                        if (outputCout)
-                            std::cerr << "No valid configuration is found for polymer simulation, valid options include "
-                              << "oilwater + polymer and blackoil + polymer" << std::endl;
-                        return EXIT_FAILURE;
-                    }
-
-                    // Need to track the polymer molecular weight
-                    // for the injectivity study
-                    if ( phases.active( Ewoms::Phase::POLYMW ) ) {
-                        // only oil water two phase for now
-                        assert( phases.size() == 4);
-                        return Ewoms::eflowOilWaterPolymerInjectivityMain(argc, argv, outputCout, outputFiles);
-                    }
-
-                    if ( phases.size() == 3 ) { // oil water polymer case
-                        Ewoms::eflowOilWaterPolymerSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
-                        return Ewoms::eflowOilWaterPolymerMain(argc, argv, outputCout, outputFiles);
-                    } else {
-                        Ewoms::eflowPolymerSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
-                        return Ewoms::eflowPolymerMain(argc, argv, outputCout, outputFiles);
-                    }
-                }
-                // Foam case
-                else if ( phases.active( Ewoms::Phase::FOAM ) ) {
-                    Ewoms::eflowFoamSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
-                    return Ewoms::eflowFoamMain(argc, argv, outputCout, outputFiles);
-                }
-                // Brine case
-                else if ( phases.active( Ewoms::Phase::BRINE ) ) {
-                    Ewoms::eflowBrineSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
-                    return Ewoms::eflowBrineMain(argc, argv, outputCout, outputFiles);
-                }
-                // Solvent case
-                else if ( phases.active( Ewoms::Phase::SOLVENT ) ) {
-                    Ewoms::eflowSolventSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
-                    return Ewoms::eflowSolventMain(argc, argv, outputCout, outputFiles);
-                }
-                // Energy case
-                else if (eclipseState->getSimulationConfig().isThermal()) {
-                    Ewoms::eflowEnergySetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
-                    return Ewoms::eflowEnergyMain(argc, argv, outputCout, outputFiles);
-                }
-#endif // FLOW_BLACKOIL_ONLY
-                // Blackoil case
-                else if( phases.size() == 3 ) {
-                    Ewoms::eflowBlackoilSetDeck(externalSetupTimer.elapsed(), deck.get(), *eclipseState, *schedule, *summaryConfig);
-                    return Ewoms::eflowBlackoilMain(argc, argv, outputCout, outputFiles);
-                }
-                else
-                {
-                    if (outputCout)
-                        std::cerr << "No suitable configuration found, valid are Twophase, polymer, foam, brine, solvent, energy, blackoil." << std::endl;
-                    return EXIT_FAILURE;
-                }
-            }
-            catch (const std::invalid_argument& e)
-            {
-                if (outputCout) {
-                    std::cerr << "Failed to create valid EclipseState object." << std::endl;
-                    std::cerr << "Exception caught: " << e.what() << std::endl;
-                }
-                return EXIT_FAILURE;
-            }
-
-            return EXIT_SUCCESS;
-        }
-
         int argc_;
         char** argv_;
+        bool outputCout_;
+        bool outputFiles_;
+        double setupTime_;
+        std::shared_ptr<Ewoms::Deck> deck_;
+        std::shared_ptr<Ewoms::EclipseState> eclipseState_;
+        std::shared_ptr<Ewoms::Schedule> schedule_;
+        std::shared_ptr<Ewoms::SummaryConfig> summaryConfig_;
     };
 
 } // namespace Ewoms

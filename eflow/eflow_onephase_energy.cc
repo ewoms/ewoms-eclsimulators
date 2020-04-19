@@ -16,7 +16,7 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "config.h"
-#include "eflow/eflow_tag.hh"
+#include <ewoms/eclsimulators/eflow/main.hh>
 #include <ewoms/numerics/models/blackoil/blackoilonephaseindices.hh>
 
 BEGIN_PROPERTIES
@@ -83,9 +83,9 @@ public:
 // };
 END_PROPERTIES
 
-int
-main(int argc, char** argv)
+int main(int argc, char** argv)
 {
-    typedef TTAG(EclEFlowProblemSimple) TypeTag;
-    return mainEFlow<TypeTag>(argc, argv);
+    using TypeTag = TTAG(EclEFlowProblemSimple);
+    auto mainObject = Ewoms::EFlowNihMain(argc, argv);
+    return mainObject.runStatic<TypeTag>();
 }

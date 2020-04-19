@@ -16,7 +16,8 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "config.h"
-#include "eflow/eflow_tag.hh"
+
+#include <ewoms/eclsimulators/eflow/main.hh>
 
 #if DUNE_VERSION_NEWER(DUNE_ISTL, 2, 6)
 #include  <ewoms/eclsimulators/linalg/istlsolverflexible.hh>
@@ -96,6 +97,7 @@ namespace Ewoms {
 
 int main(int argc, char** argv)
 {
-    typedef TTAG(EclEFlowProblemSimple) TypeTag;
-    return mainEFlow<TypeTag>(argc, argv);
+    using TypeTag = TTAG(EclEFlowProblemSimple);
+    auto mainObject = Ewoms::EFlowNihMain(argc, argv);
+    return mainObject.runStatic<TypeTag>();
 }

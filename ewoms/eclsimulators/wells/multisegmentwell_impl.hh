@@ -1811,7 +1811,7 @@ namespace Ewoms
     template <typename TypeTag>
     void
     MultisegmentWell<TypeTag>::
-    assemblePressureEq(const int seg) const
+    assemblePressureEq(const int seg, WellState& well_state) const
     {
         assert(seg != 0); // not top segment
 
@@ -1820,10 +1820,16 @@ namespace Ewoms
 
         // we need to handle the pressure difference between the two segments
         // we only consider the hydrostatic pressure loss first
-        pressure_equation -= getHydroPressureLoss(seg);
+        // TODO: we might be able to add member variables to store these values, then we update well state
+        // after converged
+        const auto hydro_pressure_drop = getHydroPressureLoss(seg);
+        well_state.segPressDropHydroStatic()[seg] = hydro_pressure_drop.value();
+        pressure_equation -= hydro_pressure_drop;
 
         if (frictionalPressureLossConsidered()) {
-            pressure_equation -= getFrictionPressureLoss(seg);
+            const auto friction_pressure_drop = getFrictionPressureLoss(seg);
+            pressure_equation -= friction_pressure_drop;
+            well_state.segPressDropFriction()[seg] = friction_pressure_drop.value();
         }
 
         resWell_[seg][SPres] = pressure_equation.value();
@@ -1841,7 +1847,7 @@ namespace Ewoms
         }
 
         if (accelerationalPressureLossConsidered()) {
-            handleAccelerationPressureLoss(seg);
+            handleAccelerationPressureLoss(seg, well_state);
         }
     }
 
@@ -1876,7 +1882,7 @@ namespace Ewoms
     template <typename TypeTag>
     void
     MultisegmentWell<TypeTag>::
-    handleAccelerationPressureLoss(const int seg) const
+    handleAccelerationPressureLoss(const int seg, WellState& well_state) const
     {
         // TODO: this pressure loss is not significant enough to be well tested yet.
         // handle the out velcocity head
@@ -1904,6 +1910,7 @@ namespace Ewoms
             const EvalWell inlet_density = segment_densities_[inlet];
             const EvalWell inlet_mass_rate = segment_mass_rates_[inlet];
             const EvalWell inlet_velocity_head = mswellhelpers::velocityHead(area, inlet_mass_rate, inlet_density);
+            well_state.segPressDropAcceleration()[seg] = inlet_velocity_head.value();
             resWell_[seg][SPres] += inlet_velocity_head.value();
             for (int pv_idx = 0; pv_idx < numWellEq; ++pv_idx) {
                 duneD_[seg][inlet][SPres][pv_idx] += inlet_velocity_head.derivative(pv_idx + numEq);
@@ -2324,15 +2331,19 @@ namespace Ewoms
                 // TODO: maybe the following should go to the function assemblePressureEq()
 		switch(segmentSet()[seg].segmentType()) {
 		    case Segment::SegmentType::SICD :
-		        assembleSICDPressureEq(seg);
+		        assembleSICDPressureEq(seg, well_state);
 			break;
 		    case Segment::SegmentType::VALVE :
-		        assembleValvePressureEq(seg);
+		        assembleValvePressureEq(seg, well_state);
 			break;
 		    default :
-		        assemblePressureEq(seg);
+		        assemblePressureEq(seg, well_state);
 		}
             }
+
+            well_state.segPressDrop()[seg] = well_state.segPressDropHydroStatic()[seg] +
+                                             well_state.segPressDropFriction()[seg] +
+                                             well_state.segPressDropAcceleration()[seg];
         }
     }
 
@@ -2803,7 +2814,7 @@ namespace Ewoms
     template<typename TypeTag>
     void
     MultisegmentWell<TypeTag>::
-    assembleSICDPressureEq(const int seg) const
+    assembleSICDPressureEq(const int seg, WellState& well_state) const
     {
         // TODO: upwinding needs to be taken care of
         // top segment can not be a spiral ICD device
@@ -2815,7 +2826,9 @@ namespace Ewoms
 
         EvalWell pressure_equation = getSegmentPressure(seg);
 
-        pressure_equation = pressure_equation - pressureDropSpiralICD(seg);
+        const auto sicd_pressure_drop = pressureDropSpiralICD(seg);
+        pressure_equation = pressure_equation - sicd_pressure_drop;
+        well_state.segPressDropFriction()[seg] = sicd_pressure_drop.value();
 
         resWell_[seg][SPres] = pressure_equation.value();
         for (int pv_idx = 0; pv_idx < numWellEq; ++pv_idx) {
@@ -2836,7 +2849,7 @@ namespace Ewoms
     template<typename TypeTag>
     void
     MultisegmentWell<TypeTag>::
-    assembleValvePressureEq(const int seg) const
+    assembleValvePressureEq(const int seg, WellState& well_state) const
     {
         // TODO: upwinding needs to be taken care of
         // top segment can not be a spiral ICD device
@@ -2852,7 +2865,9 @@ namespace Ewoms
 
         // const int seg_upwind = upwinding_segments_[seg];
 
-        pressure_equation = pressure_equation - pressureDropValve(seg);
+        const auto valve_pressure_drop = pressureDropValve(seg);
+        pressure_equation = pressure_equation - valve_pressure_drop;
+        well_state.segPressDropFriction()[seg] = valve_pressure_drop.value();
 
         resWell_[seg][SPres] = pressure_equation.value();
         for (int pv_idx = 0; pv_idx < numWellEq; ++pv_idx) {

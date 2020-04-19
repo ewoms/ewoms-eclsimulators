@@ -371,7 +371,7 @@ namespace Ewoms
                                const Well::ProductionControls& prod_controls,
                                Ewoms::DeferredLogger& deferred_logger);
 
-        void assemblePressureEq(const int seg) const;
+        void assemblePressureEq(const int seg, WellState& well_state) const;
 
         // hytrostatic pressure loss
         EvalWell getHydroPressureLoss(const int seg) const;
@@ -379,7 +379,7 @@ namespace Ewoms
         // frictinal pressure loss
         EvalWell getFrictionPressureLoss(const int seg) const;
 
-        void handleAccelerationPressureLoss(const int seg) const;
+        void handleAccelerationPressureLoss(const int seg, WellState& well_state) const;
 
         // handling the overshooting and undershooting of the fractions
         void processFractions(const int seg) const;
@@ -460,7 +460,7 @@ namespace Ewoms
 
         double maxPerfPress(const Simulator& eebos_simulator) const;
 
-        void assembleSICDPressureEq(const int seg) const;
+        void assembleSICDPressureEq(const int seg, WellState& well_state) const;
 
         // TODO: when more ICD devices join, we should have a better interface to do this
         void calculateSICDEFlowScalingFactors();
@@ -468,7 +468,7 @@ namespace Ewoms
         EvalWell pressureDropSpiralICD(const int seg) const;
 
         // assemble the pressure equation for sub-critical valve (WSEGVALV)
-        void assembleValvePressureEq(const int seg) const;
+        void assembleValvePressureEq(const int seg, WellState& well_state) const;
 
         EvalWell pressureDropValve(const int seg) const;
     };

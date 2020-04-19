@@ -15,12 +15,14 @@
   You should have received a copy of the GNU General Public License
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 #include "config.h"
+
 #include <ewoms/eclsimulators/eflow/main.hh>
 
 int main(int argc, char** argv)
 {
     auto mainObject = Ewoms::EFlowNihMain(argc, argv);
-    return mainObject.run();
+    return mainObject.runDynamic();
 }
 

@@ -43,6 +43,7 @@ namespace Ewoms
         unsigned int total_linear_iterations;
 
         bool converged;
+        int exit_status;
 
         /// Default constructor initializing all times to 0.0.
         explicit SimulatorReport(bool verbose=true);

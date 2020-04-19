@@ -77,11 +77,6 @@ SET_BOOL_PROP(EFlowModelParameters, UseInnerIterationsMsWells, true);
 SET_INT_PROP(EFlowModelParameters, MaxInnerIterMsWells, 100);
 SET_BOOL_PROP(EFlowModelParameters, EnableWellOperabilityCheck, true);
 
-// if openMP is available, determine the number threads per process automatically.
-#if _OPENMP
-SET_INT_PROP(EFlowModelParameters, ThreadsPerProcess, -1);
-#endif
-
 END_PROPERTIES
 
 namespace Ewoms
