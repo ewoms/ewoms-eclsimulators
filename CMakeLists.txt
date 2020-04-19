@@ -42,32 +42,33 @@ ewoms_recusive_export_all_headers("ewoms")
 ######
 # eebos and its variants
 ######
-# blackoil eebos
-ewoms_add_application(eebos
-                    DEFAULT_ENABLE_IF ${BUILD_EEBOS}
-                    SOURCES eebos/eebos_main.cc $<TARGET_OBJECTS:eebos_libblackoil>)
-
-# eebos variants
-set(MEEBOS_TARGETS "")
-foreach(EXT blackoil solvent polymer foam gasoil oilwater oilwaterpolymer thermal brine)
+# standard eebos variants
+set(EEBOS_TARGETS "")
+foreach(EXT blackoil solvent polymer foam gasoil oilwater thermal)
   add_library(eebos_lib${EXT} OBJECT EXCLUDE_FROM_ALL eebos/eebos_${EXT}.cc)
   target_include_directories(eebos_lib${EXT} PRIVATE ${ecl_INCLUDE_DIRS})
-  list(APPEND MEEBOS_TARGETS $<TARGET_OBJECTS:eebos_lib${EXT}>)
+  list(APPEND EEBOS_TARGETS $<TARGET_OBJECTS:eebos_lib${EXT}>)
 endforeach()
 
+# non-standard eebos variants
+foreach(EXT oilwaterpolymer brine)
+  add_library(eebos_lib${EXT} OBJECT EXCLUDE_FROM_ALL eebos/eebos_${EXT}.cc)
+  target_include_directories(eebos_lib${EXT} PRIVATE ${ecl_INCLUDE_DIRS})
+endforeach()
+ 
 # add specialized eebos simulators with some black-oil extension
-foreach(EXT solvent polymer foam gasoil oilwater oilwaterpolymer thermal brine)
+foreach(EXT blackoil solvent polymer foam gasoil oilwater oilwaterpolymer thermal brine)
   ewoms_add_application(eebos_${EXT}
     DEFAULT_ENABLE_IF ${BUILD_EEBOS_EXTENSIONS}
     SOURCES eebos/eebos_${EXT}_main.cc $<TARGET_OBJECTS:eebos_lib${EXT}>)
 endforeach()
 
 ######
-# meebos: multiplexed eebos with most of the above model extensions
+# eebos: multiplexed eebos with most of the above model extensions
 ######
-ewoms_add_application(meebos
+ewoms_add_application(eebos
                     DEFAULT_ENABLE_IF ${BUILD_EEBOS_EXTENSIONS}
-                    SOURCES eebos/meebos_main.cc ${MEEBOS_TARGETS})
+                    SOURCES eebos/eebos_main.cc ${EEBOS_TARGETS})
 
 ######
 # eebos variants only for debugging
@@ -77,24 +78,24 @@ ewoms_add_application(meebos
 ewoms_add_application(eebos_plain
                     DEFAULT_ENABLE_IF ${BUILD_EEBOS_DEBUG_EXTENSIONS}
                     SOURCES eebos/eebos_plain.cc
-                    EXE_NAME eebos_plain)
+                    EXE_NAME eebos_blackoil_plain)
 
 # variant that uses an AMG-based linear solver
 ewoms_add_application(eebos_amg
                     DEFAULT_ENABLE_IF ${BUILD_EEBOS_DEBUG_EXTENSIONS}
                     SOURCES eebos/eebos_blackoil_amg.cc
-                    EXE_NAME eebos_amg)
+                    EXE_NAME eebos_blackoil_amg)
 
 # variant that uses different phase and component indices than the others
 ewoms_add_application(eebos_altidx
                     DEFAULT_ENABLE_IF ${BUILD_EEBOS_DEBUG_EXTENSIONS}
                     SOURCES eebos/eebos_altidx.cc
-                    EXE_NAME eebos_altidx)
+                    EXE_NAME eebos_blackoil_altidx)
 
-# target to seletively build meebos, eebos, and all eebos variants
+# target to seletively build eebos or any of its specialized variants
 add_custom_target(all_eebos)
 add_dependencies(all_eebos "eebos")
-add_dependencies(all_eebos "meebos")
+add_dependencies(all_eebos "eebos_blackoil")
 add_dependencies(all_eebos "eebos_solvent")
 add_dependencies(all_eebos "eebos_polymer")
 add_dependencies(all_eebos "eebos_foam")
