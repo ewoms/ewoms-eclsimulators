@@ -158,7 +158,11 @@ public:
 
         // Main simulation loop.
         while (!timer.done()) {
-            if (schedule().exitStatus().has_value()) {
+          // this is a bit ugly: std::experimental::optional does not
+          // exhibit a has_value method, so we have to use operator
+          // bool() which makes this look terribly confusing.
+          bool exitStatusSet = static_cast<bool>(schedule().exitStatus());
+            if (exitStatusSet) {
                 if (terminalOutput_) {
                     OpmLog::info("Stopping simulation since EXIT was triggered by an action keyword.");
                 }

@@ -6,11 +6,11 @@ cmake_minimum_required(VERSION 3.5)
 # set up project and specify the minimum cmake version
 project("ewoms-eclsimulators" C CXX)
 
-option(BUILD_EEBOS "Build the research-oriented eebos simulator?" ON)
+option(BUILD_EEBOS "Build the eebos simulator?" ON)
 option(BUILD_EEBOS_EXTENSIONS "Build the variants for various extensions of eebos by default?" ON)
 option(BUILD_EEBOS_DEBUG_EXTENSIONS "Build the debugging variants of eebos by default?" OFF)
 
-option(BUILD_EFLOW "Build the production oriented eflow simulator?" OFF)
+option(BUILD_EFLOW "Build the eflow debugging aid?" OFF)
 option(BUILD_EFLOW_DEBUG_EXTENSIONS "Build the debugging variants of eflow by default?" OFF)
 
 # find the build system (i.e., ewoms-common) and set cmake's module path

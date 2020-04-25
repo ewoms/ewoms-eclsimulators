@@ -1897,7 +1897,10 @@ private:
             saturations.reset();
 
             auto totfrac = 0.0;
-            for (const auto& [depth, frac] : Details::horizontalSubdivision(grid, cell, acc)) {
+            for (const auto& hdiv : Details::horizontalSubdivision(grid, cell, acc)) {
+                const auto& depth = std::get<0>(hdiv);
+                const auto& frac = std::get<1>(hdiv);
+
                 const auto pos = CellPos { cell, depth };
 
                 saturations.axpy(psat.deriveSaturations(pos, eqreg, ptable), frac);
