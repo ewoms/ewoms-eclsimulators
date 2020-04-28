@@ -423,6 +423,7 @@ namespace Ewoms {
             bool checkGroupConstraints(const Group& group, Ewoms::DeferredLogger& deferred_logger) const;
             Group::ProductionCMode checkGroupProductionConstraints(const Group& group, Ewoms::DeferredLogger& deferred_logger) const;
             Group::InjectionCMode checkGroupInjectionConstraints(const Group& group, const Phase& phase) const;
+            void checkGconsaleLimits(const Group& group) const;
 
             void updateGroupHigherControls(Ewoms::DeferredLogger& deferred_logger, std::set<std::string>& switched_groups);
             void checkGroupHigherConstraints(const Group& group, Ewoms::DeferredLogger& deferred_logger, std::set<std::string>& switched_groups);

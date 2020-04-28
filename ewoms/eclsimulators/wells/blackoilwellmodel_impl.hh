@@ -429,6 +429,7 @@ namespace Ewoms {
 
         // time step is finished and we are not any more at the beginning of an report step
         report_step_starts_ = false;
+        const int reportStepIdx = eebosSimulator_.episodeIndex();
 
         Ewoms::DeferredLogger local_deferredLogger;
         for (const auto& well : well_container_) {
@@ -444,7 +445,7 @@ namespace Ewoms {
         // calculate the well potentials
         try {
             std::vector<double> well_potentials;
-            const int reportStepIdx = eebosSimulator_.episodeIndex();
+
             computeWellPotentials(well_potentials, reportStepIdx, local_deferredLogger);
         } catch ( std::runtime_error& e ) {
             const std::string msg = "A zero well potential is returned for output purposes. ";
@@ -457,6 +458,9 @@ namespace Ewoms {
             global_deferredLogger.logMessages();
         }
 
+        // check group sales limits at the end of the timestep
+        const Group& fieldGroup = schedule().getGroup("FIELD", reportStepIdx);
+        checkGconsaleLimits(fieldGroup);
     }
 
     template<typename TypeTag>
@@ -1630,6 +1634,14 @@ namespace Ewoms {
     updateGroupIndividualControls(Ewoms::DeferredLogger& deferred_logger, std::set<std::string>& switched_groups)
     {
         const int reportStepIdx = eebosSimulator_.episodeIndex();
+
+        const int nupcol = schedule().getNupcol(reportStepIdx);
+        const int iterationIdx = eebosSimulator_.model().newtonMethod().numIterations();
+        // don't switch group control when iterationIdx > nupcol
+        // to avoid oscilations between group controls
+        if (iterationIdx > nupcol)
+            return;
+
         const Group& fieldGroup = schedule().getGroup("FIELD", reportStepIdx);
         updateGroupIndividualControl(fieldGroup, deferred_logger, switched_groups);
     }
@@ -1912,42 +1924,62 @@ namespace Ewoms {
                 }
             }
         }
-        // Handle GCONSALE
-        if (schedule().gConSale(reportStepIdx).has(group.name())) {
-
-            if (controls.phase != Phase::GAS)
-                EWOMS_THROW(std::runtime_error, "Group " + group.name() + " has GCONSALE control but is not a GAS group" );
-
-            const auto& gconsale = schedule().gConSale(reportStepIdx).get(group.name(), summaryState);
-
-            double sales_rate = 0.0;
-            int gasPos = phase_usage_.phase_pos[BlackoilPhases::Vapour];
-            sales_rate += WellGroupHelpers::sumWellRates(group, schedule(), well_state, reportStepIdx, gasPos, /*isInjector*/false);
-            sales_rate -= WellGroupHelpers::sumWellRates(group, schedule(), well_state, reportStepIdx, gasPos, /*isInjector*/true);
-
-            // sum over all nodes
-            sales_rate = comm.sum(sales_rate);
-
-            // add import rate and substract consumption rate for group for gas
-            if (schedule().gConSump(reportStepIdx).has(group.name())) {
-                const auto& gconsump = schedule().gConSump(reportStepIdx).get(group.name(), summaryState);
-                if (phase_usage_.phase_used[BlackoilPhases::Vapour]) {
-                    sales_rate += gconsump.import_rate;
-                    sales_rate -= gconsump.consumption_rate;
-                }
-            }
-            if (sales_rate > gconsale.max_sales_rate) {
-                EWOMS_THROW(std::runtime_error, "Group " + group.name() + " has sale rate more then the maximum permitted value. Not implemented in EFlow" );
-            }
-            if (sales_rate < gconsale.min_sales_rate) {
-                EWOMS_THROW(std::runtime_error, "Group " + group.name() + " has sale rate less then minimum permitted value. Not implemented in EFlow" );
-            }
-            if (gconsale.sales_target < 0.0) {
-                EWOMS_THROW(std::runtime_error, "Group " + group.name() + " has sale rate target less then zero. Not implemented in EFlow" );
-            }
-
-        }
         return Group::InjectionCMode::NONE;
+    }
+
+    template<typename TypeTag>
+    void
+    BlackoilWellModel<TypeTag>::
+    checkGconsaleLimits(const Group& group) const
+    {
+        const int reportStepIdx = eebosSimulator_.episodeIndex();
+         // call recursively down the group hiearchy
+        for (const std::string& groupName : group.groups()) {
+            checkGconsaleLimits( schedule().getGroup(groupName, reportStepIdx));
+        }
+
+        // only for groups with gas injection controls
+        if (!group.hasInjectionControl(Phase::GAS)) {
+            return;
+        }
+
+        // check if gconsale is used for this group
+        if (!schedule().gConSale(reportStepIdx).has(group.name()))
+            return;
+
+        const auto& summaryState = eebosSimulator_.vanguard().summaryState();
+        const auto& comm = eebosSimulator_.vanguard().grid().comm();
+        const auto& well_state = well_state_;
+
+        const auto& controls = group.injectionControls(Phase::GAS, summaryState);
+        const auto& gconsale = schedule().gConSale(reportStepIdx).get(group.name(), summaryState);
+
+        double sales_rate = 0.0;
+        int gasPos = phase_usage_.phase_pos[BlackoilPhases::Vapour];
+        sales_rate += WellGroupHelpers::sumWellRates(group, schedule(), well_state, reportStepIdx, gasPos, /*isInjector*/false);
+        sales_rate -= WellGroupHelpers::sumWellRates(group, schedule(), well_state, reportStepIdx, gasPos, /*isInjector*/true);
+
+        // sum over all nodes
+        sales_rate = comm.sum(sales_rate);
+
+        // add import rate and substract consumption rate for group for gas
+        if (schedule().gConSump(reportStepIdx).has(group.name())) {
+            const auto& gconsump = schedule().gConSump(reportStepIdx).get(group.name(), summaryState);
+            if (phase_usage_.phase_used[BlackoilPhases::Vapour]) {
+                sales_rate += gconsump.import_rate;
+                sales_rate -= gconsump.consumption_rate;
+            }
+        }
+        if (sales_rate > gconsale.max_sales_rate) {
+            EWOMS_THROW(std::runtime_error, "Group " + group.name() + " has sale rate more then the maximum permitted value. Not implemented in EFlow" );
+        }
+        if (sales_rate < gconsale.min_sales_rate) {
+            EWOMS_THROW(std::runtime_error, "Group " + group.name() + " has sale rate less then minimum permitted value. Not implemented in EFlow" );
+        }
+        if (gconsale.sales_target < 0.0) {
+            EWOMS_THROW(std::runtime_error, "Group " + group.name() + " has sale rate target less then zero. Not implemented in EFlow" );
+        }
+
     }
 
     template<typename TypeTag>
