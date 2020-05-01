@@ -215,11 +215,16 @@ public:
         ElementIndexScatterHandle(const EquilMapper& sendMapper, const Mapper& recvMapper, std::vector<int>& elementIndices)
             : sendMapper_(sendMapper), recvMapper_(recvMapper), elementIndices_(elementIndices)
         {}
+
         using DataType = int;
+
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2,7)
+        bool fixedSize(int /*dim*/, int /*codim*/)
+        { return true; }
+#else
         bool fixedsize(int /*dim*/, int /*codim*/)
-        {
-            return true;
-        }
+        { return true; }
+#endif
 
         template<class T>
         std::size_t size(const T&)
@@ -256,10 +261,14 @@ public:
             : mapper_(mapper), elementIndices_(elementIndices)
         {}
         using DataType = int;
+
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2,7)
+        bool fixedSize(int /*dim*/, int /*codim*/)
+        { return true; }
+#else
         bool fixedsize(int /*dim*/, int /*codim*/)
-        {
-            return true;
-        }
+        { return true; }
+#endif
 
         template<class T>
         std::size_t size(const T&)
