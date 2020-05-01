@@ -795,7 +795,7 @@ inline void unpack(std::string& str, std::vector<char>& buffer, int& position,
 
 // Ewoms::optional
 template<class T>
-void unpack(std::optional<T>&data, std::vector<char>& buffer, int& position,
+void unpack(Ewoms::optional<T>&data, std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm)
 {
     bool hasValue;
@@ -803,7 +803,7 @@ void unpack(std::optional<T>&data, std::vector<char>& buffer, int& position,
     if (hasValue)
         unpack(*data, buffer, position, comm);
     else
-        data.reset();
+        data = Ewoms::nullopt;
 }
 
 // dynamic arrays with arbitrary allocators
