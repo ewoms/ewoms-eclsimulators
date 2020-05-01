@@ -292,6 +292,17 @@ std::size_t packSize(const std::pair<T1,T2>& data, Dune::MPIHelper::MPICommunica
     return packSize(data.first, comm) + packSize(data.second, comm);
 }
 
+// generic Ewoms::optional objects
+template<class T>
+std::size_t packSize(const Ewoms::optional<T>& data, Dune::MPIHelper::MPICommunicator comm)
+{
+    bool hasValue = data.operator bool();
+    std::size_t pkSize = packSize(hasValue, comm);
+    if (hasValue)
+        pkSize += packSize(*data, comm);
+    return pkSize;
+}
+
 // generic std::vector objects
 template<class T, class A>
 std::size_t packSize(const std::vector<T,A>& data, Dune::MPIHelper::MPICommunicator comm)
@@ -319,22 +330,22 @@ std::size_t packSize(const std::vector<bool,A>& data, Dune::MPIHelper::MPICommun
 // std::tuple objects
 template<std::size_t I = 0, typename Tuple>
 typename std::enable_if<I == std::tuple_size<Tuple>::value, std::size_t>::type
-packSize_tuple_entry(const Tuple&, Dune::MPIHelper::MPICommunicator)
+packSizeTupleEntry(const Tuple&, Dune::MPIHelper::MPICommunicator)
 {
     return 0;
 }
 
 template<std::size_t I = 0, typename Tuple>
 typename std::enable_if<I != std::tuple_size<Tuple>::value, std::size_t>::type
-packSize_tuple_entry(const Tuple& tuple, Dune::MPIHelper::MPICommunicator comm)
+packSizeTupleEntry(const Tuple& tuple, Dune::MPIHelper::MPICommunicator comm)
 {
-    return packSize(std::get<I>(tuple), comm) + packSize_tuple_entry<I+1>(tuple, comm);
+    return packSize(std::get<I>(tuple), comm) + packSizeTupleEntry<I+1>(tuple, comm);
 }
 
 template<class... Ts>
 std::size_t packSize(const std::tuple<Ts...>& data, Dune::MPIHelper::MPICommunicator comm)
 {
-    return packSize_tuple_entry(data, comm);
+    return packSizeTupleEntry(data, comm);
 }
 
 // std::unordered_set
@@ -519,6 +530,17 @@ void pack(const std::pair<T1,T2>& data, std::vector<char>& buffer, int& position
     pack(data.second, buffer, position, comm);
 }
 
+// Ewoms::optional
+template<class T>
+void pack(const Ewoms::optional<T>& data, std::vector<char>& buffer, int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    bool hasValue = data.operator bool();
+    pack(hasValue, buffer, position, comm);
+    if (hasValue)
+        pack(*data, buffer, position, comm);
+}
+
 // std::vector with custom allocator
 template<class T, class A>
 void pack(const std::vector<T, A>& data, std::vector<char>& buffer, int& position,
@@ -589,25 +611,25 @@ void pack(const std::vector<bool,A>& data, std::vector<char>& buffer, int& posit
 //  std::tuple
 template<std::size_t I = 0, typename Tuple>
 typename std::enable_if<I == std::tuple_size<Tuple>::value, void>::type
-pack_tuple_entry(const Tuple&, std::vector<char>&, int&,
+packTupleEntry(const Tuple&, std::vector<char>&, int&,
                       Dune::MPIHelper::MPICommunicator)
 {
 }
 
 template<std::size_t I = 0, typename Tuple>
 typename std::enable_if<I != std::tuple_size<Tuple>::value, void>::type
-pack_tuple_entry(const Tuple& tuple, std::vector<char>& buffer,
+packTupleEntry(const Tuple& tuple, std::vector<char>& buffer,
                  int& position, Dune::MPIHelper::MPICommunicator comm)
 {
     pack(std::get<I>(tuple), buffer, position, comm);
-    pack_tuple_entry<I+1>(tuple, buffer, position, comm);
+    packTupleEntry<I+1>(tuple, buffer, position, comm);
 }
 
 template<class... Ts>
 void pack(const std::tuple<Ts...>& data, std::vector<char>& buffer,
           int& position, Dune::MPIHelper::MPICommunicator comm)
 {
-    pack_tuple_entry(data, buffer, position, comm);
+    packTupleEntry(data, buffer, position, comm);
 }
 
 // std::map
@@ -771,6 +793,19 @@ inline void unpack(std::string& str, std::vector<char>& buffer, int& position,
     str.append(cStr.data());
 }
 
+// Ewoms::optional
+template<class T>
+void unpack(std::optional<T>&data, std::vector<char>& buffer, int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    bool hasValue;
+    unpack(hasValue, buffer, position, comm);
+    if (hasValue)
+        unpack(*data, buffer, position, comm);
+    else
+        data.reset();
+}
+
 // dynamic arrays with arbitrary allocators
 template<class T, class A>
 void unpack(std::vector<T,A>& data, std::vector<char>& buffer, int& position,
@@ -809,25 +844,25 @@ void unpack(std::vector<bool,A>& data, std::vector<char>& buffer, int& position,
 // std::tuple
 template<std::size_t I = 0, typename Tuple>
 typename std::enable_if<I == std::tuple_size<Tuple>::value, void>::type
-unpack_tuple_entry(Tuple&, std::vector<char>&, int&,
+unpackTupleEntry(Tuple&, std::vector<char>&, int&,
                    Dune::MPIHelper::MPICommunicator)
 {
 }
 
 template<std::size_t I = 0, typename Tuple>
 typename std::enable_if<I != std::tuple_size<Tuple>::value, void>::type
-unpack_tuple_entry(Tuple& tuple, std::vector<char>& buffer,
+unpackTupleEntry(Tuple& tuple, std::vector<char>& buffer,
                    int& position, Dune::MPIHelper::MPICommunicator comm)
 {
     unpack(std::get<I>(tuple), buffer, position, comm);
-    unpack_tuple_entry<I+1>(tuple, buffer, position, comm);
+    unpackTupleEntry<I+1>(tuple, buffer, position, comm);
 }
 
 template<class... Ts>
 void unpack(std::tuple<Ts...>& data, std::vector<char>& buffer,
             int& position, Dune::MPIHelper::MPICommunicator comm)
 {
-    unpack_tuple_entry(data, buffer, position, comm);
+    unpackTupleEntry(data, buffer, position, comm);
 }
 
 // std::set
