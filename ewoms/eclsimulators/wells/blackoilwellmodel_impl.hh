@@ -1951,7 +1951,6 @@ namespace Ewoms {
         const auto& comm = eebosSimulator_.vanguard().grid().comm();
         const auto& well_state = well_state_;
 
-        const auto& controls = group.injectionControls(Phase::GAS, summaryState);
         const auto& gconsale = schedule().gConSale(reportStepIdx).get(group.name(), summaryState);
 
         double sales_rate = 0.0;

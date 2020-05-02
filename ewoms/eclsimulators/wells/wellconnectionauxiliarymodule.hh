@@ -60,7 +60,7 @@ public:
         wells_.reserve(schedule_wells.size());
 
         // initialize the additional cell connections introduced by wells.
-        for ( const auto well : schedule_wells )
+        for ( const auto& well : schedule_wells )
         {
             std::vector<int> compressed_well_perforations;
             // All possible completions of the well
@@ -100,7 +100,7 @@ public:
 
     void addNeighbors(std::vector<NeighborSet>& neighbors) const
     {
-        for(const auto well_perforations : wells_)
+        for(const auto& well_perforations : wells_)
         {
             for(const auto& perforation : well_perforations)
                 neighbors[perforation].insert(well_perforations.begin(),

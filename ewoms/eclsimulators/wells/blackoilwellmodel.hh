@@ -185,7 +185,7 @@ namespace Ewoms {
             Ewoms::data::Group groupData(const int reportStepIdx, Ewoms::Schedule& sched) const
             {
                 Ewoms::data::Group dw;
-                for (const std::string gname :  sched.groupNames(reportStepIdx))  {
+                for (const std::string& gname :  sched.groupNames(reportStepIdx))  {
                     const auto& grup = sched.getGroup(gname, reportStepIdx);
                     const auto& grup_type = grup.getGroupType();
                     Ewoms::data::currentGroupConstraints cgc;
