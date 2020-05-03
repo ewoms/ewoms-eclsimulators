@@ -43,11 +43,14 @@
 /* Define to the revision of ewoms-eclsimulators */
 #define EWOMS_ECLSIMULATORS_VERSION_REVISION ${EWOMS_ECLSIMULATORS_VERSION_REVISION}
 
-/* Define whether std::optional is available */
+/* Define whether std::any is available */
 #cmakedefine HAVE_STD_ANY 1
 
 /* Define whether std::experimental::any is available */
 #cmakedefine HAVE_STD_EXPERIMENTAL_ANY 1
+
+/* Define whether boost::any is available */
+#cmakedefine HAVE_BOOST_ANY 1
 
 /* begin bottom */
 
