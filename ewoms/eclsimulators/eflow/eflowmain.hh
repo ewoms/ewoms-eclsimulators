@@ -77,6 +77,17 @@ namespace Ewoms
         // Read the command line parameters. Throws an exception if something goes wrong.
         static int setupParameters_(int argc, char** argv)
         {
+            using ParamsMeta = typename GET_PROP(TypeTag, ParameterMetaData);
+            if (!ParamsMeta::registrationOpen()) {
+                // We have already successfully run setupParameters_().
+                // For the dynamically chosen runs (as from the main flow
+                // executable) we must run this function again with the
+                // real typetag to be used, as the first time was with the
+                // "EFlowEarlyBird" typetag. However, for the static ones (such
+                // as 'flow_onephase_energy') it has already been run with the
+                // correct typetag.
+                return EXIT_SUCCESS;
+            }
             // register the eflow specific parameters
             EWOMS_REGISTER_PARAM(TypeTag, std::string, EnableDryRun,
                                  "Specify if the simulation ought to be actually run, or just pretended to be");
@@ -454,16 +465,30 @@ namespace Ewoms
                     OpmLog::info(msg);
                 }
 
-                SimulatorReport successReport = simulator_->run(simtimer);
-                SimulatorReport failureReport = simulator_->failureReport();
+                SimulatorReport report = simulator_->run(simtimer);
                 if (output_cout) {
                     std::ostringstream ss;
                     ss << "\n\n================    End of simulation     ===============\n\n";
                     ss << "Number of MPI processes: " << std::setw(6) << mpi_size_ << "\n";
-                    successReport.reportFullyImplicit(ss, &failureReport);
+#if _OPENMP
+                    int threads = omp_get_max_threads();
+#else
+                    int threads = 1;
+#endif
+                    ss << "Threads per MPI process:  " << std::setw(5) << threads << "\n";
+                    report.reportFullyImplicit(ss);
                     OpmLog::info(ss.str());
+                    const std::string dir = eclState().getIOConfig().getOutputDir();
+                    namespace fs = Ewoms::filesystem;
+                    fs::path output_dir(dir);
+                    {
+                        std::string filename = eclState().getIOConfig().getBaseName() + ".INFOSTEP";
+                        fs::path fullpath = output_dir / filename;
+                        std::ofstream os(fullpath.string());
+                        report.fullReports(os);
+                    }
                 }
-                return successReport.exit_status;
+                return report.success.exit_status;
             } else {
                 if (output_cout) {
                     std::cout << "\n\n================ Simulation turned off ===============\n" << std::flush;

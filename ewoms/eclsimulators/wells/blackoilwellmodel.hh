@@ -30,6 +30,7 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/wellteststate.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/group/guiderate.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/group/group.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/group/gconsale.hh>
 
 #include <ewoms/eclsimulators/timestepping/simulatorreport.hh>
 #include <ewoms/eclsimulators/wells/perforationdata.hh>
@@ -248,7 +249,7 @@ namespace Ewoms {
             // return the internal well state
             const WellState& wellState() const;
 
-            const SimulatorReport& lastReport() const;
+            const SimulatorReportSingle& lastReport() const;
 
             void addWellContributions(SparseMatrixAdapter& jacobian) const
             {
@@ -312,7 +313,7 @@ namespace Ewoms {
             std::unique_ptr<RateConverterType> rateConverter_;
             std::unique_ptr<VFPProperties<VFPInjProperties,VFPProdProperties>> vfp_properties_;
 
-            SimulatorReport last_report_;
+            SimulatorReportSingle last_report_;
 
             WellTestState wellTestState_;
             std::unique_ptr<GuideRate> guideRate_;
@@ -371,7 +372,7 @@ namespace Ewoms {
             /// at the beginning of the time step and no derivatives are included in these quantities
             void calculateExplicitQuantities(Ewoms::DeferredLogger& deferred_logger) const;
 
-            SimulatorReport solveWellEq(const std::vector<Scalar>& B_avg, const double dt, Ewoms::DeferredLogger& deferred_logger);
+            SimulatorReportSingle solveWellEq(const std::vector<Scalar>& B_avg, const double dt, Ewoms::DeferredLogger& deferred_logger);
 
             void initPrimaryVariablesEvaluation() const;
 
@@ -423,7 +424,7 @@ namespace Ewoms {
             bool checkGroupConstraints(const Group& group, Ewoms::DeferredLogger& deferred_logger) const;
             Group::ProductionCMode checkGroupProductionConstraints(const Group& group, Ewoms::DeferredLogger& deferred_logger) const;
             Group::InjectionCMode checkGroupInjectionConstraints(const Group& group, const Phase& phase) const;
-            void checkGconsaleLimits(const Group& group) const;
+            void checkGconsaleLimits(const Group& group, WellState& well_state, Ewoms::DeferredLogger& deferred_logger ) const;
 
             void updateGroupHigherControls(Ewoms::DeferredLogger& deferred_logger, std::set<std::string>& switched_groups);
             void checkGroupHigherConstraints(const Group& group, Ewoms::DeferredLogger& deferred_logger, std::set<std::string>& switched_groups);

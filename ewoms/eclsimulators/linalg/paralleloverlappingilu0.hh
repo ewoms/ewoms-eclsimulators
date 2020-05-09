@@ -121,8 +121,9 @@ struct SmootherTraits<Ewoms::ParallelOverlappingILU0<M,X,Y,C> >
 /// \tparam ParallelInfo The type of the parallel information object
 ///         used, e.g. Dune::OwnerOverlapCommunication
 template<class Matrix, class Domain, class Range, class ParallelInfo>
-struct ConstructionTraits<Ewoms::ParallelOverlappingILU0<Matrix,Domain,Range,ParallelInfo> >
+class ConstructionTraits<Ewoms::ParallelOverlappingILU0<Matrix,Domain,Range,ParallelInfo> >
 {
+public:
     typedef Ewoms::ParallelOverlappingILU0<Matrix,Domain,Range,ParallelInfo> T;
     typedef DefaultParallelConstructionArgs<T,ParallelInfo> Arguments;
 

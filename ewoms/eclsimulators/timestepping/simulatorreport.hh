@@ -18,14 +18,15 @@
 
 #ifndef EWOMS_SIMULATORREPORT_HH
 #define EWOMS_SIMULATORREPORT_HH
-
+#include <cassert>
 #include <iosfwd>
+#include <vector>
 
 namespace Ewoms
 {
 
     /// A struct for returning timing data from a simulator to its caller.
-    struct SimulatorReport
+    struct SimulatorReportSingle
     {
         double pressure_time;
         double transport_time;
@@ -45,23 +46,31 @@ namespace Ewoms
         bool converged;
         int exit_status;
 
+        double global_time;
+        double timestep_length;
+
         /// Default constructor initializing all times to 0.0.
-        explicit SimulatorReport(bool verbose=true);
-        /// Copy constructor
-        SimulatorReport(const SimulatorReport&) = default;
+        SimulatorReportSingle();
         /// Increment this report's times by those in sr.
-        void operator+=(const SimulatorReport& sr);
-        /// Print a report to the given stream.
-        void report(std::ostream& os);
-        void reportStep(std::ostringstream& os);
-        /// Print a report, leaving out the transport time.
-        void reportFullyImplicit(std::ostream& os, const SimulatorReport* failedReport = nullptr);
-        void reportParam(std::ostream& os);
-    private:
-        // Whether to print statistics to std::cout
-        bool verbose_;
+        void operator+=(const SimulatorReportSingle& sr);
+        /// Print a report suitable for a single simulation step.
+        void reportStep(std::ostringstream& os) const;
+        /// Print a report suitable for the end of a fully implicit case, leaving out the pressure/transport time.
+        void reportFullyImplicit(std::ostream& os, const SimulatorReportSingle* failedReport = nullptr) const;
     };
 
-} // namespace Ewoms
+    struct SimulatorReport
+    {
+        SimulatorReportSingle success;
+        SimulatorReportSingle failure;
+        std::vector<SimulatorReportSingle> stepreports;
+
+        void operator+=(const SimulatorReportSingle& sr);
+        void operator+=(const SimulatorReport& sr);
+        void reportFullyImplicit(std::ostream& os) const;
+        void fullReports(std::ostream& os) const;
+    };
+
+    } // namespace Ewoms
 
 #endif // EWOMS_SIMULATORREPORT_HH

@@ -124,8 +124,6 @@ public:
     /// \return                    simulation report, with timing data
     SimulatorReport run(SimulatorTimer& timer)
     {
-        failureReport_ = SimulatorReport();
-
         eebosSimulator_.setEpisodeIndex(-1);
 
         // Create timers and file for writing timing info.
@@ -154,7 +152,6 @@ public:
         }
 
         SimulatorReport report;
-        SimulatorReport stepReport;
 
         // Main simulation loop.
         while (!timer.done()) {
@@ -166,7 +163,7 @@ public:
                 if (terminalOutput_) {
                     OpmLog::info("Stopping simulation since EXIT was triggered by an action keyword.");
                 }
-                report.exit_status = schedule().exitStatus().value();
+                report.success.exit_status = schedule().exitStatus().value();
                 break;
             }
 
@@ -201,7 +198,7 @@ public:
                 wellModel_().beginReportStep(timer.currentStepNum());
                 eebosSimulator_.problem().writeOutput();
 
-                report.output_write_time += perfTimer.stop();
+                report.success.output_write_time += perfTimer.stop();
             }
 
             // Run a multiple steps of the solver depending on the time step control.
@@ -230,16 +227,12 @@ public:
                         events.hasEvent(ScheduleEvents::PRODUCTION_UPDATE, timer.currentStepNum()) ||
                         events.hasEvent(ScheduleEvents::INJECTION_UPDATE, timer.currentStepNum()) ||
                         events.hasEvent(ScheduleEvents::WELL_STATUS_CHANGE, timer.currentStepNum());
-                stepReport = adaptiveTimeStepping->step(timer, *solver, event, nullptr);
+                auto stepReport = adaptiveTimeStepping->step(timer, *solver, event, nullptr);
                 report += stepReport;
-                failureReport_ += adaptiveTimeStepping->failureReport();
-            }
-            else {
+            } else {
                 // solve for complete report step
-                stepReport = solver->step(timer);
+                auto stepReport = solver->step(timer);
                 report += stepReport;
-                failureReport_ += solver->failureReport();
-
                 if (terminalOutput_) {
                     std::ostringstream ss;
                     stepReport.reportStep(ss);
@@ -253,7 +246,7 @@ public:
             const double nextstep = adaptiveTimeStepping ? adaptiveTimeStepping->suggestedNextStep() : -1.0;
             eebosSimulator_.problem().setNextTimeStepSize(nextstep);
             eebosSimulator_.problem().writeOutput();
-            report.output_write_time += perfTimer.stop();
+            report.success.output_write_time += perfTimer.stop();
 
             solver->model().endReportStep();
 
@@ -261,7 +254,7 @@ public:
             solverTimer.stop();
 
             // update timing.
-            report.solver_time += solverTimer.secsSinceStart();
+            report.success.solver_time += solverTimer.secsSinceStart();
 
             // Increment timer, remember well state.
             ++timer;
@@ -276,7 +269,7 @@ public:
             if (terminalOutput_) {
                 std::string msg =
                     "Time step took " + std::to_string(solverTimer.secsSinceStart()) + " seconds; "
-                    "total solver time " + std::to_string(report.solver_time) + " seconds.";
+                    "total solver time " + std::to_string(report.success.solver_time) + " seconds.";
                 OpmLog::debug(msg);
             }
 
@@ -288,21 +281,16 @@ public:
             finalOutputTimer.start();
 
             eebosSimulator_.problem().finalizeOutput();
-            report.output_write_time += finalOutputTimer.stop();
+            report.success.output_write_time += finalOutputTimer.stop();
         }
 
         // Stop timer and create timing report
         totalTimer.stop();
-        report.total_time = totalTimer.secsSinceStart();
-        report.converged = true;
+        report.success.total_time = totalTimer.secsSinceStart();
+        report.success.converged = true;
 
         return report;
     }
-
-    /** \brief Returns the simulator report for the failed substeps of the simulation.
-     */
-    const SimulatorReport& failureReport() const
-    { return failureReport_; };
 
     const Grid& grid() const
     { return eebosSimulator_.vanguard().grid(); }
@@ -354,7 +342,6 @@ protected:
     // Data.
     Simulator& eebosSimulator_;
     std::unique_ptr<WellConnectionAuxiliaryModule<TypeTag>> wellAuxMod_;
-    SimulatorReport failureReport_;
 
     ModelParameters modelParam_;
     SolverParameters solverParam_;

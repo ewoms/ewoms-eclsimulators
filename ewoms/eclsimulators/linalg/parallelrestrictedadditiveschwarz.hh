@@ -42,11 +42,12 @@ namespace Amg
 ///         used, e.g. Dune::OwnerOverlapCommunication
 /// \tparam SeqPreconditioner The underlying sequential preconditioner to use.
 template<class Range, class Domain, class ParallelInfo, class SeqPreconditioner>
-struct ConstructionTraits<Ewoms::ParallelRestrictedOverlappingSchwarz<Range,
+class ConstructionTraits<Ewoms::ParallelRestrictedOverlappingSchwarz<Range,
                                                                     Domain,
                                                                     ParallelInfo,
                                                                     SeqPreconditioner> >
 {
+public:
     typedef DefaultParallelConstructionArgs<SeqPreconditioner,ParallelInfo> Arguments;
     typedef ConstructionTraits<SeqPreconditioner> SeqConstructionTraits;
 

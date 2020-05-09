@@ -22,6 +22,7 @@
 #include <ewoms/eclsimulators/linalg/findoverlaprowsandcolumns.hh>
 #include <ewoms/eclsimulators/linalg/flexiblesolver.hh>
 #include <ewoms/eclsimulators/linalg/setuppropertytree.hh>
+#include <ewoms/eclsimulators/linalg/writesystemmatrixhelper.hh>
 
 #include <ewoms/eclio/errormacros.hh>
 
@@ -63,6 +64,8 @@ class ISTLSolverFlexible
     using MatrixType = typename SparseMatrixAdapter::IstlMatrix;
 #if HAVE_MPI
     using Communication = Dune::OwnerOverlapCopyCommunication<int, int>;
+#else
+    using Communication = int; // Dummy type.
 #endif
     using SolverType = Dune::FlexibleSolver<MatrixType, VectorType>;
 
@@ -194,9 +197,11 @@ public:
         if (recreate_solver || !solver_) {
             if (isParallel()) {
 #if HAVE_MPI
+                matrix_ = &mat.istlMatrix();
                 solver_.reset(new SolverType(prm_, mat.istlMatrix(), weightsCalculator, *comm_));
 #endif
             } else {
+                matrix_ = &mat.istlMatrix();
                 solver_.reset(new SolverType(prm_, mat.istlMatrix(), weightsCalculator));
             }
             rhs_ = b;
@@ -209,6 +214,7 @@ public:
     bool solve(VectorType& x)
     {
         solver_->apply(x, rhs_, res_);
+        this->writeMatrix();
         return res_.converged;
     }
 
@@ -271,17 +277,27 @@ protected:
         return weights;
     }
 
-    const Simulator& simulator_;
+    void writeMatrix()
+    {
+        const int verbosity = prm_.get<int>("verbosity");
+        const bool write_matrix = verbosity > 10;
+        if (write_matrix) {
+            Ewoms::Helper::writeSystem(this->simulator_, //simulator is only used to get names
+                                     *(this->matrix_),
+                                     this->rhs_,
+                                     comm_.get());
+        }
+    }
 
+    const Simulator& simulator_;
+    MatrixType* matrix_;
     std::unique_ptr<SolverType> solver_;
     EFlowLinearSolverParameters parameters_;
     boost::property_tree::ptree prm_;
     VectorType rhs_;
     Dune::InverseOperatorResult res_;
-    Ewoms::any parallelInformation_;
-#if HAVE_MPI
+    std::any parallelInformation_;
     std::unique_ptr<Communication> comm_;
-#endif
     std::vector<int> overlapRows_;
     std::vector<int> interiorRows_;
 }; // end ISTLSolverFlexible
