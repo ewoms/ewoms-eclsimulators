@@ -452,7 +452,6 @@ std::string optionToString_(std::enable_if_t<!std::is_arithmetic<T>::value, T>& 
             "MAPUNITS",
             "MASSFLOW",
             "MATCORR",
-            "MAXVALUE",
             "MEMORY",
             "MESSAGE",
             "MESSOPTS",

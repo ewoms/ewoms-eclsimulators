@@ -241,42 +241,8 @@ namespace Ewoms
         /// input.
         int execute(int argc, char** argv, bool output_cout, bool output_to_files)
         {
-            try {
-                // deal with some administrative boilerplate
-
-                int status = setupParameters_(argc, argv);
-                if (status)
-                    return status;
-
-                setupEebosSimulator();
-                runDiagnostics(output_cout);
-                createSimulator();
-
-                // do the actual work
-                runSimulator(output_cout);
-
-                // clean up
-                mergeParallelLogFiles(output_to_files);
-
-                return EXIT_SUCCESS;
-            }
-            catch (const std::exception& e) {
-                std::ostringstream message;
-                message  << "Program threw an exception: " << e.what();
-
-                if (output_cout) {
-                    // in some cases exceptions are thrown before the logging system is set
-                    // up.
-                    if (OpmLog::hasBackend("STREAMLOG")) {
-                        OpmLog::error(message.str());
-                    }
-                    else {
-                        std::cout << message.str() << "\n";
-                    }
-                }
-
-                return EXIT_FAILURE;
-            }
+            return execute_(argc, argv, output_cout, output_to_files,
+                &EFlowMain::runSimulator, /*cleanup=*/true);
         }
 
         // Print an ASCII-art header to the PRT and DEBUG files.
@@ -326,8 +292,69 @@ namespace Ewoms
               OpmLog::note(ss.str());
           }
         }
+    private:
+        // called by execute() or executeInitStep()
+        int execute_(int argc, char** argv, bool output_cout, bool output_to_files,
+            int (EFlowMain::* runOrInitFunc)(bool), bool cleanup)
+        {
+            try {
+                // deal with some administrative boilerplate
+
+                int status = setupParameters_(argc, argv);
+                if (status)
+                    return status;
+
+                setupParallelism();
+                setupEebosSimulator();
+                runDiagnostics(output_cout);
+                createSimulator();
+
+                // if run, do the actual work, else just initialize
+                int exitCode = (this->*runOrInitFunc)(output_cout);
+                if (cleanup) {
+                    executeCleanup_(output_to_files);
+                }
+                return exitCode;
+            }
+            catch (const std::exception& e) {
+                std::ostringstream message;
+                message  << "Program threw an exception: " << e.what();
+
+                if (output_cout) {
+                    // in some cases exceptions are thrown before the logging system is set
+                    // up.
+                    if (OpmLog::hasBackend("STREAMLOG")) {
+                        OpmLog::error(message.str());
+                    }
+                    else {
+                        std::cout << message.str() << "\n";
+                    }
+                }
+
+                return EXIT_FAILURE;
+            }
+        }
+
+        void executeCleanup_(bool output_to_files) {
+            // clean up
+            mergeParallelLogFiles(output_to_files);
+        }
 
     protected:
+        void setupParallelism()
+        {
+            // determine the rank of the current process and the number of processes
+            // involved in the simulation. MPI must have already been initialized
+            // here. (yes, the name of this method is misleading.)
+#if HAVE_MPI
+            MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank_);
+            MPI_Comm_size(MPI_COMM_WORLD, &mpi_size_);
+#else
+            mpi_rank_ = 0;
+            mpi_size_ = 1;
+#endif
+        }
+
         void mergeParallelLogFiles(bool output_to_files)
         {
             // force closing of all log files.

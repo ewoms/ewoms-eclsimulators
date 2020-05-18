@@ -59,6 +59,7 @@
 #include <ewoms/eclsimulators/utils/parallelserialization.hh>
 #endif
 
+#include <string>
 #include <type_traits>
 
 BEGIN_PROPERTIES
@@ -115,6 +116,7 @@ namespace Ewoms
     class EFlowNihMain
     {
     private:
+        using EFlowMainType = Ewoms::EFlowMain<TTAG(EclEFlowProblem)>;
         enum class FileOutputMode {
             //! \brief No output to files.
             OUTPUT_NONE = 0,
@@ -125,6 +127,17 @@ namespace Ewoms
         };
     public:
         EFlowNihMain(int argc, char** argv) : argc_(argc), argv_(argv)  {  }
+
+        EFlowNihMain(const std::string &filename)
+        {
+            deckFilename_.assign(filename);
+            flowProgName_.assign("flow");
+            argc_ = 2;
+            saveArgs_[0] = const_cast<char *>(flowProgName_.c_str());
+            saveArgs_[1] = const_cast<char *>(deckFilename_.c_str());
+            argv_ = saveArgs_;
+        }
+
         EFlowNihMain(int argc,
              char** argv,
              std::shared_ptr<Ewoms::Deck> deck,
@@ -158,6 +171,30 @@ namespace Ewoms
                 return dispatchStatic_<TypeTag>();
             } else {
                 return exitCode;
+            }
+        }
+
+        // To be called from the Python interface code. Only do the
+        // initialization and then return a pointer to the EFlowEebosMain
+        // object that can later be accessed directly from the Python interface
+        // to e.g. advance the simulator one report step
+        std::unique_ptr<EFlowMainType> initEFlowEebosBlackoil(int& exitCode)
+        {
+            exitCode = EXIT_SUCCESS;
+            if (initialize_(exitCode)) {
+                // TODO: check that this deck really represents a blackoil
+                // case. E.g. check that number of phases == 3
+                Ewoms::eflowBlackoilSetDeck(
+                    setupTime_,
+                    deck_.get(),
+                    *eclipseState_,
+                    *schedule_,
+                    *summaryConfig_);
+                return Ewoms::eflowBlackoilMainInit(
+                    argc_, argv_, outputCout_, outputFiles_);
+            } else {
+                //NOTE: exitCode was set by initialize_() above;
+                return std::unique_ptr<EFlowMainType>(); // nullptr
             }
         }
 
@@ -594,6 +631,9 @@ namespace Ewoms
         bool outputCout_;
         bool outputFiles_;
         double setupTime_;
+        std::string deckFilename_;
+        std::string flowProgName_;
+        char *saveArgs_[2];
         std::shared_ptr<Ewoms::Deck> deck_;
         std::shared_ptr<Ewoms::EclipseState> eclipseState_;
         std::shared_ptr<Ewoms::Schedule> schedule_;

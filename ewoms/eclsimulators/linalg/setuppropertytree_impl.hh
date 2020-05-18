@@ -58,7 +58,7 @@ setupPropertyTree(const EFlowLinearSolverParameters& p)
         // Support old UseCpr if not configuration was set
         if (!EWOMS_PARAM_IS_SET(TypeTag, std::string, LinearSolverConfiguration) && p.use_cpr_)
         {
-            conf = "cpr_quasiimpes";
+            conf = "cpr_trueimpes";
         }
 
         if((conf == "cpr_trueimpes") || (conf == "cpr_quasiimpes")){
@@ -70,8 +70,14 @@ setupPropertyTree(const EFlowLinearSolverParameters& p)
             prm.put("verbosity", p.linear_solver_verbosity_);
             prm.put("solver", "bicgstab");
             prm.put("preconditioner.type", "cpr");
-            prm.put("preconditioner.weight_filename", "cpr_weights.txt");
-            prm.put("preconditioner.weight_type","quasiimpes");
+            if (conf == "cpr_quasiimpes" )
+            {
+                prm.put("preconditioner.weight_type","quasiimpes");
+            }
+            else
+            {
+                prm.put("preconditioner.weight_type","trueimpes");
+            }
             prm.put("preconditioner.finesmoother.type", "ParOverILU0");
             prm.put("preconditioner.finesmoother.relaxation", 1.0);
             prm.put("preconditioner.pressure_var_index",1);
@@ -85,7 +91,8 @@ setupPropertyTree(const EFlowLinearSolverParameters& p)
             prm.put("preconditioner.coarsesolver.preconditioner.relaxation",1.0);
             if (EWOMS_PARAM_IS_SET(TypeTag, int, CprMaxEllIter))
                 prm.put("preconditioner.coarsesolver.preconditioner.iterations", p.cpr_max_ell_iter_);
-            prm.put("preconditioner.coarsesolver.preconditioner.iterations",1);
+            else
+                prm.put("preconditioner.coarsesolver.preconditioner.iterations",1);
             prm.put("preconditioner.coarsesolver.preconditioner.coarsenTarget",1200);
             prm.put("preconditioner.coarsesolver.preconditioner.pre_smooth",1);
             prm.put("preconditioner.coarsesolver.preconditioner.post_smooth",1);
@@ -94,9 +101,6 @@ setupPropertyTree(const EFlowLinearSolverParameters& p)
             prm.put("preconditioner.coarsesolver.preconditioner.verbosity",0);
             prm.put("preconditioner.coarsesolver.preconditioner.maxlevel",15);
             prm.put("preconditioner.coarsesolver.preconditioner.skip_isolated",0);
-            if(p.linear_solver_configuration_ == "cpr_trueimpes"){
-                prm.put("preconditioner.weight_type","trueimpes");
-            }
         } else {
             if(conf != "ilu0"){
                 EWOMS_THROW(std::invalid_argument, conf  << "is not a valid setting for --linear-solver-configuration."

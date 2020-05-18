@@ -21,10 +21,15 @@
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
+#include <ewoms/eclsimulators/eflow/eflowmain.hh>
 
 namespace Ewoms {
 void eflowBlackoilSetDeck(double setupTime, Deck *deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig);
+
 int eflowBlackoilMain(int argc, char** argv, bool outputCout, bool outputFiles);
+
+std::unique_ptr<Ewoms::EFlowMain<TTAG(EclEFlowProblem)>>
+    eflowBlackoilMainInit(int argc, char** argv, bool outputCout, bool outputFiles);
 }
 
 #endif // EFLOW_BLACKOIL_HH

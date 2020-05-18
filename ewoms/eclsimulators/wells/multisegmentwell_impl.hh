@@ -724,9 +724,7 @@ namespace Ewoms
             well_state_copy.currentProductionControls()[index_of_well_] = Well::ProducerCMode::BHP;
         }
         well_state_copy.bhp()[well_copy.index_of_well_] = bhp;
-
-        well_copy.updatePrimaryVariables(well_state_copy, deferred_logger);
-        well_copy.initPrimaryVariablesEvaluation();
+        well_copy.calculateExplicitQuantities(eebosSimulator, well_state_copy, deferred_logger);
         const double dt = eebosSimulator.timeStepSize();
         // iterate to get a solution at the given bhp.
         well_copy.iterateWellEquations(eebosSimulator, B_avg, dt, inj_controls, prod_controls, well_state_copy, deferred_logger);
@@ -3300,7 +3298,7 @@ namespace Ewoms
                 for (const int conn : segment_perforations_[seg]) {
                     const auto& connection = connections.get(conn);
                     const auto& perf_range = connection.perf_range();
-                    const double connection_length = perf_range->second - perf_range->first;
+                    const double connection_length = (*perf_range).second - (*perf_range).first;
                     assert(connection_length > 0.);
                     total_connection_length += connection_length;
                 }

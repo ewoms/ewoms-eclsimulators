@@ -160,7 +160,7 @@ public:
         updateImpl(comm_);
     }
 
-    virtual Dune::SolverCategory::Category category() const override
+    virtual Dune::SolverCategory::Category category() const
     {
         return linear_operator_.category();
     }

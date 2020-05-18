@@ -56,7 +56,7 @@ public:
         block_precond_.post(x);
     }
 
-    virtual SolverCategory::Category category() const override
+    virtual SolverCategory::Category category() const
     {
         return block_precond_.category();
     }

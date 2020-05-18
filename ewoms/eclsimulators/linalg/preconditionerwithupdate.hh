@@ -63,7 +63,7 @@ public:
         orig_precond_.post(x);
     }
 
-    virtual SolverCategory::Category category() const override
+    virtual SolverCategory::Category category() const
     {
         return orig_precond_.category();
     }

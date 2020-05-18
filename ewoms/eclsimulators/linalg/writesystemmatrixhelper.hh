@@ -20,49 +20,7 @@
 #define EWOMS_WRITESYSTEMMATRIXHELPER_HH
 
 #include <dune/istl/matrixmarket.hh>
-
-#if DUNE_VERSION_NEWER(DUNE_ISTL, 2,7)
-#else
-namespace Dune
-{
-namespace MatrixMarketImpl
-{
-
-    template <typename Block, typename A>
-    struct mm_header_printer<BCRSMatrix<Block, A>>
-    {
-        static void print(std::ostream& os)
-        {
-            using Value = typename Block::value_type;
-            os << "%%MatrixMarket matrix coordinate ";
-            os << mm_numeric_type<Value>::str() << " general" << std::endl;
-        }
-    };
-
-    template <typename Block, typename A>
-    struct mm_block_structure_header<BCRSMatrix<Block, A>>
-    {
-        using M = BCRSMatrix<Block, A>;
-        static void print(std::ostream& os, const M&)
-        {
-            os << "% ISTL_STRUCT blocked ";
-            os << Block::rows << " " << Block::cols << std::endl;
-        }
-    };
-
-} // namespace MatrixMarketImpl
-
-template <typename Block, typename A>
-struct mm_multipliers<BCRSMatrix<Block, A>>
-{
-    enum {
-        rows = Block::rows,
-        cols = Block::cols
-    };
-};
-
-} // namespace Dune
-#endif
+#include <ewoms/eclsimulators/linalg/matrixmarketspecializations.hh>
 
 namespace Ewoms
 {

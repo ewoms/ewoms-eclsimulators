@@ -100,9 +100,13 @@ public:
         return *preconditioner_;
     }
 
-    virtual Dune::SolverCategory::Category category() const override
+    virtual Dune::SolverCategory::Category category() const
     {
+#if DUNE_VERSION_NEWER(DUNE_ISTL, 2,6)
         return linearoperator_->category();
+#else
+        return Dune::SolverCategory::overlapping;
+#endif
     }
 
 private:
@@ -124,7 +128,14 @@ private:
         preconditioner_
             = Ewoms::PreconditionerFactory<ParOperatorType, Comm>::create(*linop, child? *child : pt(),
                                                                         weightsCalculator, comm);
+
+#if DUNE_VERSION_NEWER(DUNE_ISTL, 2, 6)
         scalarproduct_ = Dune::createScalarProduct<VectorType, Comm>(comm, linearoperator_->category());
+#else
+        constexpr int category = Dune::SolverCategory::overlapping;
+        typedef Dune::ScalarProductChooser<VectorType, Comm, category> ScalarProductChooser;
+        scalarproduct_.reset(ScalarProductChooser::construct(comm));
+#endif
     }
 
     void initOpPrecSp(const MatrixType& matrix, const boost::property_tree::ptree& prm,
@@ -141,11 +152,11 @@ private:
         scalarproduct_ = std::make_shared<Dune::SeqScalarProduct<VectorType>>();
     }
 
-    void initSolver(const boost::property_tree::ptree& prm)
+    void initSolver(const boost::property_tree::ptree& prm, bool isMaster)
     {
         const double tol = prm.get<double>("tol", 1e-2);
         const int maxiter = prm.get<int>("maxiter", 200);
-        const int verbosity = prm.get<int>("verbosity", 0);
+        const int verbosity = isMaster? prm.get<int>("verbosity", 0) : 0;
         const std::string solver_type = prm.get<std::string>("solver", "bicgstab");
         if (solver_type == "bicgstab") {
             linsolver_.reset(new Dune::BiCGSTABSolver<VectorType>(*linearoperator_,
@@ -187,7 +198,7 @@ private:
               const std::function<VectorTypeT()> weightsCalculator, const Comm& comm)
     {
         initOpPrecSp(matrix, prm, weightsCalculator, comm);
-        initSolver(prm);
+        initSolver(prm, comm.communicator().rank()==0);
     }
 
     std::shared_ptr<AbstractOperatorType> linearoperator_;

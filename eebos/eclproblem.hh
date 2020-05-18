@@ -2913,7 +2913,7 @@ private:
                     for (int i = bcface.i1; i <= bcface.i2; ++i) {
                         for (int j = bcface.j1; j <= bcface.j2; ++j) {
                             for (int k = bcface.k1; k <= bcface.k2; ++k) {
-                                std::array<int, 3> tmp = {i,j,k};
+                                std::array<int, 3> tmp = {{i,j,k}};
                                 auto elemIdx = cartesianToCompressedElemIdx[vanguard.cartesianIndex(tmp)];
                                 if (elemIdx >= 0)
                                     (*data)[elemIdx][compIdx] = rate;
@@ -2946,7 +2946,7 @@ private:
                     for (int i = bcface.i1; i <= bcface.i2; ++i) {
                         for (int j = bcface.j1; j <= bcface.j2; ++j) {
                             for (int k = bcface.k1; k <= bcface.k2; ++k) {
-                                std::array<int, 3> tmp = {i,j,k};
+                                std::array<int, 3> tmp = {{i,j,k}};
                                 auto elemIdx = cartesianToCompressedElemIdx[vanguard.cartesianIndex(tmp)];
                                 if (elemIdx >= 0)
                                     (*data)[elemIdx] = true;

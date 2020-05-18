@@ -2062,7 +2062,7 @@ namespace Ewoms {
         switch(exceed_action) {
         case Group::ExceedAction::NONE: {
             if (oldControl != newControl && oldControl != Group::ProductionCMode::NONE) {
-                ss << "Group production exceed limit is NONE for group " + group.name() + ". Nothing happens";
+                ss << "Group production exceed action is NONE for group " + group.name() + ". Nothing happens.";
             }
             break;
         }
@@ -2085,7 +2085,9 @@ namespace Ewoms {
         case Group::ExceedAction::RATE: {
             if (oldControl != newControl) {
                 well_state.setCurrentProductionGroupControl(group.name(), newControl);
-                ss << "Switching control mode for group "<< group.name() << " to " << Group::ProductionCMode2String(newControl);
+                ss << "Switching production control mode for group "<< group.name()
+                   << " from " << Group::ProductionCMode2String(oldControl)
+                   << " to " << Group::ProductionCMode2String(newControl);
             }
             break;
         }
@@ -2112,9 +2114,9 @@ namespace Ewoms {
         std::ostringstream ss;
         if (oldControl != newControl) {
             const std::string from = Group::InjectionCMode2String(oldControl);
-            ss << "Group " << group.name() << " exceeding "
-               << from << " limit \n";
-            ss << "Switching control mode for group "<< group.name() << " to " << Group::InjectionCMode2String(newControl);
+            ss << "Switching injection control mode for group "<< group.name()
+               << " from " << Group::InjectionCMode2String(oldControl)
+               << " to " << Group::InjectionCMode2String(newControl);
             auto cc = Dune::MPIHelper::getCollectiveCommunication();
             if (cc.size() > 1) {
                 ss << " on rank " << cc.rank();

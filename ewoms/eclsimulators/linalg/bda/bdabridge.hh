@@ -55,6 +55,7 @@ public:
     BdaBridge(bool use_gpu, int linear_solver_verbosity, int maxit, double tolerance);
 
     /// Solve linear system, A*x = b
+    /// \warning Values of A might get overwritten!
     /// \param[in] mat          matrix A, should be of type Dune::BCRSMatrix
     /// \param[in] b            vector b, should be of type Dune::BlockVector
     /// \param[in] wellContribs contains all WellContributions, to apply them separately, instead of adding them to matrix A

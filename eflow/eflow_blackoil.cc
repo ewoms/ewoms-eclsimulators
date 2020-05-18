@@ -51,8 +51,8 @@ void eflowBlackoilSetDeck(double setupTime, Deck *deck, EclipseState& eclState, 
     Vanguard::setExternalSummaryConfig(&summaryConfig);
 }
 
-// ----------------- Main program -----------------
-int eflowBlackoilMain(int argc, char** argv, bool outputCout, bool outputFiles)
+std::unique_ptr<Ewoms::EFlowMain<TTAG(EclEFlowProblem)>>
+eflowBlackoilMainInit(int argc, char** argv)
 {
     // we always want to use the default locale, and thus spare us the trouble
     // with incorrect locale settings.
@@ -64,8 +64,14 @@ int eflowBlackoilMain(int argc, char** argv, bool outputCout, bool outputFiles)
     Dune::MPIHelper::instance(argc, argv);
 #endif
 
-    Ewoms::EFlowMain<TTAG(EclEFlowProblem)> mainfunc;
-    return mainfunc.execute(argc, argv, outputCout, outputFiles);
+    return std::make_unique<Ewoms::EFlowMain<TTAG(EclEFlowProblem)>>();
+}
+
+// ----------------- Main program -----------------
+int eflowBlackoilMain(int argc, char** argv, bool outputCout, bool outputFiles)
+{
+    auto mainfunc = eflowBlackoilMainInit(argc, argv);
+    return mainfunc->execute(argc, argv, outputCout, outputFiles);
 }
 
 }

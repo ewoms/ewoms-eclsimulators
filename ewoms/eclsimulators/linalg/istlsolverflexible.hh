@@ -268,12 +268,12 @@ protected:
 
     VectorType getTrueImpesWeights(const VectorType& b,const int pressureVarIndex)
     {
-        unsigned threadId = std::max(0, simulator_.taskletRunner().workerThreadIndex());
         VectorType weights(b.size());
         ElementContext elemCtx(simulator_);
+        int threadIdx = std::max(0, simulator_.taskletRunner().workerThreadIndex());
         Ewoms::Amg::getTrueImpesWeights(pressureVarIndex, weights, simulator_.vanguard().gridView(),
-                                      elemCtx, simulator_.model(),
-                                      threadId);
+                                        elemCtx, simulator_.model(),
+                                        threadIdx);
         return weights;
     }
 
