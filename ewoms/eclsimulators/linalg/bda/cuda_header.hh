@@ -19,6 +19,7 @@
 #ifndef CUDA_HEADER_HH
 #define CUDA_HEADER_HH
 
+#include <cuda_runtime.h>
 #include <iostream>
 
 /// Runtime error checking of CUDA functions
