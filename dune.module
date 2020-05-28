@@ -1,7 +1,8 @@
 Module: ewoms-eclsimulators
 Description: Advanced ECL compatible simulators
-Version: 2020.04-pre
-Label: 2020.04-pre
+Version: 2020.11-pre
+Label: 2020.11-pre
+Codename: Auric
 Maintainer: ewoms@ewoms.org
 MaintainerName: The eWoms Project
 Url: https://ewoms.org
