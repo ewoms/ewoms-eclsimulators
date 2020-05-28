@@ -19,6 +19,10 @@
 #ifndef MULTISEGMENTWELLCONTRIBUTION_HH
 #define MULTISEGMENTWELLCONTRIBUTION_HH
 
+#if !HAVE_CUDA
+#error "This header file can only be included if the CUDA libraries are available"
+#endif
+
 #include <config.h>
 
 #include <vector>

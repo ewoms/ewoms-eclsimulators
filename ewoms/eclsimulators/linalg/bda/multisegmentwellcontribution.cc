@@ -15,9 +15,11 @@
   You should have received a copy of the GNU General Public License
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <config.h> // CMake
+
+#if HAVE_CUDA
 
 #include <cstdlib>
-#include <config.h> // CMake
 
 #if HAVE_UMFPACK
 #include <dune/istl/umfpack.hh>
@@ -117,3 +119,4 @@ namespace Ewoms
 
 } //namespace Ewoms
 
+#endif // HAVE_CUDA
