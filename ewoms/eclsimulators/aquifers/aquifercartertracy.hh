@@ -94,7 +94,11 @@ protected:
         Scalar denom_face_areas = 0.;
         this->cellToConnectionIdx_.resize(this->eebos_simulator_.gridView().size(/*codim=*/0), -1);
         for (size_t idx = 0; idx < this->size(); ++idx) {
-            const int cell_index = this->cartesian_to_compressed_.at(this->connections_[idx].global_index);
+            const auto it = this->cartesian_to_compressed_.find(this->connections_[idx].global_index);
+            if (it == this->cartesian_to_compressed_.end())
+                continue;
+
+            const int cell_index = it->second;
             this->cellToConnectionIdx_[cell_index] = idx;
 
             const auto cellFacesRange = cell2Faces[cell_index];
