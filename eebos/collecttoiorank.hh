@@ -520,7 +520,7 @@ public:
             unsigned int size = 0;
             buffer.read(size);
             assert(size == indexMap.size());
-            for (unsigned int i=0; i<size; ++i) {
+            for (unsigned int i=0; i < indexMap.size() && i < size; ++i) {
                 unsigned int index = indexMap[i] * stride + offset;
                 assert(index < vector.size());
                 buffer.read(vector[index]);
