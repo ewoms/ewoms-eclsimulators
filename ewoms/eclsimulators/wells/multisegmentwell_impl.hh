@@ -3364,7 +3364,7 @@ namespace Ewoms
                     total_connection_length += connection_length;
                 }
 
-                SpiralICD& sicd = *segment.spiralICD();
+                SICD& sicd = *segment.spiralICD();
                 sicd.updateScalingFactor(segment_length, total_connection_length);
             }
         }
@@ -3395,7 +3395,7 @@ namespace Ewoms
     pressureDropSpiralICD(const int seg) const
     {
         // TODO: We have to consider the upwinding here
-        const SpiralICD& sicd = *segmentSet()[seg].spiralICD();
+        const SICD& sicd = *segmentSet()[seg].spiralICD();
 
         const std::vector<EvalWell>& phase_fractions = segment_phase_fractions_[seg];
         const std::vector<EvalWell>& phase_viscosities = segment_phase_viscosities_[seg];

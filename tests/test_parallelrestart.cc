@@ -58,7 +58,7 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/group/guideratemodel.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/messagelimits.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/msw/icd.hh>
-#include <ewoms/eclio/parser/eclipsestate/schedule/msw/spiralicd.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/msw/sicd.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/msw/valve.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/oilvaporizationproperties.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/rftconfig.hh>
@@ -395,7 +395,7 @@ TEST_FOR_TYPE(SimpleTable)
 TEST_FOR_TYPE(SimulationConfig)
 TEST_FOR_TYPE(SkprpolyTable)
 TEST_FOR_TYPE(SkprwatTable)
-TEST_FOR_TYPE(SpiralICD)
+TEST_FOR_TYPE(SICD)
 TEST_FOR_TYPE(SolventDensityTable)
 TEST_FOR_TYPE(SummaryConfig)
 TEST_FOR_TYPE(SummaryConfigNode)

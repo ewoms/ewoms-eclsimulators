@@ -22,7 +22,7 @@
 #include <ewoms/eclsimulators/utils/deferredloggingerrorhelpers.hh>
 #include <ewoms/eclsimulators/utils/deferredlogger.hh>
 #include <ewoms/eclio/errormacros.hh>
-#include <ewoms/eclio/parser/eclipsestate/schedule/msw/spiralicd.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/msw/sicd.hh>
 #include <dune/istl/solvers.hh>
 #if HAVE_UMFPACK
 #include <dune/istl/umfpack.hh>
@@ -224,7 +224,7 @@ namespace mswellhelpers
     template <typename ValueType>
     ValueType emulsionViscosity(const ValueType& water_fraction, const ValueType& water_viscosity,
                                 const ValueType& oil_fraction, const ValueType& oil_viscosity,
-                                const SpiralICD& sicd)
+                                const SICD& sicd)
     {
         const double width_transition = sicd.widthTransitionRegion();
 
