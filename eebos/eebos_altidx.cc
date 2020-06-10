@@ -58,7 +58,7 @@ NEW_TYPE_TAG(EebosAltIdxTypeTag, INHERITS_FROM(EebosTypeTag));
 // use a fluid system with different indices than the default
 SET_PROP(EebosAltIdxTypeTag, FluidSystem)
 {
-    typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
 
 public:
     typedef Ewoms::BlackOilFluidSystem<Scalar, Ewoms::EclAlternativeBlackOilIndexTraits> type;

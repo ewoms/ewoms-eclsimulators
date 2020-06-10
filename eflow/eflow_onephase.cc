@@ -31,7 +31,7 @@ private:
     // to cyclic definitions of some properties. if this happens the compiler error
     // messages unfortunately are *really* confusing and not really helpful.
     typedef TTAG(EclEFlowProblem) BaseTypeTag;
-    typedef typename GET_PROP_TYPE(BaseTypeTag, FluidSystem) FluidSystem;
+    typedef GET_PROP_TYPE(BaseTypeTag, FluidSystem) FluidSystem;
 
 public:
     typedef Ewoms::BlackOilOnePhaseIndices<GET_PROP_VALUE(TypeTag, EnableSolvent),
@@ -46,15 +46,15 @@ public:
 SET_PROP(EclEFlowProblemSimple, FluidState)
 {
 private:
-    typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-    typedef typename GET_PROP_TYPE(TypeTag, Indices) Indices;
+    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+    typedef GET_PROP_TYPE(TypeTag, Indices) Indices;
     enum { enableTemperature = GET_PROP_VALUE(TypeTag, EnableTemperature) };
     enum { enableSolvent = GET_PROP_VALUE(TypeTag, EnableSolvent) };
     enum { enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy) };
     enum { enableBrine = GET_PROP_VALUE(TypeTag, EnableBrine) };
     enum { numPhases = GET_PROP_VALUE(TypeTag, NumPhases) };
-    typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
+    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+    typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
     static const bool compositionSwitchEnabled = Indices::gasEnabled;
 
 public:
@@ -72,10 +72,10 @@ public:
 // SET_PROP(EclEFlowProblemSimple, FluidSystem)
 // {
 // private:
-//   //typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-//   typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-//   typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
-//   typedef typename GET_PROP_TYPE(TypeTag, Indices) Indices;
+//   //typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+//   typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+//   typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
+//   typedef GET_PROP_TYPE(TypeTag, Indices) Indices;
 
 // public:
 //   typedef Ewoms::BlackOilFluidSystem<Scalar,Indices> type;

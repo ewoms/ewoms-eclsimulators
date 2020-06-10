@@ -32,14 +32,14 @@ NEW_PROP_TAG(FluidState);
 SET_PROP(EclEFlowProblemSimple, FluidState)
     {
     private:
-      typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-      typedef typename GET_PROP_TYPE(TypeTag, Indices) Indices;
+      typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+      typedef GET_PROP_TYPE(TypeTag, Indices) Indices;
       enum { enableTemperature = GET_PROP_VALUE(TypeTag, EnableTemperature) };
       enum { enableSolvent = GET_PROP_VALUE(TypeTag, EnableSolvent) };
       enum { enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy) };
       enum { numPhases = GET_PROP_VALUE(TypeTag, NumPhases) };
-      typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-      typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
+      typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+      typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
       static const bool compositionSwitchEnabled = Indices::gasEnabled;
 
     public:
@@ -67,9 +67,9 @@ namespace Ewoms {
     SET_PROP(EclEFlowProblemSimple, FluidSystem)
     {
     private:
-      //typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-      typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-      typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
+      //typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+      typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+      typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
 
     public:
         typedef Ewoms::BlackOilFluidSystem<Scalar> type;

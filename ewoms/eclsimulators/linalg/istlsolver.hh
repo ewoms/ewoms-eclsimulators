@@ -65,7 +65,7 @@ NEW_PROP_TAG(OwnerCellsFirst);
 SET_PROP(EFlowIstlSolver, SparseMatrixAdapter)
 {
 private:
-    typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
     enum { numEq = GET_PROP_VALUE(TypeTag, NumEq) };
     typedef Dune::FieldMatrix<Scalar, numEq, numEq> Block;
 
@@ -260,20 +260,20 @@ protected:
     class ISTLSolver
     {
     protected:
-        typedef typename GET_PROP_TYPE(TypeTag, GridView) GridView;
-        typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-        typedef typename GET_PROP_TYPE(TypeTag, SparseMatrixAdapter) SparseMatrixAdapter;
-        typedef typename GET_PROP_TYPE(TypeTag, GlobalEqVector) Vector;
-        typedef typename GET_PROP_TYPE(TypeTag, Indices) Indices;
-        typedef typename GET_PROP_TYPE(TypeTag, EclWellModel) WellModel;
-        typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
+        typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
+        typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+        typedef GET_PROP_TYPE(TypeTag, SparseMatrixAdapter) SparseMatrixAdapter;
+        typedef GET_PROP_TYPE(TypeTag, GlobalEqVector) Vector;
+        typedef GET_PROP_TYPE(TypeTag, Indices) Indices;
+        typedef GET_PROP_TYPE(TypeTag, EclWellModel) WellModel;
+        typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
         typedef typename SparseMatrixAdapter::IstlMatrix Matrix;
 
         typedef typename SparseMatrixAdapter::MatrixBlock MatrixBlockType;
         typedef typename Vector::block_type BlockVector;
-        typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
+        typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
         typedef typename GridView::template Codim<0>::Entity Element;
-        typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
+        typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
         using FlexibleSolverType = Dune::FlexibleSolver<Matrix, Vector>;
         // Due to miscibility oil <-> gas the water eqn is the one we can replace with a pressure equation.
         static const bool waterEnabled = Indices::waterEnabled;

@@ -77,10 +77,10 @@ NEW_TYPE_TAG(TestEquilTypeTag, INHERITS_FROM(BlackOilModel, EclBaseProblem));
 END_PROPERTIES
 
 template <class TypeTag>
-std::unique_ptr<typename GET_PROP_TYPE(TypeTag, Simulator)>
+std::unique_ptr<GET_PROP_TYPE(TypeTag, Simulator)>
 initSimulator(const char *filename)
 {
-    typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
+    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
 
     std::string filenameArg = "--ecl-deck-file-name=";
     filenameArg += filename;
@@ -98,7 +98,7 @@ initSimulator(const char *filename)
 template <class TypeTag>
 static void initDefaultFluidSystem()
 {
-    typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
 
     std::vector<std::pair<double, double> > Bo = {
         { 101353, 1. },
@@ -416,7 +416,7 @@ void test_RegMapping()
 void test_DeckAllDead()
 {
     typedef TTAG(TestEquilTypeTag) TypeTag;
-    typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_deadfluids.DATA");
     const auto& eclipseState = simulator->vanguard().eclState();
     Ewoms::GridManager gm(eclipseState.getInputGrid());
@@ -442,9 +442,9 @@ void test_CapillaryInversion()
 {
     // Test setup.
     typedef typename TTAG(TestEquilTypeTag) TypeTag;
-    typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-    typedef typename GET_PROP_TYPE(TypeTag, MaterialLaw) MaterialLaw;
-    typedef typename GET_PROP(TypeTag, MaterialLaw)::EclMaterialLawManager MaterialLawManager;
+    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+    typedef GET_PROP_TYPE(TypeTag, MaterialLaw) MaterialLaw;
+    typedef GET_PROP(TypeTag, MaterialLaw)::EclMaterialLawManager MaterialLawManager;
     auto simulator = initSimulator<TypeTag>("equil_capillary.DATA");
 
     // Test the capillary inversion for oil-water.
@@ -492,7 +492,7 @@ void test_CapillaryInversion()
 void test_DeckWithCapillary()
 {
     typedef typename TTAG(TestEquilTypeTag) TypeTag;
-    typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_capillary.DATA");
     auto& eclipseState = simulator->vanguard().eclState();
     Ewoms::GridManager gm(eclipseState.getInputGrid());
@@ -530,7 +530,7 @@ void test_DeckWithCapillary()
 void test_DeckWithCapillaryOverlap()
 {
     typedef typename TTAG(TestEquilTypeTag) TypeTag;
-    typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_capillary_overlap.DATA");
     const auto& eclipseState = simulator->vanguard().eclState();
     Ewoms::GridManager gm(eclipseState.getInputGrid());
@@ -588,7 +588,7 @@ void test_DeckWithCapillaryOverlap()
 void test_DeckWithLiveOil()
 {
     typedef typename TTAG(TestEquilTypeTag) TypeTag;
-    typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_liveoil.DATA");
     const auto& eclipseState = simulator->vanguard().eclState();
     Ewoms::GridManager gm(eclipseState.getInputGrid());
@@ -664,7 +664,7 @@ void test_DeckWithLiveOil()
 void test_DeckWithLiveGas()
 {
     typedef typename TTAG(TestEquilTypeTag) TypeTag;
-    typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_livegas.DATA");
     const auto& eclipseState = simulator->vanguard().eclState();
     Ewoms::GridManager gm(eclipseState.getInputGrid());
@@ -742,7 +742,7 @@ void test_DeckWithLiveGas()
 void test_DeckWithRSVDAndRVVD()
 {
     typedef typename TTAG(TestEquilTypeTag) TypeTag;
-    typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_rsvd_and_rvvd.DATA");
     const auto& eclipseState = simulator->vanguard().eclState();
     Ewoms::GridManager gm(eclipseState.getInputGrid());
@@ -840,7 +840,7 @@ void test_DeckWithRSVDAndRVVD()
 void test_DeckWithPBVDAndPDVD()
 {
     typedef typename TTAG(TestEquilTypeTag) TypeTag;
-    typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     auto simulator = initSimulator<TypeTag>("equil_pbvd_and_pdvd.DATA");
     const auto& eclipseState = simulator->vanguard().eclState();
     Ewoms::GridManager gm(eclipseState.getInputGrid());

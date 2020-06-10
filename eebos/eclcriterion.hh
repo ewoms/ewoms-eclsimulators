@@ -63,9 +63,9 @@ class EclCriterion : public ConvergenceCriterion<Vector>
 {
     typedef typename Vector::field_type Scalar;
 
-    typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef typename GET_PROP_TYPE(TypeTag, Model) Model;
-    typedef typename GET_PROP_TYPE(TypeTag, Grid) Grid;
+    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
+    typedef GET_PROP_TYPE(TypeTag, Model) Model;
+    typedef GET_PROP_TYPE(TypeTag, Grid) Grid;
     typedef typename Grid::CollectiveCommunication CollectiveCommunication;
 
     static const int numEq = GET_PROP_VALUE(TypeTag, NumEq);

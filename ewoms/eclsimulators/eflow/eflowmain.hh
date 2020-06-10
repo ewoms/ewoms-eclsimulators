@@ -65,19 +65,19 @@ namespace Ewoms
     {
     public:
         typedef typename GET_PROP(TypeTag, MaterialLaw)::EclMaterialLawManager MaterialLawManager;
-        typedef typename GET_PROP_TYPE(TypeTag, Simulator) EebosSimulator;
-        typedef typename GET_PROP_TYPE(TypeTag, Grid) Grid;
-        typedef typename GET_PROP_TYPE(TypeTag, GridView) GridView;
-        typedef typename GET_PROP_TYPE(TypeTag, Problem) Problem;
-        typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-        typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+        typedef GET_PROP_TYPE(TypeTag, Simulator) EebosSimulator;
+        typedef GET_PROP_TYPE(TypeTag, Grid) Grid;
+        typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
+        typedef GET_PROP_TYPE(TypeTag, Problem) Problem;
+        typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+        typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
 
         typedef Ewoms::SimulatorFullyImplicitBlackoil<TypeTag> Simulator;
 
         // Read the command line parameters. Throws an exception if something goes wrong.
         static int setupParameters_(int argc, char** argv)
         {
-            using ParamsMeta = typename GET_PROP(TypeTag, ParameterMetaData);
+            using ParamsMeta = GET_PROP(TypeTag, ParameterMetaData);
             if (!ParamsMeta::registrationOpen()) {
                 // We have already successfully run setupParameters_().
                 // For the dynamically chosen runs (as from the main flow

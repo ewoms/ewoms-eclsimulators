@@ -68,14 +68,14 @@ namespace Ewoms
         static const int Oil = BlackoilPhases::Liquid;
         static const int Gas = BlackoilPhases::Vapour;
 
-        typedef typename GET_PROP_TYPE(TypeTag, Grid) Grid;
-        typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-        typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-        typedef typename GET_PROP_TYPE(TypeTag, Indices) Indices;
-        typedef typename GET_PROP_TYPE(TypeTag, IntensiveQuantities) IntensiveQuantities;
-        typedef typename GET_PROP_TYPE(TypeTag, MaterialLaw) MaterialLaw;
-        typedef typename GET_PROP_TYPE(TypeTag, SparseMatrixAdapter) SparseMatrixAdapter;
-        typedef typename GET_PROP_TYPE(TypeTag, RateVector) RateVector;
+        typedef GET_PROP_TYPE(TypeTag, Grid) Grid;
+        typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
+        typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+        typedef GET_PROP_TYPE(TypeTag, Indices) Indices;
+        typedef GET_PROP_TYPE(TypeTag, IntensiveQuantities) IntensiveQuantities;
+        typedef GET_PROP_TYPE(TypeTag, MaterialLaw) MaterialLaw;
+        typedef GET_PROP_TYPE(TypeTag, SparseMatrixAdapter) SparseMatrixAdapter;
+        typedef GET_PROP_TYPE(TypeTag, RateVector) RateVector;
 
         static const int numEq = Indices::numEq;
         typedef double Scalar;

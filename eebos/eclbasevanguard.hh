@@ -112,15 +112,15 @@ template <class TypeTag>
 class EclBaseVanguard : public BaseVanguard<TypeTag>
 {
     typedef BaseVanguard<TypeTag> ParentType;
-    typedef typename GET_PROP_TYPE(TypeTag, Vanguard) Implementation;
-    typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
+    typedef GET_PROP_TYPE(TypeTag, Vanguard) Implementation;
+    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
 
     enum { enableExperiments = GET_PROP_VALUE(TypeTag, EnableExperiments) };
 
 public:
-    typedef typename GET_PROP_TYPE(TypeTag, Grid) Grid;
-    typedef typename GET_PROP_TYPE(TypeTag, GridView) GridView;
+    typedef GET_PROP_TYPE(TypeTag, Grid) Grid;
+    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
 
 protected:
     static const int dimension = Grid::dimension;

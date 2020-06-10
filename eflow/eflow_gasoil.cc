@@ -51,7 +51,7 @@ private:
     // to cyclic definitions of some properties. if this happens the compiler error
     // messages unfortunately are *really* confusing and not really helpful.
     typedef TTAG(EclEFlowProblem) BaseTypeTag;
-    typedef typename GET_PROP_TYPE(BaseTypeTag, FluidSystem) FluidSystem;
+    typedef GET_PROP_TYPE(BaseTypeTag, FluidSystem) FluidSystem;
 
 public:
     typedef Ewoms::BlackOilTwoPhaseIndices<GET_PROP_VALUE(TypeTag, EnableSolvent),

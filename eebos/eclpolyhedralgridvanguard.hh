@@ -44,7 +44,7 @@ NEW_TYPE_TAG(EclPolyhedralGridVanguard, INHERITS_FROM(EclBaseVanguard));
 // declare the properties
 SET_TYPE_PROP(EclPolyhedralGridVanguard, Vanguard, Ewoms::EclPolyhedralGridVanguard<TypeTag>);
 SET_TYPE_PROP(EclPolyhedralGridVanguard, Grid, Dune::PolyhedralGrid<3, 3>);
-SET_TYPE_PROP(EclPolyhedralGridVanguard, EquilGrid, typename GET_PROP_TYPE(TypeTag, Grid));
+SET_TYPE_PROP(EclPolyhedralGridVanguard, EquilGrid, GET_PROP_TYPE(TypeTag, Grid));
 
 END_PROPERTIES
 
@@ -62,12 +62,12 @@ class EclPolyhedralGridVanguard : public EclBaseVanguard<TypeTag>
 {
     friend class EclBaseVanguard<TypeTag>;
 
-    typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
+    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
 
 public:
-    typedef typename GET_PROP_TYPE(TypeTag, Grid) Grid;
-    typedef typename GET_PROP_TYPE(TypeTag, EquilGrid) EquilGrid;
-    typedef typename GET_PROP_TYPE(TypeTag, GridView) GridView;
+    typedef GET_PROP_TYPE(TypeTag, Grid) Grid;
+    typedef GET_PROP_TYPE(TypeTag, EquilGrid) EquilGrid;
+    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
 
 private:
     typedef Grid* GridPointer;

@@ -104,16 +104,16 @@ namespace Ewoms {
         typedef WellStateFullyImplicitBlackoil WellState;
         typedef BlackoilModelParameters<TypeTag> ModelParameters;
 
-        typedef typename GET_PROP_TYPE(TypeTag, Simulator)         Simulator;
-        typedef typename GET_PROP_TYPE(TypeTag, Grid)              Grid;
-        typedef typename GET_PROP_TYPE(TypeTag, ElementContext)    ElementContext;
-        typedef typename GET_PROP_TYPE(TypeTag, SparseMatrixAdapter) SparseMatrixAdapter;
-        typedef typename GET_PROP_TYPE(TypeTag, SolutionVector)    SolutionVector ;
-        typedef typename GET_PROP_TYPE(TypeTag, PrimaryVariables)  PrimaryVariables ;
-        typedef typename GET_PROP_TYPE(TypeTag, FluidSystem)       FluidSystem;
-        typedef typename GET_PROP_TYPE(TypeTag, Indices)           Indices;
-        typedef typename GET_PROP_TYPE(TypeTag, MaterialLaw)       MaterialLaw;
-        typedef typename GET_PROP_TYPE(TypeTag, MaterialLawParams) MaterialLawParams;
+        typedef GET_PROP_TYPE(TypeTag, Simulator)         Simulator;
+        typedef GET_PROP_TYPE(TypeTag, Grid)              Grid;
+        typedef GET_PROP_TYPE(TypeTag, ElementContext)    ElementContext;
+        typedef GET_PROP_TYPE(TypeTag, SparseMatrixAdapter) SparseMatrixAdapter;
+        typedef GET_PROP_TYPE(TypeTag, SolutionVector)    SolutionVector ;
+        typedef GET_PROP_TYPE(TypeTag, PrimaryVariables)  PrimaryVariables ;
+        typedef GET_PROP_TYPE(TypeTag, FluidSystem)       FluidSystem;
+        typedef GET_PROP_TYPE(TypeTag, Indices)           Indices;
+        typedef GET_PROP_TYPE(TypeTag, MaterialLaw)       MaterialLaw;
+        typedef GET_PROP_TYPE(TypeTag, MaterialLawParams) MaterialLawParams;
 
         typedef double Scalar;
         static const int numEq = Indices::numEq;

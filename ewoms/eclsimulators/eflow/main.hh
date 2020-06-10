@@ -74,7 +74,7 @@ namespace Ewoms {
   template <class TypeTag>
   void eflowSetDeck(Deck *deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig)
   {
-    using Vanguard = typename GET_PROP_TYPE(TypeTag, Vanguard);
+    using Vanguard = GET_PROP_TYPE(TypeTag, Vanguard);
     Vanguard::setExternalDeck(deck);
     Vanguard::setExternalEclState(&eclState);
     Vanguard::setExternalSchedule(&schedule);
@@ -355,7 +355,7 @@ namespace Ewoms
                 deckFilename = EWOMS_GET_PARAM(PreTypeTag, std::string, EclDeckFileName);
             }
 
-            typedef typename GET_PROP_TYPE(PreTypeTag, Vanguard) PreVanguard;
+            typedef GET_PROP_TYPE(PreTypeTag, Vanguard) PreVanguard;
             try {
                 deckFilename = PreVanguard::canonicalDeckPath(deckFilename).string();
             }

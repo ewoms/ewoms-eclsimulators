@@ -56,11 +56,11 @@ namespace Ewoms
 template <class TypeTag>
 class ISTLSolverFlexible
 {
-    using GridView = typename GET_PROP_TYPE(TypeTag, GridView);
-    using SparseMatrixAdapter = typename GET_PROP_TYPE(TypeTag, SparseMatrixAdapter);
-    using VectorType = typename GET_PROP_TYPE(TypeTag, GlobalEqVector);
-    using Simulator = typename GET_PROP_TYPE(TypeTag, Simulator);
-    using Scalar = typename GET_PROP_TYPE(TypeTag, Scalar);
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
+    using SparseMatrixAdapter = GET_PROP_TYPE(TypeTag, SparseMatrixAdapter);
+    using VectorType = GET_PROP_TYPE(TypeTag, GlobalEqVector);
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
     using MatrixType = typename SparseMatrixAdapter::IstlMatrix;
 #if HAVE_MPI
     using Communication = Dune::OwnerOverlapCopyCommunication<int, int>;
@@ -70,16 +70,16 @@ class ISTLSolverFlexible
     using SolverType = Dune::FlexibleSolver<MatrixType, VectorType>;
 
     // for quasiImpesWeights
-    typedef typename GET_PROP_TYPE(TypeTag, GlobalEqVector) Vector;
-    typedef typename GET_PROP_TYPE(TypeTag, Indices) Indices;
-    //typedef typename GET_PROP_TYPE(TypeTag, EclWellModel) WellModel;
-    //typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
+    typedef GET_PROP_TYPE(TypeTag, GlobalEqVector) Vector;
+    typedef GET_PROP_TYPE(TypeTag, Indices) Indices;
+    //typedef GET_PROP_TYPE(TypeTag, EclWellModel) WellModel;
+    //typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
     typedef typename SparseMatrixAdapter::IstlMatrix Matrix;
     typedef typename SparseMatrixAdapter::MatrixBlock MatrixBlockType;
     typedef typename Vector::block_type BlockVector;
-    typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
+    typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
     typedef typename GridView::template Codim<0>::Entity Element;
-    typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
+    typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
 
 public:
     static void registerParameters()

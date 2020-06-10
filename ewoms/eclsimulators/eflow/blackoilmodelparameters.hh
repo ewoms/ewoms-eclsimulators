@@ -95,7 +95,7 @@ namespace Ewoms
     struct BlackoilModelParameters
     {
     private:
-        typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+        typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
 
     public:
         /// Max relative change in bhp in single iteration.
