@@ -151,7 +151,7 @@ namespace Ewoms
 
         virtual void initPrimaryVariablesEvaluation() const = 0;
 
-        virtual ConvergenceReport getWellConvergence(const WellState& well_state, const std::vector<double>& B_avg, Ewoms::DeferredLogger& deferred_logger) const = 0;
+        virtual ConvergenceReport getWellConvergence(const WellState& well_state, const std::vector<double>& B_avg, Ewoms::DeferredLogger& deferred_logger, const bool relax_tolerance = false) const = 0;
 
         virtual void solveEqAndUpdateWellState(WellState& well_state, Ewoms::DeferredLogger& deferred_logger) = 0;
 

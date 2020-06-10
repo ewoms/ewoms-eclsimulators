@@ -123,7 +123,7 @@ namespace Ewoms
                                                Ewoms::DeferredLogger& deferred_logger) const override;
 
         /// check whether the well equations get converged for this well
-        virtual ConvergenceReport getWellConvergence(const WellState& well_state, const std::vector<double>& B_avg, Ewoms::DeferredLogger& deferred_logger) const override;
+        virtual ConvergenceReport getWellConvergence(const WellState& well_state, const std::vector<double>& B_avg, Ewoms::DeferredLogger& deferred_logger, const bool relax_tolerance = false) const override;
 
         /// Ax = Ax - C D^-1 B x
         virtual void apply(const BVector& x, BVector& Ax) const override;
@@ -466,9 +466,6 @@ namespace Ewoms
         double maxPerfPress(const Simulator& eebos_simulator) const;
 
         void assembleSICDPressureEq(const int seg, WellState& well_state) const;
-
-        // TODO: when more ICD devices join, we should have a better interface to do this
-        void calculateSICDEFlowScalingFactors();
 
         EvalWell pressureDropSpiralICD(const int seg) const;
 

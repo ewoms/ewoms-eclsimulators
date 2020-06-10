@@ -331,10 +331,13 @@ namespace Ewoms
                 // the program should abort. This is the case e.g. for the --help and the
                 // --print-properties parameters.
 #if HAVE_MPI
-                MPI_Finalize();
+                if (status < 0)
+                    MPI_Finalize(); // graceful stop for --help or --print-properties command line.
+                else
+                    MPI_Abort(MPI_COMM_WORLD, status);
 #endif
-                exitCode = (status >= 0) ? status : EXIT_SUCCESS;
-                return false;
+                exitCode = (status > 0) ? status : EXIT_SUCCESS;
+                return false; //  Whether to run the simulator
             }
 
             FileOutputMode outputMode = FileOutputMode::OUTPUT_NONE;
@@ -361,7 +364,7 @@ namespace Ewoms
                     std::cerr << "Exception received: " << e.what() << ". Try '--help' for a usage description.\n";
                 }
 #if HAVE_MPI
-                MPI_Finalize();
+                MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 #endif
                 exitCode = EXIT_FAILURE;
                 return false;
@@ -394,42 +397,53 @@ namespace Ewoms
 
                     Ewoms::EFlowMain<PreTypeTag>::printPRTHeader(outputCout_);
 
-                    if (mpiRank == 0) {
-                        if (!deck_)
-                            deck_.reset( new Ewoms::Deck( parser.parseFile(deckFilename , parseContext, errorGuard)));
-                        Ewoms::MissingFeatures::checkKeywords(*deck_, parseContext, errorGuard);
-                        if ( outputCout_ )
-                            Ewoms::checkDeck(*deck_, parser, parseContext, errorGuard);
+                    int parseSuccess = 0;
+                    std::string failureMessage;
 
-                        if (!eclipseState_) {
+                    if (mpiRank == 0) {
+                        try
+                        {
+                            if (!deck_)
+                                deck_.reset( new Ewoms::Deck( parser.parseFile(deckFilename , parseContext, errorGuard)));
+                            Ewoms::MissingFeatures::checkKeywords(*deck_, parseContext, errorGuard);
+                            if ( outputCout_ )
+                                Ewoms::checkDeck(*deck_, parser, parseContext, errorGuard);
+
+                            if (!eclipseState_) {
 #if HAVE_MPI
-                            eclipseState_.reset(new Ewoms::ParallelEclipseState(*deck_));
+                                eclipseState_.reset(new Ewoms::ParallelEclipseState(*deck_));
 #else
-                            eclipseState_.reset(new Ewoms::EclipseState(*deck_));
+                                eclipseState_.reset(new Ewoms::EclipseState(*deck_));
 #endif
+                            }
+                            /*
+                              For the time being initializing wells and groups from the
+                              restart file is not possible, but work is underways and it is
+                              included here as a switch.
+                            */
+                            const bool init_from_restart_file = !EWOMS_GET_PARAM(PreTypeTag, bool, SchedRestart);
+                            const auto& init_config = eclipseState_->getInitConfig();
+                            if (init_config.restartRequested() && init_from_restart_file) {
+                                int report_step = init_config.getRestartStep();
+                                const auto& rst_filename = eclipseState_->getIOConfig().getRestartFileName( init_config.getRestartRootName(), report_step, false );
+                                Ewoms::EclIO::ERst rst_file(rst_filename);
+                                const auto& rst_state = Ewoms::RestartIO::RstState::load(rst_file, report_step);
+                                if (!schedule_)
+                                    schedule_.reset(new Ewoms::Schedule(*deck_, *eclipseState_, parseContext, errorGuard, &rst_state) );
+                            }
+                            else {
+                                if (!schedule_)
+                                    schedule_.reset(new Ewoms::Schedule(*deck_, *eclipseState_, parseContext, errorGuard));
+                            }
+                            setupMessageLimiter_(schedule_->getMessageLimits(), "STDOUT_LOGGER");
+                            if (!summaryConfig_)
+                                summaryConfig_.reset( new Ewoms::SummaryConfig(*deck_, *schedule_, eclipseState_->getTableManager(), parseContext, errorGuard));
+                            parseSuccess = 1;
                         }
-                        /*
-                          For the time being initializing wells and groups from the
-                          restart file is not possible, but work is underways and it is
-                          included here as a switch.
-                        */
-                        const bool init_from_restart_file = !EWOMS_GET_PARAM(PreTypeTag, bool, SchedRestart);
-                        const auto& init_config = eclipseState_->getInitConfig();
-                        if (init_config.restartRequested() && init_from_restart_file) {
-                            int report_step = init_config.getRestartStep();
-                            const auto& rst_filename = eclipseState_->getIOConfig().getRestartFileName( init_config.getRestartRootName(), report_step, false );
-                            Ewoms::EclIO::ERst rst_file(rst_filename);
-                            const auto& rst_state = Ewoms::RestartIO::RstState::load(rst_file, report_step);
-                            if (!schedule_)
-                                schedule_.reset(new Ewoms::Schedule(*deck_, *eclipseState_, parseContext, errorGuard, &rst_state) );
+                        catch(const std::exception& e)
+                        {
+                            failureMessage = e.what();
                         }
-                        else {
-                            if (!schedule_)
-                                schedule_.reset(new Ewoms::Schedule(*deck_, *eclipseState_, parseContext, errorGuard));
-                        }
-                        setupMessageLimiter_(schedule_->getMessageLimits(), "STDOUT_LOGGER");
-                        if (!summaryConfig_)
-                            summaryConfig_.reset( new Ewoms::SummaryConfig(*deck_, *schedule_, eclipseState_->getTableManager(), parseContext, errorGuard));
                     }
 #if HAVE_MPI
                     else {
@@ -440,6 +454,18 @@ namespace Ewoms
                         if (!eclipseState_)
                             eclipseState_.reset(new Ewoms::ParallelEclipseState);
                     }
+
+                    auto comm = Dune::MPIHelper::getCollectiveCommunication();
+                    parseSuccess = comm.max(parseSuccess);
+                    if (!parseSuccess)
+                    {
+                        if (errorGuard) {
+                            errorGuard.dump();
+                            errorGuard.clear();
+                        }
+                        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+                    }
+
                     Ewoms::eclStateBroadcast(*eclipseState_, *schedule_, *summaryConfig_);
 #endif
 
@@ -461,6 +487,9 @@ namespace Ewoms
                     std::cerr << "Failed to create valid EclipseState object." << std::endl;
                     std::cerr << "Exception caught: " << e.what() << std::endl;
                 }
+#if HAVE_MPI
+                MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+#endif
                 exitCode = EXIT_FAILURE;
                 return false;
             }

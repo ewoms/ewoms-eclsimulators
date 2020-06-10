@@ -397,6 +397,7 @@ public:
         edgeWeightsMethod_   = Dune::EdgeWeightMethod(EWOMS_GET_PARAM(TypeTag, int, EdgeWeightsMethod));
         ownersFirst_ = EWOMS_GET_PARAM(TypeTag, bool, OwnerCellsFirst);
 
+        // Make proper case name.
         if (fileName == "")
             throw std::runtime_error("No input deck file has been specified as a command line argument,"
                                      " or via '--ecl-deck-file-name=CASE.DATA'");
