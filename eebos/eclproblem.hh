@@ -225,7 +225,7 @@ public:
 SET_TYPE_PROP(EclBaseProblem, EclAquiferModel, Ewoms::EclBaseAquiferModel<TypeTag>);
 
 // use the built-in proof of concept well model by default
-SET_TYPE_PROP(EclBaseProblem, EclWellModel, EclWellManager<TypeTag>);
+SET_TYPE_PROP(EclBaseProblem, EclWellModel, Ewoms::EclWellManager<TypeTag>);
 
 // Enable aquifers by default in experimental mode
 SET_BOOL_PROP(EclBaseProblem, EclEnableAquifers, true);

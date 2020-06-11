@@ -39,8 +39,8 @@
 #include <dune/common/parallel/mpihelper.hh>
 #endif
 
-namespace Ewoms {
-namespace Properties {
+BEGIN_PROPERTIES
+
 NEW_TYPE_TAG(EclEFlowOilWaterPolymerInjectivityProblem, INHERITS_FROM(EclEFlowProblem));
 SET_BOOL_PROP(EclEFlowOilWaterPolymerInjectivityProblem, EnablePolymer, true);
 SET_BOOL_PROP(EclEFlowOilWaterPolymerInjectivityProblem, EnablePolymerMW, true);
@@ -65,7 +65,8 @@ public:
                                          /*PVOffset=*/0,
                                          /*disabledCompIdx=*/FluidSystem::gasCompIdx> type;
 };
-}}
+
+END_PROPERTIES
 
 namespace Ewoms {
 /* void eflowOilWaterPolymerInjectivitySetDeck(Deck& deck, EclipseState& eclState)

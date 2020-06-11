@@ -20,6 +20,7 @@
 #include <ewoms/numerics/models/blackoil/blackoilonephaseindices.hh>
 
 BEGIN_PROPERTIES
+
 NEW_TYPE_TAG(EclEFlowProblemSimple, INHERITS_FROM(EclEFlowProblem));
 NEW_PROP_TAG(FluidState);
 NEW_PROP_TAG(FluidSystem);
@@ -80,6 +81,7 @@ public:
 // public:
 //   typedef Ewoms::BlackOilFluidSystem<Scalar,Indices> type;
 // };
+
 END_PROPERTIES
 
 int main(int argc, char** argv)

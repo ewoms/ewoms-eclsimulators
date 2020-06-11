@@ -34,11 +34,12 @@
 #include <dune/common/parallel/mpihelper.hh>
 #endif
 
-namespace Ewoms {
-namespace Properties {
+BEGIN_PROPERTIES
+
 NEW_TYPE_TAG(EclEFlowSolventProblem, INHERITS_FROM(EclEFlowProblem));
 SET_BOOL_PROP(EclEFlowSolventProblem, EnableSolvent, true);
-}}
+
+END_PROPERTIES
 
 namespace Ewoms {
 void eflowSolventSetDeck(double setupTime, Deck *deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig)

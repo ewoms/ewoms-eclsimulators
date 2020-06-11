@@ -59,10 +59,6 @@ SET_INT_PROP(EclEFlowProblemSimple, CprReuseSetup, 3);
 SET_INT_PROP(EclEFlowProblemSimple, CprSolverVerbose, 0);
 SET_STRING_PROP(EclEFlowProblemSimple, LinearSolverConfiguration, "ilu0");
 SET_STRING_PROP(EclEFlowProblemSimple, SystemStrategy, "quasiimpes");
-END_PROPERTIES
-
-namespace Ewoms {
-  namespace Properties {
 
     SET_PROP(EclEFlowProblemSimple, FluidSystem)
     {
@@ -92,8 +88,8 @@ namespace Ewoms {
     //SET_INT_PROP(EclEFlowProblemSimple, NumWellAdjoint, 1);
     //SET_BOOL_PROP(EclEFlowProblem, EnableStorageCache, true);
     //SET_BOOL_PROP(EclEFlowProblem, EnableIntensiveQuantityCache, true);
-  }
-}
+
+END_PROPERTIES
 
 int main(int argc, char** argv)
 {

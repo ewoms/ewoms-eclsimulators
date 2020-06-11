@@ -29,11 +29,12 @@
 #include <dune/common/parallel/mpihelper.hh>
 #endif
 
-namespace Ewoms {
-namespace Properties {
+BEGIN_PROPERTIES
+
 NEW_TYPE_TAG(EclEFlowBrineProblem, INHERITS_FROM(EclEFlowProblem));
 SET_BOOL_PROP(EclEFlowBrineProblem, EnableBrine, true);
-}}
+
+END_PROPERTIES
 
 namespace Ewoms {
 void eflowBrineSetDeck(double setupTime, Deck *deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig)

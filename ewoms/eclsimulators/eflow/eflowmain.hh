@@ -192,7 +192,7 @@ namespace Ewoms
                 if (EWOMS_GET_PARAM(TypeTag, int, PrintProperties) == 1) {
                     doExit = true;
                     if (mpiRank == 0)
-                        Ewoms::Properties::printValues<TypeTag>();
+                        EWOMS_PRINT_PROPERTIES(TypeTag);
                 }
 
                 if (EWOMS_GET_PARAM(TypeTag, int, PrintParameters) == 1) {
