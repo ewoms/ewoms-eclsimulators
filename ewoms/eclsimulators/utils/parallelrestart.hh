@@ -378,7 +378,7 @@ std::enable_if_t<(staticIdx < sizeof...(Ts)), std::size_t>
 packSizeVariantContent(const Ewoms::variant<Ts...>& data,
                        Dune::MPIHelper::MPICommunicator comm)
 {
-    if (data.which() < staticIdx)
+    if (Ewoms::variantIndex(data) < staticIdx)
         return packSizeVariantContent<staticIdx + 1, Ts...>(data, comm);
     else
         return packSize(Ewoms::get<typename ExtractType<staticIdx, 0, Ts...>::type>(data), comm);
@@ -694,7 +694,7 @@ packVariantContent(const Ewoms::variant<Ts...>& data,
                    int& position,
                    Dune::MPIHelper::MPICommunicator comm)
 {
-    if (data.which() != staticIdx)
+    if (Ewoms::variantIndex(data) != staticIdx)
         packVariantContent<staticIdx + 1, Ts...>(data, buffer, position, comm);
     else
         pack(Ewoms::get<typename ExtractType<staticIdx, 0, Ts...>::type>(data), buffer, position, comm);
@@ -706,7 +706,7 @@ void pack(const Ewoms::variant<Ts...>& data,
           int& position,
           Dune::MPIHelper::MPICommunicator comm)
 {
-    pack(data.which(), buffer, position, comm);
+    pack(Ewoms::variantIndex(data), buffer, position, comm);
     packVariantContent<0>(data, buffer, position, comm);
 }
 
