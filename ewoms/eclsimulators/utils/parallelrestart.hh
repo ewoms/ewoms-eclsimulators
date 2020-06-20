@@ -22,8 +22,6 @@
 #include <mpi.h>
 #endif
 
-#include <dune/common/parallel/mpitraits.hh>
-
 #include <ewoms/eclio/output/restartvalue.hh>
 #include <ewoms/eclio/output/eclipseio.hh>
 #include <ewoms/eclio/output/summary.hh>
@@ -31,9 +29,13 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/summarystate.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/action/state.hh>
 
+#include <ewoms/common/variant.hh>
+
+#include <dune/common/parallel/mpitraits.hh>
 #include <dune/common/classname.hh>
 #include <dune/common/parallel/mpihelper.hh>
 
+#include <utility>
 #include <set>
 #include <tuple>
 #include <vector>
@@ -239,6 +241,7 @@ template<class T1, class T2> std::size_t packSize(const std::pair<T1,T2>& data, 
 template<class T, class A> std::size_t packSize(const std::vector<T,A>& data, Dune::MPIHelper::MPICommunicator comm);
 template<class A> std::size_t packSize(const std::vector<bool,A>& data, Dune::MPIHelper::MPICommunicator comm);
 template<class... Ts> std::size_t packSize(const std::tuple<Ts...>& data, Dune::MPIHelper::MPICommunicator comm);
+template<class... Ts> std::size_t packSize(const Ewoms::variant<Ts...>& data, Dune::MPIHelper::MPICommunicator comm);
 template<class T, class H, class KE, class A> std::size_t packSize(const std::unordered_set<T,H,KE,A>& data, Dune::MPIHelper::MPICommunicator comm);
 template<class K, class C, class A> std::size_t packSize(const std::set<K,C,A>& data, Dune::MPIHelper::MPICommunicator comm);
 template<class T1, class T2, class C, class A> std::size_t packSize(const std::map<T1,T2,C,A>& data, Dune::MPIHelper::MPICommunicator comm);
@@ -348,6 +351,32 @@ template<class... Ts>
 std::size_t packSize(const std::tuple<Ts...>& data, Dune::MPIHelper::MPICommunicator comm)
 {
     return packSizeTupleEntry(data, comm);
+}
+
+// Ewoms::variant objects
+template<int staticIdx, class... Ts>
+std::enable_if_t<staticIdx == sizeof...(Ts), std::size_t>
+packSizeVariantContent(const Ewoms::variant<Ts...>& data,
+                       Dune::MPIHelper::MPICommunicator comm)
+{ return 0; }
+
+template<int staticIdx, class... Ts>
+std::enable_if_t<(staticIdx < sizeof...(Ts)), std::size_t>
+packSizeVariantContent(const Ewoms::variant<Ts...>& data,
+                       Dune::MPIHelper::MPICommunicator comm)
+{
+    if (data.index() < staticIdx)
+        return packSizeVariantContent<staticIdx + 1, Ts...>(data, comm);
+    else
+        return packSize(Ewoms::get<staticIdx>(data), comm);
+}
+
+template<class... Ts>
+std::size_t packSize(const Ewoms::variant<Ts...>& data,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    int dummy;
+    return packSize(dummy, comm) + packSizeVariantContent<0, Ts...>(data, comm);
 }
 
 // std::unordered_set
@@ -470,6 +499,7 @@ template<class T, class H, class KE, class A> void pack(const std::unordered_set
 template<class T, size_t N> void pack(const std::array<T,N>& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm);
 template<class A> void pack(const std::vector<bool,A>& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm);
 template<class... Ts> void pack(const std::tuple<Ts...>& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm);
+template<class... Ts> void pack(const Ewoms::variant<Ts...>& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm);
 template<class T1, class T2, class C, class A> void pack(const std::map<T1,T2,C,A>& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm);
 template<class T1, class T2, class H, class P, class A> void pack(const std::unordered_map<T1,T2,H,P,A>& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm);
 void pack(const data::Well& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm);
@@ -634,9 +664,44 @@ void pack(const std::tuple<Ts...>& data, std::vector<char>& buffer,
     packTupleEntry(data, buffer, position, comm);
 }
 
+// Ewoms::variant objects
+template<int staticIdx, class... Ts>
+std::enable_if_t<(staticIdx >= sizeof...(Ts)), void>
+packVariantContent(const Ewoms::variant<Ts...>& data,
+                   std::vector<char>& buffer,
+                   int& position,
+                   Dune::MPIHelper::MPICommunicator comm)
+{
+}
+
+template<int staticIdx, class... Ts>
+std::enable_if_t<(staticIdx < sizeof...(Ts)), void>
+packVariantContent(const Ewoms::variant<Ts...>& data,
+                   std::vector<char>& buffer,
+                   int& position,
+                   Dune::MPIHelper::MPICommunicator comm)
+{
+    if (data.index() != staticIdx)
+        packVariantContent<staticIdx + 1, Ts...>(data, buffer, position, comm);
+    else
+        pack(Ewoms::get<staticIdx>(data), buffer, position, comm);
+}
+
+template<class... Ts>
+void pack(const Ewoms::variant<Ts...>& data,
+          std::vector<char>& buffer,
+          int& position,
+          Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.index(), buffer, position, comm);
+    packVariantContent<0>(data, buffer, position, comm);
+}
+
 // std::map
 template<class T1, class T2, class C, class A>
-void pack(const std::map<T1,T2,C,A>& data, std::vector<char>& buffer, int& position,
+void pack(const std::map<T1,T2,C,A>& data,
+          std::vector<char>& buffer,
+          int& position,
           Dune::MPIHelper::MPICommunicator comm)
 {
     pack(data.size(), buffer, position, comm);
@@ -733,6 +798,7 @@ void unpack(std::string& str, std::vector<char>& buffer, int& position, Dune::MP
 template<class T, class A> void unpack(std::vector<T,A>& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm);
 template<class A> void unpack(std::vector<bool,A>& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm);
 template<class... Ts> void unpack(std::tuple<Ts...>& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm);
+template<class... Ts> void unpack(Ewoms::variant<Ts...>& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm);
 template<class K, class C, class A> void unpack(std::set<K,C,A>& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm);
 template<class T, class H, class KE, class A> void unpack(std::unordered_set<T,H,KE,A>& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm);
 template<class T, size_t N> void unpack(std::array<T,N>& data, std::vector<char>& buffer, int& position, Dune::MPIHelper::MPICommunicator comm);
@@ -865,6 +931,59 @@ void unpack(std::tuple<Ts...>& data, std::vector<char>& buffer,
             int& position, Dune::MPIHelper::MPICommunicator comm)
 {
     unpackTupleEntry(data, buffer, position, comm);
+}
+
+// Ewoms::variant objects
+template<int staticIdx, class... Ts>
+typename std::enable_if<staticIdx == sizeof...(Ts), void>::type
+unpackVariantContent(int dynamicIdx,
+                     Ewoms::variant<Ts...>& data,
+                     std::vector<char>& buffer,
+                     int& position,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    throw std::runtime_error("Cannot unpack element "+std::to_string(dynamicIdx)+
+                             " for a"+std::to_string(sizeof...(Ts))+"-sized variant");
+}
+
+template <int targetIdx, int curIdx, class T, class ...Ts>
+struct ExtractType
+{
+    using type = typename ExtractType<targetIdx, curIdx + 1, Ts...>::type;
+};
+
+template <int targetIdx, class T, class ...Ts>
+struct ExtractType<targetIdx, targetIdx, T, Ts...>
+{
+    typedef T type;
+};
+
+template<int staticIdx, class... Ts>
+typename std::enable_if<(staticIdx < sizeof...(Ts)), void>::type
+unpackVariantContent(int dynamicIdx,
+                     Ewoms::variant<Ts...>& data,
+                     std::vector<char>& buffer,
+                     int& position,
+                     Dune::MPIHelper::MPICommunicator comm)
+{
+    if (dynamicIdx != staticIdx)
+        unpackVariantContent<staticIdx + 1, Ts...>(dynamicIdx, data, buffer, position, comm);
+    else {
+        using VT = typename ExtractType<staticIdx, 0, Ts...>::type;
+        VT& val = data.template emplace<VT>();
+        unpack(val, buffer, position, comm);
+    }
+}
+
+template<class... Ts>
+void unpack(Ewoms::variant<Ts...>& data,
+            std::vector<char>& buffer,
+            int& position,
+            Dune::MPIHelper::MPICommunicator comm)
+{
+    int index;
+    unpack(index, buffer, position, comm);
+    unpackVariantContent<0, Ts...>(index, data, buffer, position, comm);
 }
 
 // std::set
