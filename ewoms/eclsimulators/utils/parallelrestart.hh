@@ -45,6 +45,19 @@
 namespace Ewoms {
 namespace Mpi {
 
+// helper class to extract the type at a given position from a parameter pack
+template <int targetIdx, int curIdx, class T, class ...Ts>
+struct ExtractType
+{
+    using type = typename ExtractType<targetIdx, curIdx + 1, Ts...>::type;
+};
+
+template <int targetIdx, class T, class ...Ts>
+struct ExtractType<targetIdx, targetIdx, T, Ts...>
+{
+    typedef T type;
+};
+
 ///////////////////
 // pack size, pack and unpack routines for integral constants
 ///////////////////
@@ -365,10 +378,10 @@ std::enable_if_t<(staticIdx < sizeof...(Ts)), std::size_t>
 packSizeVariantContent(const Ewoms::variant<Ts...>& data,
                        Dune::MPIHelper::MPICommunicator comm)
 {
-    if (data.index() < staticIdx)
+    if (data.which() < staticIdx)
         return packSizeVariantContent<staticIdx + 1, Ts...>(data, comm);
     else
-        return packSize(Ewoms::get<staticIdx>(data), comm);
+        return packSize(Ewoms::get<typename ExtractType<staticIdx, 0, Ts...>::type>(data), comm);
 }
 
 template<class... Ts>
@@ -681,10 +694,10 @@ packVariantContent(const Ewoms::variant<Ts...>& data,
                    int& position,
                    Dune::MPIHelper::MPICommunicator comm)
 {
-    if (data.index() != staticIdx)
+    if (data.which() != staticIdx)
         packVariantContent<staticIdx + 1, Ts...>(data, buffer, position, comm);
     else
-        pack(Ewoms::get<staticIdx>(data), buffer, position, comm);
+        pack(Ewoms::get<typename ExtractType<staticIdx, 0, Ts...>::type>(data), buffer, position, comm);
 }
 
 template<class... Ts>
@@ -693,7 +706,7 @@ void pack(const Ewoms::variant<Ts...>& data,
           int& position,
           Dune::MPIHelper::MPICommunicator comm)
 {
-    pack(data.index(), buffer, position, comm);
+    pack(data.which(), buffer, position, comm);
     packVariantContent<0>(data, buffer, position, comm);
 }
 
@@ -946,18 +959,6 @@ unpackVariantContent(int dynamicIdx,
                              " for a"+std::to_string(sizeof...(Ts))+"-sized variant");
 }
 
-template <int targetIdx, int curIdx, class T, class ...Ts>
-struct ExtractType
-{
-    using type = typename ExtractType<targetIdx, curIdx + 1, Ts...>::type;
-};
-
-template <int targetIdx, class T, class ...Ts>
-struct ExtractType<targetIdx, targetIdx, T, Ts...>
-{
-    typedef T type;
-};
-
 template<int staticIdx, class... Ts>
 typename std::enable_if<(staticIdx < sizeof...(Ts)), void>::type
 unpackVariantContent(int dynamicIdx,
@@ -970,8 +971,9 @@ unpackVariantContent(int dynamicIdx,
         unpackVariantContent<staticIdx + 1, Ts...>(dynamicIdx, data, buffer, position, comm);
     else {
         using VT = typename ExtractType<staticIdx, 0, Ts...>::type;
-        VT& val = data.template emplace<VT>();
+        VT val;
         unpack(val, buffer, position, comm);
+        data = val;
     }
 }
 
@@ -981,9 +983,9 @@ void unpack(Ewoms::variant<Ts...>& data,
             int& position,
             Dune::MPIHelper::MPICommunicator comm)
 {
-    int index;
-    unpack(index, buffer, position, comm);
-    unpackVariantContent<0, Ts...>(index, data, buffer, position, comm);
+    int which;
+    unpack(which, buffer, position, comm);
+    unpackVariantContent<0, Ts...>(which, data, buffer, position, comm);
 }
 
 // std::set

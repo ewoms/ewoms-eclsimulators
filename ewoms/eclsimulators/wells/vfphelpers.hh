@@ -787,7 +787,7 @@ inline bool findIntersectionForBhp(const std::vector<RateBhpPair>& ratebhp_sampl
     }
 
     // then we pick the segment from the VFP curve to do the line intersection calculation
-    const std::array<RateBhpPair, 2> line_segment{ ratebhp_samples[index_segment], ratebhp_samples[index_segment + 1] };
+    const std::array<RateBhpPair, 2> line_segment{{ ratebhp_samples[index_segment], ratebhp_samples[index_segment + 1] }};
 
     const bool intersection_found = findIntersection(line_segment, ratebhp_twopoints_ipr, obtained_bhp);
 

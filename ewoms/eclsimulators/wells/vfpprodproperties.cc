@@ -219,8 +219,8 @@ calculateBhpWithTHPTarget(const std::vector<double>& ipr_a,
         ratebhp_samples.push_back( detail::RateBhpPair{flo_samples[i], bhp_flo_samples[i]} );
     }
 
-    const std::array<detail::RateBhpPair, 2> ratebhp_twopoints_ipr {detail::RateBhpPair{flo_bhp_middle, bhp_middle},
-                                                                    detail::RateBhpPair{flo_bhp_limit, bhp_limit} };
+    const std::array<detail::RateBhpPair, 2> ratebhp_twopoints_ipr {{detail::RateBhpPair{flo_bhp_middle, bhp_middle},
+          detail::RateBhpPair{flo_bhp_limit, bhp_limit} }};
 
     double obtain_bhp = 0.;
     const bool can_obtain_bhp_with_thp_limit = detail::findIntersectionForBhp(ratebhp_samples, ratebhp_twopoints_ipr, obtain_bhp);
