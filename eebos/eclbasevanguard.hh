@@ -48,6 +48,7 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/summarystate.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/action/state.hh>
 
 #include <ewoms/common/string.hh>
 #include <ewoms/eclio/opmlog/opmlog.hh>
@@ -458,6 +459,7 @@ public:
 #endif
 
         summaryState_.reset(new Ewoms::SummaryState(std::chrono::system_clock::from_time_t(this->eclSchedule_->getStartTime())));
+        actionState_.reset(new Ewoms::Action::State());
 
         // Possibly override IOConfig setting for how often RESTART files should get
         // written to disk (every N report steps)
@@ -606,6 +608,17 @@ public:
 
     const Ewoms::SummaryState& summaryState() const
     { return *summaryState_; }
+
+    /*!
+     * \brief Returns the action state
+     *
+     * The ActionState keeps track of how many times the various actions have run.
+     */
+    Ewoms::Action::State& actionState()
+    { return *actionState_; }
+
+    const Ewoms::Action::State& actionState() const
+    { return *actionState_; }
 
     /*!
      * \brief Parameter deciding the edge-weight strategy of the load balancer.
@@ -782,6 +795,7 @@ private:
     std::unique_ptr<Ewoms::Schedule> internalEclSchedule_;
     std::unique_ptr<Ewoms::SummaryConfig> internalEclSummaryConfig_;
     std::unique_ptr<Ewoms::SummaryState> summaryState_;
+    std::unique_ptr<Ewoms::Action::State> actionState_;
 
     // these attributes point  either to the internal  or to the external version of the
     // parser objects.

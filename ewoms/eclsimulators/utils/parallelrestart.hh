@@ -24,10 +24,12 @@
 
 #include <dune/common/parallel/mpitraits.hh>
 
-#include <ewoms/eclio/parser/eclipsestate/aquancon.hh>
 #include <ewoms/eclio/output/restartvalue.hh>
 #include <ewoms/eclio/output/eclipseio.hh>
 #include <ewoms/eclio/output/summary.hh>
+#include <ewoms/eclio/parser/eclipsestate/aquancon.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/summarystate.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/action/state.hh>
 
 #include <dune/common/classname.hh>
 #include <dune/common/parallel/mpihelper.hh>
@@ -1012,7 +1014,9 @@ void unpack(std::pair<T1,T2>& data, std::vector<char>& buffer, int& position,
 
 } // end namespace Mpi
 
-inline RestartValue loadParallelRestart(const EclipseIO* eclIO, SummaryState& summaryState,
+inline RestartValue loadParallelRestart(const EclipseIO* eclIO,
+                                        SummaryState& summaryState,
+                                        Action::State& actionState,
                                         const std::vector<Ewoms::RestartKey>& solutionKeys,
                                         const std::vector<Ewoms::RestartKey>& extraKeys,
                                         Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator> comm)
@@ -1025,7 +1029,7 @@ inline RestartValue loadParallelRestart(const EclipseIO* eclIO, SummaryState& su
     if (eclIO)
     {
         assert(comm.rank() == 0);
-        restartValues = eclIO->loadRestart(summaryState, solutionKeys, extraKeys);
+        restartValues = eclIO->loadRestart(actionState, summaryState, solutionKeys, extraKeys);
         int packedSize = Mpi::packSize(restartValues, comm);
         std::vector<char> buffer(packedSize);
         int position=0;

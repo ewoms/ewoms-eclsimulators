@@ -983,7 +983,7 @@ public:
         bool isSubStep = !EWOMS_GET_PARAM(TypeTag, bool, EnableWriteAllSolutions) && !this->simulator().episodeWillBeOver();
         eclWriter_->evalSummaryState(isSubStep);
 
-        this->applyActions();
+        applyActions();
     }
 
     /*!
@@ -1049,6 +1049,7 @@ public:
         int reportStep = simulator.episodeIndex();
         auto& schedule = simulator.vanguard().schedule();
         const auto& summaryState = simulator.vanguard().summaryState();
+        auto& actionState = simulator.vanguard().actionState();
         const auto& actions = schedule.actions(reportStep);
         if (actions.empty())
             return;
@@ -1066,8 +1067,8 @@ public:
         }
 
         auto simTime = schedule.simTime(reportStep);
-        for (const auto& action : actions.pending(simTime)) {
-            auto actionResult = action->eval(simTime, context);
+        for (const auto& action : actions.pending(actionState, simTime)) {
+            const auto& actionResult = action->eval(context);
             if (actionResult) {
                 std::string wellsString;
                 const auto& matchingWells = actionResult.wells();
@@ -1079,6 +1080,7 @@ public:
                 std::string msg = "The action: " + action->name() + " evaluated to true at " + ts + " wells: " + wellsString;
                 Ewoms::OpmLog::info(msg);
                 schedule.applyAction(reportStep, *action, actionResult);
+                actionState.add_run(*action, simTime);
             }
             else {
                 std::string msg = "The action: " + action->name() + " evaluated to false at " + ts;

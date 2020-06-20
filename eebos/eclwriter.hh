@@ -386,7 +386,8 @@ public:
                 restartValue.addExtra("OPMEXTRA", std::vector<double>(1, nextStepSize));
 
             // first, create a tasklet to write the data for the current time step to disk
-            auto eclWriteTasklet = std::make_shared<EclWriteTasklet>(summaryState(),
+            auto eclWriteTasklet = std::make_shared<EclWriteTasklet>(actionState(),
+                                                                     summaryState(),
                                                                      *eclIO_,
                                                                      reportStepNum,
                                                                      isSubStep,
@@ -440,7 +441,8 @@ public:
 
         {
             Ewoms::SummaryState& summaryState = simulator_.vanguard().summaryState();
-            auto restartValues = loadParallelRestart(eclIO_.get(), summaryState, solutionKeys, extraKeys,
+            Ewoms::Action::State& actionState = simulator_.vanguard().actionState();
+            auto restartValues = loadParallelRestart(eclIO_.get(), summaryState, actionState, solutionKeys, extraKeys,
                                                      gridView.grid().comm());
 
             for (unsigned elemIdx = 0; elemIdx < numElements; ++elemIdx) {
@@ -689,6 +691,7 @@ private:
     struct EclWriteTasklet
         : public TaskletInterface
     {
+        Ewoms::Action::State actionState_;
         Ewoms::SummaryState summaryState_;
         Ewoms::EclipseIO& eclIO_;
         int reportStepNum_;
@@ -697,14 +700,16 @@ private:
         Ewoms::RestartValue restartValue_;
         bool writeDoublePrecision_;
 
-        explicit EclWriteTasklet(const Ewoms::SummaryState& summaryState,
+        explicit EclWriteTasklet(const Ewoms::Action::State& actionState,
+                                 const Ewoms::SummaryState& summaryState,
                                  Ewoms::EclipseIO& eclIO,
                                  int reportStepNum,
                                  bool isSubStep,
                                  double secondsElapsed,
                                  Ewoms::RestartValue restartValue,
                                  bool writeDoublePrecision)
-            : summaryState_(summaryState)
+            : actionState_(actionState)
+            , summaryState_(summaryState)
             , eclIO_(eclIO)
             , reportStepNum_(reportStepNum)
             , isSubStep_(isSubStep)
@@ -716,7 +721,8 @@ private:
         // callback to eclIO serial writeTimeStep method
         void run()
         {
-            eclIO_.writeTimeStep(summaryState_,
+            eclIO_.writeTimeStep(actionState_,
+                                 summaryState_,
                                  reportStepNum_,
                                  isSubStep_,
                                  secondsElapsed_,
@@ -727,6 +733,9 @@ private:
 
     const Ewoms::EclipseState& eclState() const
     { return simulator_.vanguard().eclState(); }
+
+    Ewoms::Action::State& actionState()
+    { return simulator_.vanguard().actionState(); }
 
     Ewoms::SummaryState& summaryState()
     { return simulator_.vanguard().summaryState(); }
