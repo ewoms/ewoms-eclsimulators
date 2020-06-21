@@ -19,6 +19,8 @@
 #ifndef EWOMS_GET_QUASI_IMPES_WEIGHTS_HH
 #define EWOMS_GET_QUASI_IMPES_WEIGHTS_HH
 
+#include <dune/common/fvector.hh>
+
 #include <algorithm>
 #include <cmath>
 

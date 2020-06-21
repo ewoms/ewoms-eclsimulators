@@ -29,6 +29,10 @@
 
 #include <ewoms/eclsimulators/linalg/flexiblesolver.hh>
 
+#include <dune/common/fmatrix.hh>
+#include <dune/istl/bcrsmatrix.hh>
+#include <dune/istl/matrixmarket.hh>
+
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <fstream>
