@@ -27,6 +27,7 @@
 #  include <eflow/eflow_polymer.hh>
 #  include <eflow/eflow_foam.hh>
 #  include <eflow/eflow_brine.hh>
+#  include <eflow/eflow_oilwater_brine.hh>
 #  include <eflow/eflow_energy.hh>
 #  include <eflow/eflow_oilwater_polymer.hh>
 #  include <eflow/eflow_oilwater_polymer_injectivity.hh>
@@ -259,8 +260,19 @@ namespace Ewoms
             }
             // Brine case
             else if ( phases.active( Ewoms::Phase::BRINE ) ) {
-                Ewoms::eflowBrineSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
-                return Ewoms::eflowBrineMain(argc_, argv_, outputCout_, outputFiles_);
+                if ( !phases.active( Ewoms::Phase::WATER) ) {
+                    if (outputCout_)
+                        std::cerr << "No valid configuration is found for brine simulation, valid options include "
+                                  << "oilwater + brine and blackoil + brine" << std::endl;
+                    return EXIT_FAILURE;
+                }
+                if ( phases.size() == 3 ) { // oil water brine case
+                    Ewoms::eflowOilWaterBrineSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                    return Ewoms::eflowOilWaterBrineMain(argc_, argv_, outputCout_, outputFiles_);
+                } else {
+                    Ewoms::eflowBrineSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                    return Ewoms::eflowBrineMain(argc_, argv_, outputCout_, outputFiles_);
+                }
             }
             // Solvent case
             else if ( phases.active( Ewoms::Phase::SOLVENT ) ) {
@@ -397,7 +409,6 @@ namespace Ewoms
 
                     Ewoms::EFlowMain<PreTypeTag>::printPRTHeader(outputCout_);
 
-                    int parseSuccess = 0;
                     std::string failureMessage;
 
                     if (mpiRank == 0) {
@@ -438,7 +449,6 @@ namespace Ewoms
                             setupMessageLimiter_(schedule_->getMessageLimits(), "STDOUT_LOGGER");
                             if (!summaryConfig_)
                                 summaryConfig_.reset( new Ewoms::SummaryConfig(*deck_, *schedule_, eclipseState_->getTableManager(), parseContext, errorGuard));
-                            parseSuccess = 1;
                         }
                         catch(const std::exception& e)
                         {
@@ -456,8 +466,7 @@ namespace Ewoms
                     }
 
                     auto comm = Dune::MPIHelper::getCollectiveCommunication();
-                    parseSuccess = comm.max(parseSuccess);
-                    if (!parseSuccess)
+                    if (false) // hack for smaller delta to OPM
                     {
                         if (errorGuard) {
                             errorGuard.dump();

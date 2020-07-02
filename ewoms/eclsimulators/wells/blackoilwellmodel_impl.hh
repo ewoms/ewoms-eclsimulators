@@ -545,8 +545,6 @@ namespace Ewoms {
         const auto& grid = eebosSimulator_.vanguard().grid();
         const auto& cartDims = Ewoms::UgGridHelpers::cartDims(grid);
         well_perf_data_.resize(wells_ecl_.size());
-        first_perf_index_.clear();
-        first_perf_index_.resize(wells_ecl_.size() + 1, 0);
         int well_index = 0;
         for (const auto& well : wells_ecl_) {
             well_perf_data_[well_index].clear();
@@ -577,7 +575,6 @@ namespace Ewoms {
                     }
                 }
             }
-            first_perf_index_[well_index + 1] = first_perf_index_[well_index] + well_perf_data_[well_index].size();
             ++well_index;
         }
     }
@@ -691,7 +688,7 @@ namespace Ewoms {
                                                                           numComponents(),
                                                                           numPhases(),
                                                                           w,
-                                                                          first_perf_index_[w],
+                                                                          well_state_.firstPerfIndex()[w],
                                                                           well_perf_data_[w]));
                 } else {
                     well_container.emplace_back(new MultisegmentWell<TypeTag>(well_ecl,
@@ -702,7 +699,7 @@ namespace Ewoms {
                                                                               numComponents(),
                                                                               numPhases(),
                                                                               w,
-                                                                              first_perf_index_[w],
+                                                                              well_state_.firstPerfIndex()[w],
                                                                               well_perf_data_[w]));
                 }
                 if (wellIsStopped)
@@ -754,7 +751,7 @@ namespace Ewoms {
                                                               numComponents(),
                                                               numPhases(),
                                                               index_well_ecl,
-                                                              first_perf_index_[index_well_ecl],
+                                                              well_state_.firstPerfIndex()[index_well_ecl],
                                                               well_perf_data_[index_well_ecl]));
         } else {
             return WellInterfacePtr(new MultisegmentWell<TypeTag>(well_ecl,
@@ -765,7 +762,7 @@ namespace Ewoms {
                                                                   numComponents(),
                                                                   numPhases(),
                                                                   index_well_ecl,
-                                                                  first_perf_index_[index_well_ecl],
+                                                                  well_state_.firstPerfIndex()[index_well_ecl],
                                                                   well_perf_data_[index_well_ecl]));
         }
     }
@@ -1193,7 +1190,9 @@ namespace Ewoms {
 
         WellGroupHelpers::updateReservoirRatesInjectionGroups(fieldGroup, schedule(), reportStepIdx, well_state_nupcol_, well_state_);
         WellGroupHelpers::updateGroupProductionRates(fieldGroup, schedule(), reportStepIdx, well_state_nupcol_, well_state_);
-        WellGroupHelpers::updateWellRates(fieldGroup, schedule(), reportStepIdx, well_state_nupcol_, well_state_);
+
+        // We use the rates from the privious time-step to reduce oscilations
+        WellGroupHelpers::updateWellRates(fieldGroup, schedule(), reportStepIdx, previous_well_state_, well_state_);
         well_state_.communicateGroupRates(comm);
 
         // compute wsolvent fraction for REIN wells

@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <array>
 #include <iostream>
+#include <numeric>
 
 namespace Ewoms
 {
@@ -129,6 +130,8 @@ namespace Ewoms
             perf_skin_pressure_.resize(nperf, 0.0);
 
             int connpos = 0;
+            first_perf_index_.resize(nw+1, 0);
+            first_perf_index_[0] = connpos;
             for (int w = 0; w < nw; ++w) {
                 // Initialize perfphaserates_ to well
                 // rates divided by the number of perforations.
@@ -142,6 +145,7 @@ namespace Ewoms
                     perfPress()[perf] = cellPressures[well_perf_data[w][perf-connpos].cell_index];
                 }
                 connpos += num_perf_this_well;
+                first_perf_index_[w+1] = connpos;
             }
 
             current_injection_controls_.resize(nw);
@@ -151,6 +155,12 @@ namespace Ewoms
             perfRateSolvent_.resize(nperf, 0.0);
             productivity_index_.resize(nw * np, 0.0);
             well_potentials_.resize(nw * np, 0.0);
+
+            perfRatePolymer_.clear();
+            perfRatePolymer_.resize(nperf, 0.0);
+
+            perfRateBrine_.clear();
+            perfRateBrine_.resize(nperf, 0.0);
 
             // intialize wells that have been there before
             // order may change so the mapping is based on the well name
@@ -553,6 +563,14 @@ namespace Ewoms
                     well.rates.set( rt::solvent, solventWellRate(w) );
                 }
 
+                if ( pu.has_polymer ) {
+                    well.rates.set( rt::polymer, polymerWellRate(w) );
+                }
+
+                if ( pu.has_brine ) {
+                    well.rates.set( rt::brine, brineWellRate(w) );
+                }
+
                 well.rates.set( rt::dissolved_gas, this->well_dissolved_gas_rates_[w] );
                 well.rates.set( rt::vaporized_oil, this->well_vaporized_oil_rates_[w] );
 
@@ -568,11 +586,21 @@ namespace Ewoms
                     const auto rates = this->perfPhaseRates().begin()
                                      + (np * wt.second[ 1 ])
                                      + (np * local_comp_index);
-                    ++local_comp_index;
 
                     for( int i = 0; i < np; ++i ) {
                         comp.rates.set( phs[ i ], *(rates + i) );
                     }
+                    if ( pu.has_polymer ) {
+                        comp.rates.set( rt::polymer, this->perfRatePolymer()[local_comp_index]);
+                    }
+                    if ( pu.has_brine ) {
+                        comp.rates.set( rt::brine, this->perfRateBrine()[local_comp_index]);
+                    }
+                    if ( pu.has_solvent ) {
+                        comp.rates.set( rt::solvent, this->perfRateSolvent()[local_comp_index]);
+                    }
+
+                    ++local_comp_index;
                 }
                 assert(local_comp_index == this->well_perf_data_[w].size());
 
@@ -786,22 +814,36 @@ namespace Ewoms
             effective_events_occurred_[w] = effective_events_occurred;
         }
 
+        const std::vector<int>& firstPerfIndex() const
+        {
+            return first_perf_index_;
+        }
+
         /// One rate pr well connection.
         std::vector<double>& perfRateSolvent() { return perfRateSolvent_; }
         const std::vector<double>& perfRateSolvent() const { return perfRateSolvent_; }
 
         /// One rate pr well
         double solventWellRate(const int w) const {
-            int connpos = 0;
-            for (int iw = 0; iw < w; ++iw) {
-                connpos += this->well_perf_data_[iw].size();
-            }
-            double solvent_well_rate = 0.0;
-            const int endperf = connpos + this->well_perf_data_[w].size();
-            for (int perf = connpos; perf < endperf; ++perf ) {
-                solvent_well_rate += perfRateSolvent_[perf];
-            }
-            return solvent_well_rate;
+            return std::accumulate(&perfRateSolvent_[0] + first_perf_index_[w], &perfRateSolvent_[0] + first_perf_index_[w+1], 0.0);
+        }
+
+        /// One rate pr well connection.
+        std::vector<double>& perfRatePolymer() { return perfRatePolymer_; }
+        const std::vector<double>& perfRatePolymer() const { return perfRatePolymer_; }
+
+        /// One rate pr well
+        double polymerWellRate(const int w) const {
+            return std::accumulate(&perfRatePolymer_[0] + first_perf_index_[w], &perfRatePolymer_[0] + first_perf_index_[w+1], 0.0);
+        }
+
+        /// One rate pr well connection.
+        std::vector<double>& perfRateBrine() { return perfRateBrine_; }
+        const std::vector<double>& perfRateBrine() const { return perfRateBrine_; }
+
+        /// One rate pr well
+        double brineWellRate(const int w) const {
+            return std::accumulate(&perfRateBrine_[0] + first_perf_index_[w], &perfRateBrine_[0] + first_perf_index_[w+1], 0.0);
         }
 
         std::vector<double>& wellReservoirRates()
@@ -1028,6 +1070,11 @@ namespace Ewoms
 
     private:
         std::vector<double> perfphaserates_;
+
+        // vector with size number of wells +1.
+        // iterate over all perforations of a given well
+        // for (int perf = first_perf_index_[well_index]; perf < first_perf_index_[well_index+1]; ++perf)
+        std::vector<int> first_perf_index_;
         std::vector<Ewoms::Well::InjectorCMode> current_injection_controls_;
         std::vector<Well::ProducerCMode> current_production_controls_;
 
@@ -1050,6 +1097,10 @@ namespace Ewoms
         std::map<std::string, double> group_grat_target_from_sales;
 
         std::vector<double> perfRateSolvent_;
+
+        // only for output
+        std::vector<double> perfRatePolymer_;
+        std::vector<double> perfRateBrine_;
 
         // it is the throughput of water flow through the perforations
         // it is used as a measure of formation damage around well-bore due to particle deposition

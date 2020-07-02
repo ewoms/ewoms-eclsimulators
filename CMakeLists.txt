@@ -118,6 +118,7 @@ ewoms_add_application(eflow
    eflow/eflow_foam.cc
    eflow/eflow_gasoil.cc
    eflow/eflow_oilwater.cc
+   eflow/eflow_oilwater_brine.cc
    eflow/eflow_oilwater_polymer.cc
    eflow/eflow_oilwater_polymer_injectivity.cc
    eflow/eflow_polymer.cc

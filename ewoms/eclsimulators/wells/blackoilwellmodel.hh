@@ -273,7 +273,6 @@ namespace Ewoms {
 
             std::vector< Well > wells_ecl_;
             std::vector< std::vector<PerforationData> > well_perf_data_;
-            std::vector<int> first_perf_index_;
 
             bool wells_active_;
 

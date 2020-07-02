@@ -19,6 +19,7 @@
 #include <ewoms/eclio/utility/numeric/rootfinders.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/wellinjectionproperties.hh>
 #include <ewoms/eclsimulators/utils/deferredloggingerrorhelpers.hh>
+#include <ewoms/eclsimulators/linalg/matrixutils.hh>
 
 namespace Ewoms
 {
@@ -617,12 +618,16 @@ namespace Ewoms
             if (has_polymer) {
                 // TODO: the application of well efficiency factor has not been tested with an example yet
                 const unsigned waterCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx);
-                EvalWell cq_s_poly = cq_s[waterCompIdx] * well_efficiency_factor_;
+                EvalWell cq_s_poly = cq_s[waterCompIdx];
                 if (this->isInjector()) {
                     cq_s_poly *= wpolymer();
                 } else {
                     cq_s_poly *= extendEval(intQuants.polymerConcentration() * intQuants.polymerViscosityCorrection());
                 }
+                // Note. Efficiency factor is handled in the output layer
+                well_state.perfRatePolymer()[first_perf_ + perf] = cq_s_poly.value();
+
+                cq_s_poly *= well_efficiency_factor_;
                 connectionRates_[perf][contiPolymerEqIdx] = Base::restrictEval(cq_s_poly);
 
                 if (this->has_polymermw) {
@@ -645,12 +650,16 @@ namespace Ewoms
             if (has_brine) {
                 // TODO: the application of well efficiency factor has not been tested with an example yet
                 const unsigned waterCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx);
-                EvalWell cq_s_sm = cq_s[waterCompIdx] * well_efficiency_factor_;
+                EvalWell cq_s_sm = cq_s[waterCompIdx];
                 if (this->isInjector()) {
                     cq_s_sm *= wsalt();
                 } else {
                     cq_s_sm *= extendEval(intQuants.fluidState().saltConcentration());
                 }
+                // Note. Efficiency factor is handled in the output layer
+                well_state.perfRateBrine()[first_perf_ + perf] = cq_s_sm.value();
+
+                cq_s_sm *= well_efficiency_factor_;
                 connectionRates_[perf][contiBrineEqIdx] = Base::restrictEval(cq_s_sm);
             }
 

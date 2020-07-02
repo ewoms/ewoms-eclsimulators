@@ -62,6 +62,14 @@ namespace Ewoms
         if (Base::has_energy) {
             EWOMS_THROW(std::runtime_error, "energy is not supported by multisegment well yet");
         }
+
+        if (Base::has_foam) {
+            EWOMS_THROW(std::runtime_error, "foam is not supported by multisegment well yet");
+        }
+
+        if (Base::has_brine) {
+            EWOMS_THROW(std::runtime_error, "brine is not supported by multisegment well yet");
+        }
         // since we decide to use the WellSegments from the well parser. we can reuse a lot from it.
         // for other facilities needed but not available from parser, we need to process them here
 

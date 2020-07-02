@@ -21,7 +21,6 @@
 
 #include <ewoms/eclsimulators/wells/rateconverter.hh>
 #include <ewoms/eclsimulators/wells/wellinterface.hh>
-#include <ewoms/eclsimulators/linalg/istlsolver.hh>
 
 #include <ewoms/numerics/models/blackoil/blackoilpolymermodules.hh>
 #include <ewoms/numerics/models/blackoil/blackoilsolventmodules.hh>

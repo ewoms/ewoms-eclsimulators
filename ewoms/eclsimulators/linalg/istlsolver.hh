@@ -19,6 +19,7 @@
 #ifndef EWOMS_EFLOW_ISTLSOLVER_HH
 #define EWOMS_EFLOW_ISTLSOLVER_HH
 
+#include <ewoms/eclsimulators/linalg/welloperators.hh>
 #include <ewoms/eclsimulators/linalg/matrixutils.hh>
 #include <ewoms/eclsimulators/linalg/blackoilamg.hh>
 #include <ewoms/eclsimulators/linalg/cprpreconditioner.hh>
@@ -91,165 +92,6 @@ DenseMatrix transposeDenseMatrix(const DenseMatrix& M)
     return tmp;
 }
 
-//=====================================================================
-// Implementation for ISTL-matrix based operator
-//=====================================================================
-
-
-/*!
-   \brief Adapter to turn a matrix into a linear operator.
-
-   Adapts a matrix to the assembled linear operator interface
- */
-template<class M, class X, class Y, class WellModel, bool overlapping >
-class WellModelMatrixAdapter : public Dune::AssembledLinearOperator<M,X,Y>
-{
-  typedef Dune::AssembledLinearOperator<M,X,Y> BaseType;
-
-public:
-  typedef M matrix_type;
-  typedef X domain_type;
-  typedef Y range_type;
-  typedef typename X::field_type field_type;
-
-#if HAVE_MPI
-  typedef Dune::OwnerOverlapCopyCommunication<int,int> communication_type;
-#else
-  typedef Dune::CollectiveCommunication< int > communication_type;
-#endif
-
-  Dune::SolverCategory::Category category() const override
-  {
-    return overlapping ?
-           Dune::SolverCategory::overlapping : Dune::SolverCategory::sequential;
-  }
-
-  //! constructor: just store a reference to a matrix
-  WellModelMatrixAdapter (const M& A,
-                          const WellModel& wellMod,
-                          const std::shared_ptr< communication_type >& comm = std::shared_ptr< communication_type >())
-      : A_( A ), wellMod_( wellMod ), comm_(comm)
-  {}
-
-
-  virtual void apply( const X& x, Y& y ) const override
-  {
-    A_.mv( x, y );
-
-    // add well model modification to y
-    wellMod_.apply(x, y );
-
-#if HAVE_MPI
-    if( comm_ )
-      comm_->project( y );
-#endif
-  }
-
-  // y += \alpha * A * x
-  virtual void applyscaleadd (field_type alpha, const X& x, Y& y) const override
-  {
-    A_.usmv(alpha,x,y);
-
-    // add scaled well model modification to y
-    wellMod_.applyScaleAdd( alpha, x, y );
-
-#if HAVE_MPI
-    if( comm_ )
-      comm_->project( y );
-#endif
-  }
-
-  virtual const matrix_type& getmat() const override { return A_; }
-
-protected:
-  const matrix_type& A_ ;
-  const WellModel& wellMod_;
-  std::shared_ptr< communication_type > comm_;
-};
-
-
-/*!
-   \brief Adapter to turn a matrix into a linear operator.
-   Adapts a matrix to the assembled linear operator interface.
-   We assume parallel ordering, where ghost rows are located after interior rows
- */
-template<class M, class X, class Y, class WellModel, bool overlapping >
-class WellModelGhostLastMatrixAdapter : public Dune::AssembledLinearOperator<M,X,Y>
-{
-    typedef Dune::AssembledLinearOperator<M,X,Y> BaseType;
-
-public:
-    typedef M matrix_type;
-    typedef X domain_type;
-    typedef Y range_type;
-    typedef typename X::field_type field_type;
-
-#if HAVE_MPI
-    typedef Dune::OwnerOverlapCopyCommunication<int,int> communication_type;
-#else
-    typedef Dune::CollectiveCommunication< int > communication_type;
-#endif
-
-
-    Dune::SolverCategory::Category category() const override
-    {
-        return overlapping ?
-            Dune::SolverCategory::overlapping : Dune::SolverCategory::sequential;
-    }
-
-    //! constructor: just store a reference to a matrix
-    WellModelGhostLastMatrixAdapter (const M& A,
-                                     const WellModel& wellMod,
-                                     const size_t interiorSize )
-        : A_( A ), wellMod_( wellMod ), interiorSize_(interiorSize)
-    {}
-
-    virtual void apply( const X& x, Y& y ) const override
-    {
-        for (auto row = A_.begin(); row.index() < interiorSize_; ++row)
-        {
-            y[row.index()]=0;
-            auto endc = (*row).end();
-            for (auto col = (*row).begin(); col != endc; ++col)
-                (*col).umv(x[col.index()], y[row.index()]);
-        }
-
-        // add well model modification to y
-        wellMod_.apply(x, y );
-
-        ghostLastProject( y );
-    }
-
-    // y += \alpha * A * x
-    virtual void applyscaleadd (field_type alpha, const X& x, Y& y) const override
-    {
-        for (auto row = A_.begin(); row.index() < interiorSize_; ++row)
-        {
-            auto endc = (*row).end();
-            for (auto col = (*row).begin(); col != endc; ++col)
-                (*col).usmv(alpha, x[col.index()], y[row.index()]);
-        }
-        // add scaled well model modification to y
-        wellMod_.applyScaleAdd( alpha, x, y );
-
-        ghostLastProject( y );
-    }
-
-    virtual const matrix_type& getmat() const override { return A_; }
-
-protected:
-    void ghostLastProject(Y& y) const
-    {
-        size_t end = y.size();
-        for (size_t i = interiorSize_; i < end; ++i)
-            y[i] = 0;
-    }
-
-    const matrix_type& A_ ;
-    const WellModel& wellMod_;
-    size_t interiorSize_;
-};
-
     /// This class solves the fully implicit black-oil system by
     /// solving the reduced system (after eliminating well variables)
     /// as a block-structured matrix (one block for all cell variables) for a fixed
@@ -273,6 +115,8 @@ protected:
         typedef typename GridView::template Codim<0>::Entity Element;
         typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
         using FlexibleSolverType = Dune::FlexibleSolver<Matrix, Vector>;
+        using AbstractOperatorType = Dune::AssembledLinearOperator<Matrix, Vector, Vector>;
+        using WellModelOperator = WellModelAsLinearOperator<WellModel, Vector, Vector>;
         // Due to miscibility oil <-> gas the water eqn is the one we can replace with a pressure equation.
         static const bool waterEnabled = Indices::waterEnabled;
         static const int pindex = (waterEnabled) ? BlackOilDefaultIndexTraits::waterCompIdx : BlackOilDefaultIndexTraits::oilCompIdx;
@@ -336,17 +180,10 @@ protected:
 #endif
             extractParallelGridInformationToISTL(simulator_.vanguard().grid(), parallelInformation_);
             useWellConn_ = EWOMS_GET_PARAM(TypeTag, bool, MatrixAddWellContributions);
-
-            if (!useWellConn_ && useFlexible_)
-            {
-                EWOMS_THROW(std::logic_error, "Flexible solvers and CPR need the well contribution in the matrix. Please run with"
-                          " --matrix-add-well-contributions=true");
-            }
-
             ownersFirst_ = EWOMS_GET_PARAM(TypeTag, bool, OwnerCellsFirst);
             interiorCellNum_ = detail::numMatrixRowsToUseInSolver(simulator_.vanguard().grid(), ownersFirst_);
 
-            if ( isParallel() && (!ownersFirst_ || parameters_.linear_solver_use_amg_  || useFlexible_ ) ) {
+            if ( isParallel() && (!ownersFirst_ || parameters_.linear_solver_use_amg_) ) {
                 detail::setWellConnections(gridForConn, simulator_.vanguard().schedule().getWellsatEnd(), useWellConn_, wellConnectionsGraph_);
                 // For some reason simulator_.model().elementMapper() is not initialized at this stage
                 // Hence const auto& elemMapper = simulator_.model().elementMapper(); does not work.
@@ -505,32 +342,27 @@ protected:
             }
 
             const WellModel& wellModel = simulator_.problem().wellModel();
+            const WellModelAsLinearOperator<WellModel, Vector, Vector> wellOp(wellModel);
 
             if( isParallel() )
             {
                 if ( ownersFirst_ && !parameters_.linear_solver_use_amg_ && !useFlexible_) {
-                    typedef WellModelGhostLastMatrixAdapter< Matrix, Vector, Vector, WellModel, true > Operator;
+                    typedef WellModelGhostLastMatrixAdapter< Matrix, Vector, Vector, true > Operator;
                     assert(matrix_);
-                    Operator opA(*matrix_, wellModel, interiorCellNum_);
-
+                    Operator opA(getMatrix(), wellOp, interiorCellNum_);
                     solve( opA, x, *rhs_, *comm_ );
                 }
                 else {
-
-                    typedef WellModelMatrixAdapter< Matrix, Vector, Vector, WellModel, true > Operator;
+                    typedef WellModelMatrixAdapter< Matrix, Vector, Vector, true > Operator;
                     assert (noGhostMat_);
-                    copyJacToNoGhost(*matrix_, *noGhostMat_);
-                    Operator opA(*noGhostMat_, wellModel,
-                                 comm_ );
-
+                    Operator opA(getMatrix(), wellOp, comm_ );
                     solve( opA, x, *rhs_, *comm_ );
-
                 }
             }
             else
             {
-                typedef WellModelMatrixAdapter< Matrix, Vector, Vector, WellModel, false > Operator;
-                Operator opA(*matrix_, wellModel);
+                typedef WellModelMatrixAdapter< Matrix, Vector, Vector, false > Operator;
+                Operator opA(getMatrix(), wellOp);
                 solve( opA, x, *rhs_ );
             }
 
@@ -902,11 +734,26 @@ protected:
             if (recreate_solver || !flexibleSolver_) {
                 if (isParallel()) {
 #if HAVE_MPI
-                    assert(noGhostMat_);
-                    flexibleSolver_.reset(new FlexibleSolverType(*noGhostMat_, *comm_, prm_, weightsCalculator));
+                    if (useWellConn_) {
+                        assert(noGhostMat_);
+                        using ParOperatorType = Dune::OverlappingSchwarzOperator<Matrix, Vector, Vector, Comm>;
+                        linearOperatorForFlexibleSolver_ = std::make_unique<ParOperatorType>(getMatrix(), *comm_);
+                        flexibleSolver_ = std::make_unique<FlexibleSolverType>(*linearOperatorForFlexibleSolver_, *comm_, prm_, weightsCalculator);
+                    } else {
+                        if (!ownersFirst_) {
+                            EWOMS_THROW(std::runtime_error, "In parallel, the flexible solver requires "
+                                      "--owner-cells-first=true when --matrix-add-well-contributions=false is used.");
+                        }
+                        using ParOperatorType = WellModelGhostLastMatrixAdapter<Matrix, Vector, Vector, true>;
+                        wellOperator_ = std::make_unique<WellModelOperator>(simulator_.problem().wellModel());
+                        linearOperatorForFlexibleSolver_ = std::make_unique<ParOperatorType>(getMatrix(), *wellOperator_, interiorCellNum_);
+                        flexibleSolver_ = std::make_unique<FlexibleSolverType>(*linearOperatorForFlexibleSolver_, *comm_, prm_, weightsCalculator);
+                    }
 #endif
                 } else {
-                    flexibleSolver_.reset(new FlexibleSolverType(*matrix_, prm_, weightsCalculator));
+                    using SeqLinearOperator = Dune::MatrixAdapter<Matrix, Vector, Vector>;
+                    linearOperatorForFlexibleSolver_ = std::make_unique<SeqLinearOperator>(getMatrix());
+                    flexibleSolver_ = std::make_unique<FlexibleSolverType>(*linearOperatorForFlexibleSolver_, prm_, weightsCalculator);
                 }
             }
             else
@@ -1165,6 +1012,8 @@ protected:
         Vector *rhs_;
 
         std::unique_ptr<FlexibleSolverType> flexibleSolver_;
+        std::unique_ptr<AbstractOperatorType> linearOperatorForFlexibleSolver_;
+        std::unique_ptr<WellModelAsLinearOperator<WellModel, Vector, Vector>> wellOperator_;
         std::vector<int> overlapRows_;
         std::vector<int> interiorRows_;
         std::vector<std::set<int>> wellConnectionsGraph_;
