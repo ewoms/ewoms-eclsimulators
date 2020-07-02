@@ -15,7 +15,7 @@
   You should have received a copy of the GNU General Public License
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EWOMS_PARALLELISTLINFORMTION_HH
+#if HAVE_MPI && HAVE_DUNE_ISTL && !defined EWOMS_PARALLELISTLINFORMTION_HH
 #define EWOMS_PARALLELISTLINFORMTION_HH
 
 #include <ewoms/eclgrids/unstructuredgrid.h>
@@ -30,15 +30,11 @@
 #include <type_traits>
 #include <vector>
 
-#if HAVE_MPI && HAVE_DUNE_ISTL
-
 #include <mpi.h>
 #include <dune/istl/owneroverlapcopy.hh>
 #include <dune/common/parallel/interface.hh>
 #include <dune/common/parallel/communicator.hh>
 #include <dune/common/enumset.hh>
-
-#endif
 
 namespace Ewoms
 {

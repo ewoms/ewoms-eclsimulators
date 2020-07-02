@@ -102,12 +102,14 @@ public:
     template<class T>
     bool primitive(const T& data)
     {
+#if HAVE_MPI
         if (m_op == Operation::PACKSIZE)
             m_packSize += Mpi::packSize(data, comm_);
         else if (m_op == Operation::PACK)
             Mpi::pack(data, m_buffer, m_position, comm_);
         else if (m_op == Operation::UNPACK)
             Mpi::unpack(const_cast<T&>(data), m_buffer, m_position, comm_);
+#endif // HAVE_MPI
 
         return true;
     }
@@ -123,6 +125,7 @@ private:
     template<class T>
     bool vector_(T& data, std::true_type)
     {
+#if HAVE_MPI
         if (m_op == Operation::PACKSIZE) {
             m_packSize += Mpi::packSize(data.size(), comm_);
             for (const auto& it : data)
@@ -138,6 +141,7 @@ private:
             for (const auto& it : data)
                 (*this)(it);
         }
+#endif // HAVE_MPI
 
         return true;
     }
@@ -154,6 +158,7 @@ public:
     template<class Map, bool complexType = true>
     bool map(Map& data)
     {
+#if HAVE_MPI
         using Key = typename Map::key_type;
         using Data = typename Map::mapped_type;
 
@@ -180,6 +185,7 @@ public:
                 data.insert(std::make_pair(key, entry));
             }
         }
+#endif // HAVE_MPI
 
         return true;
     }
