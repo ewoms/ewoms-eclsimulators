@@ -38,6 +38,8 @@
 #include <fstream>
 #include <iostream>
 
+
+
 template <int bz>
 Dune::BlockVector<Dune::FieldVector<double, bz>>
 testSolver(const boost::property_tree::ptree& prm, const std::string& matrix_filename, const std::string& rhs_filename)
@@ -68,11 +70,11 @@ testSolver(const boost::property_tree::ptree& prm, const std::string& matrix_fil
     auto wc = [&matrix, &prm, transpose]()
               {
                   return Ewoms::Amg::getQuasiImpesWeights<Matrix,
-                                                        Vector>(matrix,
-                                                                prm.get<int>("preconditioner.pressure_var_index"),
-                                                                transpose);
+                                                          Vector>(matrix,
+                                                                  prm.get<int>("preconditioner.pressure_var_index"),
+                                                                  transpose);
               };
-    Dune::FlexibleSolver<Matrix, Vector> solver(prm, matrix, wc);
+    Dune::FlexibleSolver<Matrix, Vector> solver(matrix, prm, wc);
     Vector x(rhs.size());
     Dune::InverseOperatorResult res;
     solver.apply(x, rhs, res);

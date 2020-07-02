@@ -16,8 +16,8 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EWOMS_ISTLSOLVER_EEBOS_HH
-#define EWOMS_ISTLSOLVER_EEBOS_HH
+#ifndef EWOMS_EFLOW_ISTLSOLVER_HH
+#define EWOMS_EFLOW_ISTLSOLVER_HH
 
 #include <ewoms/eclsimulators/linalg/matrixutils.hh>
 #include <ewoms/eclsimulators/linalg/blackoilamg.hh>
@@ -60,12 +60,15 @@ NEW_PROP_TAG(Simulator);
 NEW_PROP_TAG(EclWellModel);
 NEW_PROP_TAG(OwnerCellsFirst);
 
+template <class TypeTag, class MyTypeTag>
+struct EclWellModel;
+
 //! Set the type of a global jacobian matrix for linear solvers that are based on
 //! dune-istl.
 SET_PROP(EFlowIstlSolver, SparseMatrixAdapter)
 {
 private:
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+    typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
     enum { numEq = GET_PROP_VALUE(TypeTag, NumEq) };
     typedef Dune::FieldMatrix<Scalar, numEq, numEq> Block;
 
@@ -92,6 +95,7 @@ DenseMatrix transposeDenseMatrix(const DenseMatrix& M)
 // Implementation for ISTL-matrix based operator
 //=====================================================================
 
+
 /*!
    \brief Adapter to turn a matrix into a linear operator.
 
@@ -114,20 +118,11 @@ public:
   typedef Dune::CollectiveCommunication< int > communication_type;
 #endif
 
-#if DUNE_VERSION_NEWER(DUNE_ISTL, 2, 6)
   Dune::SolverCategory::Category category() const override
   {
     return overlapping ?
            Dune::SolverCategory::overlapping : Dune::SolverCategory::sequential;
   }
-#else
-  enum {
-    //! \brief The solver category.
-    category = overlapping ?
-        Dune::SolverCategory::overlapping :
-        Dune::SolverCategory::sequential
-  };
-#endif
 
   //! constructor: just store a reference to a matrix
   WellModelMatrixAdapter (const M& A,
@@ -135,6 +130,7 @@ public:
                           const std::shared_ptr< communication_type >& comm = std::shared_ptr< communication_type >())
       : A_( A ), wellMod_( wellMod ), comm_(comm)
   {}
+
 
   virtual void apply( const X& x, Y& y ) const override
   {
@@ -171,6 +167,7 @@ protected:
   std::shared_ptr< communication_type > comm_;
 };
 
+
 /*!
    \brief Adapter to turn a matrix into a linear operator.
    Adapts a matrix to the assembled linear operator interface.
@@ -192,6 +189,7 @@ public:
 #else
     typedef Dune::CollectiveCommunication< int > communication_type;
 #endif
+
 
     Dune::SolverCategory::Category category() const override
     {
@@ -260,20 +258,20 @@ protected:
     class ISTLSolver
     {
     protected:
-        typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
-        typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-        typedef GET_PROP_TYPE(TypeTag, SparseMatrixAdapter) SparseMatrixAdapter;
-        typedef GET_PROP_TYPE(TypeTag, GlobalEqVector) Vector;
-        typedef GET_PROP_TYPE(TypeTag, Indices) Indices;
-        typedef GET_PROP_TYPE(TypeTag, EclWellModel) WellModel;
-        typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
+        typedef typename GET_PROP_TYPE(TypeTag, GridView) GridView;
+        typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+        typedef typename GET_PROP_TYPE(TypeTag, SparseMatrixAdapter) SparseMatrixAdapter;
+        typedef typename GET_PROP_TYPE(TypeTag, GlobalEqVector) Vector;
+        typedef typename GET_PROP_TYPE(TypeTag, Indices) Indices;
+        typedef typename GET_PROP_TYPE(TypeTag, EclWellModel) WellModel;
+        typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
         typedef typename SparseMatrixAdapter::IstlMatrix Matrix;
 
         typedef typename SparseMatrixAdapter::MatrixBlock MatrixBlockType;
         typedef typename Vector::block_type BlockVector;
-        typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
+        typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
         typedef typename GridView::template Codim<0>::Entity Element;
-        typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
+        typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
         using FlexibleSolverType = Dune::FlexibleSolver<Matrix, Vector>;
         // Due to miscibility oil <-> gas the water eqn is the one we can replace with a pressure equation.
         static const bool waterEnabled = Indices::waterEnabled;
@@ -353,16 +351,9 @@ protected:
                 // For some reason simulator_.model().elementMapper() is not initialized at this stage
                 // Hence const auto& elemMapper = simulator_.model().elementMapper(); does not work.
                 // Set it up manually
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
                 using ElementMapper =
                     Dune::MultipleCodimMultipleGeomTypeMapper<GridView>;
                 ElementMapper elemMapper(simulator_.vanguard().gridView(), Dune::mcmgElementLayout());
-#else
-                using ElementMapper =
-                    Dune::MultipleCodimMultipleGeomTypeMapper<GridView, Dune::MCMGElementLayout>;
-                ElementMapper elemMapper(simulator_.vanguard().gridView());
-#endif
-
                 detail::findOverlapAndInterior(gridForConn, elemMapper, overlapRows_, interiorRows_);
                 noGhostAdjacency();
                 setGhostsInNoGhost(*noGhostMat_);
@@ -392,7 +383,7 @@ protected:
 #if HAVE_MPI
             if (firstcall && parallelInformation_.type() == typeid(ParallelISTLInformation)) {
                 // Parallel case.
-                const ParallelISTLInformation* parinfo = Ewoms::any_cast<ParallelISTLInformation>(&parallelInformation_);
+                const ParallelISTLInformation* parinfo = std::any_cast<ParallelISTLInformation>(&parallelInformation_);
                 assert(parinfo);
                 const size_t size = M.istlMatrix().N();
                 parinfo->copyValuesTo(comm_->indexSet(), comm_->remoteIndices(), size, 1);
@@ -408,7 +399,7 @@ protected:
             {
                 if (firstcall)
                 {
-                    // eebos will not change the matrix object. Hence simply store a pointer
+                    // ebos will not change the matrix object. Hence simply store a pointer
                     // to the original one with a deleter that does nothing.
                     // Outch! We need to be able to scale the linear system! Hence const_cast
                     matrix_ = const_cast<Matrix*>(&M.istlMatrix());
@@ -557,6 +548,7 @@ protected:
             return converged_;
         }
 
+
         /// Solve the system of linear equations Ax = b, with A being the
         /// combined derivative matrix of the residual and b
         /// being the residual itself.
@@ -567,33 +559,23 @@ protected:
         int iterations () const { return iterations_; }
 
         /// \copydoc NewtonIterationBlackoilInterface::parallelInformation
-        const Ewoms::any& parallelInformation() const { return parallelInformation_; }
+        const std::any& parallelInformation() const { return parallelInformation_; }
 
     protected:
         /// \brief construct the CPR preconditioner and the solver.
         /// \tparam P The type of the parallel information.
         /// \param parallelInformation the information about the parallelization.
-#if DUNE_VERSION_NEWER(DUNE_ISTL, 2, 6)
         template<Dune::SolverCategory::Category category=Dune::SolverCategory::sequential,
                  class LinearOperator, class POrComm>
-#else
-        template<int category=Dune::SolverCategory::sequential, class LinearOperator, class POrComm>
-#endif
         void constructPreconditionerAndSolve(LinearOperator& linearOperator,
                                              Vector& x, Vector& istlb,
                                              const POrComm& parallelInformation_arg,
                                              Dune::InverseOperatorResult& result) const
         {
             // Construct scalar product.
-#if DUNE_VERSION_NEWER(DUNE_ISTL, 2, 6)
             auto sp = Dune::createScalarProduct<Vector,POrComm>(parallelInformation_arg, category);
-#else
-            typedef Dune::ScalarProductChooser<Vector, POrComm, category> ScalarProductChooser;
-            typedef std::unique_ptr<typename ScalarProductChooser::ScalarProduct> SPPointer;
-            SPPointer sp(ScalarProductChooser::construct(parallelInformation_arg));
-#endif
 
-#if EFLOW_SUPPORT_AMG // activate AMG if either eflow is used or UMFPack is not available
+#if FLOW_SUPPORT_AMG // activate AMG if either flow_ebos is used or UMFPack is not available
             if( parameters_.linear_solver_use_amg_ || parameters_.use_cpr_)
             {
                 typedef ISTLUtility::CPRSelector< Matrix, Vector, Vector, POrComm>  CPRSelectorType;
@@ -679,7 +661,11 @@ protected:
             }
         }
 
-        typedef ParallelOverlappingILU0<Matrix, Vector, Vector> SeqPreconditioner;
+        typedef ParallelOverlappingILU0<Dune::BCRSMatrix<Dune::FieldMatrix<typename Matrix::field_type,
+                                                                            Matrix::block_type::rows,
+                                                                            Matrix::block_type::cols> >,
+                                                                            Vector, Vector> SeqPreconditioner;
+
 
         template <class Operator>
         std::unique_ptr<SeqPreconditioner> constructPrecond(Operator& opA, const Dune::Amg::SequentialInformation&) const
@@ -695,8 +681,9 @@ protected:
 
 #if HAVE_MPI
         typedef Dune::OwnerOverlapCopyCommunication<int, int> Comm;
+        // 3x3 matrix block inversion was unstable from at least 2.3 until and
+        // including 2.5.0
         typedef ParallelOverlappingILU0<Matrix,Vector,Vector,Comm> ParPreconditioner;
-
         template <class Operator>
         std::unique_ptr<ParPreconditioner>
         constructPrecond(Operator& opA, const Comm& comm) const
@@ -717,6 +704,7 @@ protected:
             ISTLUtility::template createAMGPreconditionerPointer<pressureEqnIndex, pressureVarIndex>( *opA, relax, milu, comm, amg );
         }
 
+
         template <class C, class LinearOperator, class MatrixOperator, class POrComm, class AMG >
         void
         constructAMGPrecond(LinearOperator& /* linearOperator */, const POrComm& comm, std::unique_ptr< AMG >& amg, std::unique_ptr< MatrixOperator >& opA, const double relax,
@@ -726,10 +714,12 @@ protected:
                                                                      comm, amg, parameters_, weights_ );
         }
 
+
         /// \brief Solve the system using the given preconditioner and scalar product.
         template <class Operator, class ScalarProd, class Precond>
         void solve(Operator& opA, Vector& x, Vector& istlb, ScalarProd& sp, Precond& precond, Dune::InverseOperatorResult& result) const
         {
+            // TODO: Revise when linear solvers interface opm-core is done
             // Construct linear solver.
             // GMRes solver
             int verbosity = 0;
@@ -754,6 +744,7 @@ protected:
                 linsolve.apply(x, istlb, result);
             }
         }
+
 
         /// Solve the linear system Ax = b, with A being the
         /// combined derivative matrix of the residual and b
@@ -788,10 +779,10 @@ protected:
         /// \param[inout] x  solution to be computed x
         /// \param[in] b   right hand side b
         template <class Operator, class Comm >
-        void solve(Operator& opA EWOMS_UNUSED_NOMPI,
-                   Vector& x EWOMS_UNUSED_NOMPI,
-                   Vector& b EWOMS_UNUSED_NOMPI,
-                   Comm& comm EWOMS_UNUSED_NOMPI) const
+        void solve(Operator& opA [[maybe_unused]],
+                   Vector& x [[maybe_unused]],
+                   Vector& b [[maybe_unused]],
+                   Comm& comm [[maybe_unused]]) const
         {
             Dune::InverseOperatorResult result;
             // Parallel version is deactivated until we figure out how to do it properly.
@@ -912,10 +903,10 @@ protected:
                 if (isParallel()) {
 #if HAVE_MPI
                     assert(noGhostMat_);
-                    flexibleSolver_.reset(new FlexibleSolverType(prm_, *noGhostMat_, weightsCalculator, *comm_));
+                    flexibleSolver_.reset(new FlexibleSolverType(*noGhostMat_, *comm_, prm_, weightsCalculator));
 #endif
                 } else {
-                    flexibleSolver_.reset(new FlexibleSolverType(prm_, *matrix_, weightsCalculator));
+                    flexibleSolver_.reset(new FlexibleSolverType(*matrix_, prm_, weightsCalculator));
                 }
             }
             else
@@ -928,18 +919,13 @@ protected:
         void noGhostAdjacency()
         {
             const auto& grid = simulator_.vanguard().grid();
+            const auto& gridView = simulator_.vanguard().gridView();
             // For some reason simulator_.model().elementMapper() is not initialized at this stage.
             // Hence const auto& elemMapper = simulator_.model().elementMapper(); does not work.
             // Set it up manually
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
             using ElementMapper =
                 Dune::MultipleCodimMultipleGeomTypeMapper<GridView>;
-            ElementMapper elemMapper(simulator_.vanguard().gridView(), Dune::mcmgElementLayout());
-#else
-            using ElementMapper =
-                Dune::MultipleCodimMultipleGeomTypeMapper<GridView, Dune::MCMGElementLayout>;
-            ElementMapper elemMapper(simulator_.vanguard().gridView());
-#endif
+            ElementMapper elemMapper(gridView, Dune::mcmgElementLayout());
             typedef typename Matrix::size_type size_type;
             size_type numCells = grid.size( 0 );
             noGhostMat_.reset(new Matrix(numCells, numCells, Matrix::random));
@@ -947,7 +933,6 @@ protected:
             std::vector<std::set<size_type>> pattern;
             pattern.resize(numCells);
 
-            const auto& gridView = grid.leafGridView();
             auto elemIt = gridView.template begin<0>();
             const auto& elemEndIt = gridView.template end<0>();
 
@@ -1127,11 +1112,11 @@ protected:
             }
         }
 
-        static void multBlocksInMatrix(Matrix& eebosJac, const MatrixBlockType& trans, const bool left = true)
+        static void multBlocksInMatrix(Matrix& ebosJac, const MatrixBlockType& trans, const bool left = true)
         {
-            const int n = eebosJac.N();
+            const int n = ebosJac.N();
             for (int row_index = 0; row_index < n; ++row_index) {
-                auto& row = eebosJac[row_index];
+                auto& row = ebosJac[row_index];
                 auto* dataptr = row.getptr();
                 for (int elem = 0; elem < row.N(); ++elem) {
                     auto& block = dataptr[elem];
@@ -1144,9 +1129,9 @@ protected:
             }
         }
 
-        static void multBlocksVector(Vector& eebosResid_cp, const MatrixBlockType& leftTrans)
+        static void multBlocksVector(Vector& ebosResid_cp, const MatrixBlockType& leftTrans)
         {
-            for (auto& bvec : eebosResid_cp) {
+            for (auto& bvec : ebosResid_cp) {
                 auto bvec_new = bvec;
                 leftTrans.mv(bvec, bvec_new);
                 bvec = bvec_new;
@@ -1172,7 +1157,7 @@ protected:
         const Simulator& simulator_;
         mutable int iterations_;
         mutable bool converged_;
-        Ewoms::any parallelInformation_;
+        std::any parallelInformation_;
 
         // non-const to be able to scale the linear system
         Matrix* matrix_;
