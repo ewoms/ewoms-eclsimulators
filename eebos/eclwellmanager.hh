@@ -568,8 +568,12 @@ public:
         return wellDat;
     }
 
-    Ewoms::data::Group groupData(const int /* reportStepIdx */, Ewoms::Schedule& /* sched */) const
-    { return {}; }
+    Ewoms::data::GroupValues
+    groupData(const int /* reportStepIdx */,
+              const Ewoms::Schedule& /* sched */) const
+    {
+        return {};
+    }
 
     /*!
      * \brief This method writes the complete state of all wells

@@ -183,30 +183,19 @@ namespace Ewoms {
 
             void initFromRestartFile(const RestartValue& restartValues);
 
-            Ewoms::data::Group groupData(const int reportStepIdx, Ewoms::Schedule& sched) const
+            Ewoms::data::GroupValues
+            groupData(const int reportStepIdx, const Ewoms::Schedule& sched) const
             {
-                Ewoms::data::Group dw;
-                for (const std::string& gname :  sched.groupNames(reportStepIdx))  {
+                auto gvalues = ::Ewoms::data::GroupValues{};
+
+                for (const auto& gname : sched.groupNames(reportStepIdx)) {
                     const auto& grup = sched.getGroup(gname, reportStepIdx);
-                    const auto& grup_type = grup.getGroupType();
-                    Ewoms::data::currentGroupConstraints cgc;
-                    cgc.currentProdConstraint =  Ewoms::Group::ProductionCMode::NONE;
-                    cgc.currentGasInjectionConstraint = Ewoms::Group::InjectionCMode::NONE;
-                    cgc.currentWaterInjectionConstraint = Ewoms::Group::InjectionCMode::NONE;
-                    if (this->well_state_.hasProductionGroupControl(gname)) {
-                        cgc.currentProdConstraint = this->well_state_.currentProductionGroupControl(gname);
-                    }
-                    if ((grup_type == Ewoms::Group::GroupType::INJECTION) || (grup_type == Ewoms::Group::GroupType::MIXED))  {
-                        if (this->well_state_.hasInjectionGroupControl(Ewoms::Phase::WATER, gname)) {
-                            cgc.currentWaterInjectionConstraint = this->well_state_.currentInjectionGroupControl(Ewoms::Phase::WATER, gname);
-                        }
-                        if (this->well_state_.hasInjectionGroupControl(Ewoms::Phase::GAS, gname)) {
-                            cgc.currentGasInjectionConstraint = this->well_state_.currentInjectionGroupControl(Ewoms::Phase::GAS, gname);
-                        }
-                    }
-                    dw.emplace(gname, cgc);
+
+                    auto& gdata = gvalues[gname];
+                    this->assignGroupControl(grup, gdata);
                 }
-                return dw;
+
+                return gvalues;
             }
 
             Ewoms::data::Wells wellData() const
@@ -438,6 +427,7 @@ namespace Ewoms {
 
             void setWsolvent(const Group& group, const Schedule& schedule, const int reportStepIdx, double wsolvent);
 
+            void assignGroupControl(const Group& group, data::GroupData& gdata) const;
         };
 
 } // namespace Ewoms
