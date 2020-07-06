@@ -16,7 +16,11 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EWOMS_EFLOW_ISTLSOLVER_HH
+#if !DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
+
+# warning "The EFlow ISTL linear solver backend requires Dune 2.6 or newer"
+
+#elif !defined EWOMS_EFLOW_ISTLSOLVER_HH
 #define EWOMS_EFLOW_ISTLSOLVER_HH
 
 #include <ewoms/eclsimulators/linalg/welloperators.hh>
@@ -191,6 +195,7 @@ DenseMatrix transposeDenseMatrix(const DenseMatrix& M)
                 using ElementMapper =
                     Dune::MultipleCodimMultipleGeomTypeMapper<GridView>;
                 ElementMapper elemMapper(simulator_.vanguard().gridView(), Dune::mcmgElementLayout());
+                
                 detail::findOverlapAndInterior(gridForConn, elemMapper, overlapRows_, interiorRows_);
                 noGhostAdjacency();
                 setGhostsInNoGhost(*noGhostMat_);
@@ -220,7 +225,7 @@ DenseMatrix transposeDenseMatrix(const DenseMatrix& M)
 #if HAVE_MPI
             if (firstcall && parallelInformation_.type() == typeid(ParallelISTLInformation)) {
                 // Parallel case.
-                const ParallelISTLInformation* parinfo = std::any_cast<ParallelISTLInformation>(&parallelInformation_);
+                const ParallelISTLInformation* parinfo = Ewoms::any_cast<ParallelISTLInformation>(&parallelInformation_);
                 assert(parinfo);
                 const size_t size = M.istlMatrix().N();
                 parinfo->copyValuesTo(comm_->indexSet(), comm_->remoteIndices(), size, 1);
@@ -391,7 +396,7 @@ DenseMatrix transposeDenseMatrix(const DenseMatrix& M)
         int iterations () const { return iterations_; }
 
         /// \copydoc NewtonIterationBlackoilInterface::parallelInformation
-        const std::any& parallelInformation() const { return parallelInformation_; }
+        const Ewoms::any& parallelInformation() const { return parallelInformation_; }
 
     protected:
         /// \brief construct the CPR preconditioner and the solver.
@@ -1004,7 +1009,7 @@ DenseMatrix transposeDenseMatrix(const DenseMatrix& M)
         const Simulator& simulator_;
         mutable int iterations_;
         mutable bool converged_;
-        std::any parallelInformation_;
+        Ewoms::any parallelInformation_;
 
         // non-const to be able to scale the linear system
         Matrix* matrix_;

@@ -16,8 +16,17 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EWOMS_FLEXIBLE_SOLVER_IMPL_HH
+#include <dune/common/version.hh>
+
+#if !DUNE_VERSION_NEWER(DUNE_ISTL, 2,6)
+
+#warning "Using the flexible linear solver requires at least DUNE 2.6"
+
+#define INSTANTIATE_FLEXIBLESOLVER(N)
+
+#elif !defined EWOMS_FLEXIBLE_SOLVER_IMPL_HH
 #define EWOMS_FLEXIBLE_SOLVER_IMPL_HH
+
 
 #include <ewoms/eclsimulators/linalg/flexiblesolver.hh>
 #include <ewoms/eclsimulators/linalg/preconditionerfactory.hh>

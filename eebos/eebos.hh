@@ -40,7 +40,6 @@
 
 #include <ewoms/eclsimulators/wells/blackoilwellmodel.hh>
 #include <ewoms/eclsimulators/aquifers/blackoilaquifermodel.hh>
-#include <ewoms/eclsimulators/linalg/istlsolver.hh>
 
 #include <ewoms/numerics/utils/start.hh>
 
@@ -56,9 +55,7 @@ NEW_TYPE_TAG(EebosTypeTag, INHERITS_FROM(BlackOilModel, EclBaseProblem, EFlowMod
 // Set the problem class
 SET_TYPE_PROP(EebosTypeTag, Problem, Ewoms::EebosProblem<TypeTag>);
 
-// Enable experimental features for eebos: eebos is the research simulator of the eWoms
-// project. If you're looking for a more stable "production quality" simulator, consider
-// using `eflow`
+// Enable the more experimental features for eebos
 SET_BOOL_PROP(EebosTypeTag, EnableExperiments, true);
 
 // use eflow's well model for now
