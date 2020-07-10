@@ -334,6 +334,7 @@ public:
 
         // output using eclWriter if enabled
         auto localWellData = simulator_.problem().wellModel().wellData();
+        auto localGroupData = simulator_.problem().wellModel().groupData(reportStepNum, simulator_.vanguard().schedule());
 
         Ewoms::data::Solution localCellData = {};
         if (! isSubStep) {
@@ -344,16 +345,14 @@ public:
         }
 
         if (collectToIORank_.isParallel()) {
-            const auto localGroupData = simulator_.problem().wellModel()
-                .groupData(reportStepNum, simulator_.vanguard().schedule());
-
             collectToIORank_.collect(localCellData, eclOutputModule_.getBlockData(), localWellData, localGroupData);
         }
 
         if (this->collectToIORank_.isIORank()) {
             this->writeOutput(reportStepNum, isSubStep,
                               std::move(localCellData),
-                              std::move(localWellData));
+                              std::move(localWellData),
+                              std::move(localGroupData));
         }
     }
 
@@ -720,10 +719,11 @@ private:
         }
     }
 
-    void writeOutput(const int               reportStepNum,
-                     const bool              isSubStep,
-                     ::Ewoms::data::Solution&& localCellData,
-                     ::Ewoms::data::Wells&&    localWellData)
+    void writeOutput(const int                  reportStepNum,
+                     const bool                 isSubStep,
+                     ::Ewoms::data::Solution&&    localCellData,
+                     ::Ewoms::data::Wells&&       localWellData,
+                     ::Ewoms::data::GroupValues&& localGroupData)
     {
         const Scalar curTime = simulator_.time() + simulator_.timeStepSize();
         const Scalar nextStepSize = simulator_.problem().nextTimeStepSize();
@@ -734,7 +734,10 @@ private:
                        : std::move(localCellData),
 
             isParallel ? this->collectToIORank_.globalWellData()
-                       : std::move(localWellData)
+                       : std::move(localWellData),
+
+            isParallel ? this->collectToIORank_.globalGroupData()
+                       : std::move(localGroupData)
         };
 
         if (simulator_.vanguard().eclState().getSimulationConfig().useThresholdPressure()) {

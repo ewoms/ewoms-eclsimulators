@@ -220,7 +220,7 @@ namespace Ewoms {
             // subtract B*inv(D)*C * x from A*x
             void apply(const BVector& x, BVector& Ax) const;
 
-#if HAVE_CUDA
+#if HAVE_CUDA || HAVE_OPENCL
             // accumulate the contributions of all Wells in the WellContributions object
             void getWellContributions(WellContributions& x) const;
 #endif
@@ -398,6 +398,7 @@ namespace Ewoms {
 
             // convert well data from ewoms-eclio to well state from ewoms-eclsimulators
             void wellsToState( const data::Wells& wells,
+                               const data::GroupValues& groups,
                                const PhaseUsage& phases,
                                const bool handle_ms_well,
                                WellStateFullyImplicitBlackoil& state ) const;

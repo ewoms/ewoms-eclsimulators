@@ -607,7 +607,7 @@ namespace Ewoms
         duneC_.mmtv(invDrw, r);
     }
 
-#if HAVE_CUDA
+#if HAVE_CUDA || HAVE_OPENCL
     template<typename TypeTag>
     void
     MultisegmentWell<TypeTag>::
@@ -1378,6 +1378,7 @@ namespace Ewoms
         // basically, it is a single value for all the segments
 
         EvalWell temperature;
+        EvalWell saltConcentration;
         // not sure how to handle the pvt region related to segment
         // for the current approach, we use the pvt region of the first perforated cell
         // although there are some text indicating using the pvt region of the lowest
@@ -1390,6 +1391,7 @@ namespace Ewoms
             const auto& intQuants = *(eebosSimulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/0));
             const auto& fs = intQuants.fluidState();
             temperature.setValue(fs.temperature(FluidSystem::oilPhaseIdx).value());
+            saltConcentration = extendEval(fs.saltConcentration());
             pvt_region_index = fs.pvtRegionIndex();
         }
 
@@ -1418,9 +1420,9 @@ namespace Ewoms
             if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
                 const unsigned waterCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx);
                 b[waterCompIdx] =
-                    FluidSystem::waterPvt().inverseFormationVolumeFactor(pvt_region_index, temperature, seg_pressure);
+                    FluidSystem::waterPvt().inverseFormationVolumeFactor(pvt_region_index, temperature, seg_pressure, saltConcentration);
                 visc[waterCompIdx] =
-                    FluidSystem::waterPvt().viscosity(pvt_region_index, temperature, seg_pressure);
+                    FluidSystem::waterPvt().viscosity(pvt_region_index, temperature, seg_pressure, saltConcentration);
             }
 
             EvalWell rv(0.0);
@@ -2503,6 +2505,7 @@ namespace Ewoms
     getSegmentSurfaceVolume(const Simulator& eebos_simulator, const int seg_idx) const
     {
         EvalWell temperature;
+        EvalWell saltConcentration;
         int pvt_region_index;
         {
             // using the pvt region of first perforated cell
@@ -2511,6 +2514,7 @@ namespace Ewoms
             const auto& intQuants = *(eebos_simulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/0));
             const auto& fs = intQuants.fluidState();
             temperature.setValue(fs.temperature(FluidSystem::oilPhaseIdx).value());
+            saltConcentration = extendEval(fs.saltConcentration());
             pvt_region_index = fs.pvtRegionIndex();
         }
 
@@ -2525,7 +2529,7 @@ namespace Ewoms
         if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
             const unsigned waterCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx);
             b[waterCompIdx] =
-                FluidSystem::waterPvt().inverseFormationVolumeFactor(pvt_region_index, temperature, seg_pressure);
+                FluidSystem::waterPvt().inverseFormationVolumeFactor(pvt_region_index, temperature, seg_pressure, saltConcentration);
         }
 
         EvalWell rv(0.0);

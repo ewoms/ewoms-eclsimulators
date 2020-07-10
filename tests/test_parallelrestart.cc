@@ -299,8 +299,9 @@ BOOST_AUTO_TEST_CASE(RestartKey)
 BOOST_AUTO_TEST_CASE(RestartValue)
 {
     Ewoms::data::WellRates wells1;
+    Ewoms::data::GroupValues groups1;
     wells1.insert({"test_well", getWell()});
-    Ewoms::RestartValue val1(getSolution(), wells1);
+    Ewoms::RestartValue val1(getSolution(), wells1, groups1);
     auto val2 = PackUnpack(val1);
     DO_CHECKS(RestartValue)
 }

@@ -529,7 +529,7 @@ namespace Ewoms {
             const size_t numCells = Ewoms::UgGridHelpers::numCells(grid());
             const bool handle_ms_well = (param_.use_multisegment_well_ && anyMSWellOpenLocal());
             well_state_.resize(wells_ecl_, schedule(), handle_ms_well, numCells, phaseUsage, well_perf_data_, summaryState, globalNumWells); // Resize for restart step
-            wellsToState(restartValues.wells, phaseUsage, handle_ms_well, well_state_);
+            wellsToState(restartValues.wells, restartValues.groups, phaseUsage, handle_ms_well, well_state_);
         }
 
         previous_well_state_ = well_state_;
@@ -864,7 +864,7 @@ namespace Ewoms {
         }
     }
 
-#if HAVE_CUDA
+#if HAVE_CUDA || HAVE_OPENCL
     template<typename TypeTag>
     void
     BlackoilWellModel<TypeTag>::
@@ -1498,6 +1498,7 @@ namespace Ewoms {
     void
     BlackoilWellModel<TypeTag>::
     wellsToState( const data::Wells& wells,
+                  const data::GroupValues& groups,
                   const PhaseUsage& phases,
                   const bool handle_ms_well,
                   WellStateFullyImplicitBlackoil& state) const

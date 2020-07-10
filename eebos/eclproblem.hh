@@ -1054,8 +1054,9 @@ public:
         if (actions.empty())
             return;
 
-        Ewoms::Action::Context context(summaryState);
-        auto now = Ewoms::TimeStampUTC(simulator.startTime() + simulator.time());
+        auto scheduleTime = schedule.simTime(reportStep);
+        Ewoms::Action::Context context( summaryState, schedule.getWListManager(reportStep) );
+        auto now = Ewoms::TimeStampUTC( schedule.getStartTime() ) + std::chrono::duration<double>(scheduleTime);
         std::string ts;
         {
             std::ostringstream os;
@@ -1066,8 +1067,7 @@ public:
             ts = os.str();
         }
 
-        auto simTime = schedule.simTime(reportStep);
-        for (const auto& action : actions.pending(actionState, simTime)) {
+        for (const auto& action : actions.pending(actionState, scheduleTime)) {
             const auto& actionResult = action->eval(context);
             if (actionResult) {
                 std::string wellsString;
@@ -1080,7 +1080,7 @@ public:
                 std::string msg = "The action: " + action->name() + " evaluated to true at " + ts + " wells: " + wellsString;
                 Ewoms::OpmLog::info(msg);
                 schedule.applyAction(reportStep, *action, actionResult);
-                actionState.add_run(*action, simTime);
+                actionState.add_run(*action, scheduleTime);
             }
             else {
                 std::string msg = "The action: " + action->name() + " evaluated to false at " + ts;

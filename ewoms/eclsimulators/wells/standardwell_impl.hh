@@ -1719,11 +1719,12 @@ namespace Ewoms
             const double p_above = perf == 0 ? well_state.bhp()[w] : well_state.perfPress()[first_perf_ + perf - 1];
             const double p_avg = (well_state.perfPress()[first_perf_ + perf] + p_above)/2;
             const double temperature = fs.temperature(FluidSystem::oilPhaseIdx).value();
+            const double saltConcentration = fs.saltConcentration().value();
 
             if (waterPresent) {
                 const unsigned waterCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx);
                 b_perf[ waterCompIdx + perf * num_components_] =
-                FluidSystem::waterPvt().inverseFormationVolumeFactor(fs.pvtRegionIndex(), temperature, p_avg);
+                FluidSystem::waterPvt().inverseFormationVolumeFactor(fs.pvtRegionIndex(), temperature, p_avg, saltConcentration);
             }
 
             if (gasPresent) {
@@ -2145,7 +2146,7 @@ namespace Ewoms
         duneC_.mmtv(invDrw_, r);
     }
 
-#if HAVE_CUDA
+#if HAVE_CUDA || HAVE_OPENCL
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
