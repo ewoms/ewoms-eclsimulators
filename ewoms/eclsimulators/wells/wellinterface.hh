@@ -442,6 +442,28 @@ namespace Ewoms
                                  const double simulation_time, const int report_step,
                                          WellState& well_state, WellTestState& welltest_state, Ewoms::DeferredLogger& deferred_logger) = 0;
 
+        virtual void assembleWellEqWithoutIteration(const Simulator& eebosSimulator,
+                                                    const double dt,
+                                                    const Well::InjectionControls& inj_controls,
+                                                    const Well::ProductionControls& prod_controls,
+                                                    WellState& well_state,
+                                                    Ewoms::DeferredLogger& deferred_logger) = 0;
+
+        // iterate well equations with the specified control until converged
+        virtual bool iterateWellEqWithControl(const Simulator& eebosSimulator,
+                                              const std::vector<double>& B_avg,
+                                              const double dt,
+                                              const Well::InjectionControls& inj_controls,
+                                              const Well::ProductionControls& prod_controls,
+                                              WellState& well_state,
+                                              Ewoms::DeferredLogger& deferred_logger) = 0;
+
+        bool iterateWellEquations(const Simulator& eebosSimulator,
+                                  const std::vector<double>& B_avg,
+                                  const double dt,
+                                  WellState& well_state,
+                                  Ewoms::DeferredLogger& deferred_logger);
+
         void updateWellTestStateEconomic(const WellState& well_state,
                                          const double simulation_time,
                                          const bool write_message_to_opmlog,
@@ -457,11 +479,6 @@ namespace Ewoms
         void solveWellForTesting(const Simulator& eebosSimulator, WellState& well_state,
                                  const std::vector<double>& B_avg,
                                  Ewoms::DeferredLogger& deferred_logger);
-
-        bool solveWellEqUntilConverged(const Simulator& eebosSimulator,
-                                       const std::vector<double>& B_avg,
-                                       WellState& well_state,
-                                       Ewoms::DeferredLogger& deferred_logger);
 
         void scaleProductivityIndex(const int perfIdx, double& productivity_index, const bool new_well, Ewoms::DeferredLogger& deferred_logger);
 

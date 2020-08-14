@@ -398,7 +398,6 @@ namespace Ewoms {
 
             // convert well data from ewoms-eclio to well state from ewoms-eclsimulators
             void wellsToState( const data::Wells& wells,
-                               const data::GroupValues& groups,
                                const PhaseUsage& phases,
                                const bool handle_ms_well,
                                WellStateFullyImplicitBlackoil& state ) const;

@@ -401,21 +401,20 @@ namespace Ewoms
 
         bool accelerationalPressureLossConsidered() const;
 
-        // TODO: try to make eebosSimulator const, as it should be
-        void iterateWellEquations(const Simulator& eebosSimulator,
-                                  const std::vector<Scalar>& B_avg,
-                                  const double dt,
-                                  const Well::InjectionControls& inj_controls,
-                                  const Well::ProductionControls& prod_controls,
-                                  WellState& well_state,
-                                  Ewoms::DeferredLogger& deferred_logger);
+        virtual bool iterateWellEqWithControl(const Simulator& eebosSimulator,
+                                              const std::vector<Scalar>& B_avg,
+                                              const double dt,
+                                              const Well::InjectionControls& inj_controls,
+                                              const Well::ProductionControls& prod_controls,
+                                              WellState& well_state,
+                                              Ewoms::DeferredLogger& deferred_logger) override;
 
-        void assembleWellEqWithoutIteration(const Simulator& eebosSimulator,
-                                            const double dt,
-                                            const Well::InjectionControls& inj_controls,
-                                            const Well::ProductionControls& prod_controls,
-                                            WellState& well_state,
-                                            Ewoms::DeferredLogger& deferred_logger);
+        virtual void assembleWellEqWithoutIteration(const Simulator& eebosSimulator,
+                                    const double dt,
+                                    const Well::InjectionControls& inj_controls,
+                                    const Well::ProductionControls& prod_controls,
+                                    WellState& well_state,
+                                    Ewoms::DeferredLogger& deferred_logger) override;
 
         virtual void wellTestingPhysical(const Simulator& simulator, const std::vector<double>& B_avg,
                                          const double simulation_time, const int report_step,

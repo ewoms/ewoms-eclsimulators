@@ -239,16 +239,15 @@ namespace Ewoms
                    WellState& well_state,
                    Ewoms::DeferredLogger& deferred_logger)
     {
-        const auto& summary_state = eebosSimulator.vanguard().summaryState();
-        const auto inj_controls = well_ecl_.isInjector() ? well_ecl_.injectionControls(summary_state) : Well::InjectionControls(0);
-        const auto prod_controls = well_ecl_.isProducer() ? well_ecl_.productionControls(summary_state) : Well::ProductionControls(0);
 
         const bool use_inner_iterations = param_.use_inner_iterations_ms_wells_;
         if (use_inner_iterations) {
-
-            iterateWellEquations(eebosSimulator, B_avg, dt, inj_controls, prod_controls, well_state, deferred_logger);
+            this->iterateWellEquations(eebosSimulator, B_avg, dt, well_state, deferred_logger);
         }
 
+        const auto& summary_state = eebosSimulator.vanguard().summaryState();
+        const auto inj_controls = well_ecl_.isInjector() ? well_ecl_.injectionControls(summary_state) : Well::InjectionControls(0);
+        const auto prod_controls = well_ecl_.isProducer() ? well_ecl_.productionControls(summary_state) : Well::ProductionControls(0);
         assembleWellEqWithoutIteration(eebosSimulator, dt, inj_controls, prod_controls, well_state, deferred_logger);
     }
 
@@ -798,7 +797,8 @@ namespace Ewoms
         well_copy.calculateExplicitQuantities(eebosSimulator, well_state_copy, deferred_logger);
         const double dt = eebosSimulator.timeStepSize();
         // iterate to get a solution at the given bhp.
-        well_copy.iterateWellEquations(eebosSimulator, B_avg, dt, inj_controls, prod_controls, well_state_copy, deferred_logger);
+        well_copy.iterateWellEqWithControl(eebosSimulator, B_avg, dt, inj_controls, prod_controls, well_state_copy,
+                                           deferred_logger);
 
         // compute the potential and store in the flux vector.
         well_flux.clear();
@@ -2156,15 +2156,15 @@ namespace Ewoms
     }
 
     template<typename TypeTag>
-    void
+    bool
     MultisegmentWell<TypeTag>::
-    iterateWellEquations(const Simulator& eebosSimulator,
-                         const std::vector<Scalar>& B_avg,
-                         const double dt,
-                         const Well::InjectionControls& inj_controls,
-                         const Well::ProductionControls& prod_controls,
-                         WellState& well_state,
-                         Ewoms::DeferredLogger& deferred_logger)
+    iterateWellEqWithControl(const Simulator& eebosSimulator,
+                             const std::vector<Scalar>& B_avg,
+                             const double dt,
+                             const Well::InjectionControls& inj_controls,
+                             const Well::ProductionControls& prod_controls,
+                             WellState& well_state,
+                             Ewoms::DeferredLogger& deferred_logger)
     {
         const int max_iter_number = param_.max_inner_iter_ms_wells_;
         const WellState well_state0 = well_state;
@@ -2216,7 +2216,7 @@ namespace Ewoms
                             converged = true;
                             sstr << " well " << name() << " manages to get converged with relaxed tolerances in " << it << " inner iterations";
                             deferred_logger.debug(sstr.str());
-                            return;
+                            return converged;
                         }
                     }
                 }
@@ -2261,6 +2261,8 @@ namespace Ewoms
             }
             deferred_logger.debug(sstr.str());
         }
+
+        return converged;
     }
 
     template<typename TypeTag>
