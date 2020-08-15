@@ -219,15 +219,17 @@ public:
         // Only output RESTART_AUXILIARY asked for by the user.
         const Ewoms::RestartConfig& restartConfig = simulator_.vanguard().schedule().restart();
         std::map<std::string, int> rstKeywords = restartConfig.getRestartKeywords(reportStepNum);
-        for (auto& [keyword, should_write] : rstKeywords) {
+        for (auto& rstKeywordPair : rstKeywords) {
+            const auto& keyword = rstKeywordPair.first;
+            bool shouldWrite = rstKeywordPair.second;
             if (this->isOutputCreationDirective_(keyword)) {
                 // 'BASIC', 'FREQ' and similar.  Don't attempt to create
                 // cell-based output for these keywords and don't warn about
                 // not being able to create such cell-based result vectors.
-                should_write = 0;
+                shouldWrite = 0;
             }
             else {
-                should_write = restartConfig.getKeyword(keyword, reportStepNum);
+                shouldWrite = restartConfig.getKeyword(keyword, reportStepNum);
             }
         }
 
