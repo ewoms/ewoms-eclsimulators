@@ -33,37 +33,41 @@ namespace Ewoms {
 
 namespace mswellhelpers
 {
-    // obtain y = D^-1 * x with a direct solver
+
+    /// Applies umfpack and checks for singularity
     template <typename MatrixType, typename VectorType>
     VectorType
-    invDXDirect(const MatrixType& D, VectorType x)
+    applyUMFPack(const MatrixType& D, std::shared_ptr<Dune::UMFPack<MatrixType> >& linsolver, VectorType x)
     {
 #if HAVE_UMFPACK
+        if (!linsolver)
+        {
+            linsolver.reset(new Dune::UMFPack<MatrixType>(D, 0));
+        }
+
+        // The copy of x seems mandatory for calling UMFPack!
         VectorType y(x.size());
         y = 0.;
-
-        Dune::UMFPack<MatrixType> linsolver(D, 0);
 
         // Object storing some statistics about the solving process
         Dune::InverseOperatorResult res;
 
         // Solve
-        linsolver.apply(y, x, res);
+        linsolver->apply(y, x, res);
 
         // Checking if there is any inf or nan in y
         // it will be the solution before we find a way to catch the singularity of the matrix
         for (size_t i_block = 0; i_block < y.size(); ++i_block) {
             for (size_t i_elem = 0; i_elem < y[i_block].size(); ++i_elem) {
                 if (std::isinf(y[i_block][i_elem]) || std::isnan(y[i_block][i_elem]) ) {
-                    EWOMS_THROW(Ewoms::NumericalIssue, "nan or inf value found in invDXDirect due to singular matrix");
+                    EWOMS_THROW(Ewoms::NumericalIssue, "nan or inf value found after UMFPack solve due to singular matrix");
                 }
             }
         }
-
         return y;
 #else
         // this is not thread safe
-        EWOMS_THROW(std::runtime_error, "Cannot use invDXDirect() without UMFPACK. "
+        EWOMS_THROW(std::runtime_error, "Cannot use applyUMFPack() without UMFPACK. "
                   "Reconfigure ewoms-eclsimulators with SuiteSparse/UMFPACK support and recompile.");
 #endif // HAVE_UMFPACK
     }

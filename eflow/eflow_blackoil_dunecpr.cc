@@ -18,54 +18,32 @@
 #include "config.h"
 
 #include <ewoms/eclsimulators/eflow/main.hh>
-
-#if DUNE_VERSION_NEWER(DUNE_ISTL, 2, 6)
 #include  <ewoms/eclsimulators/linalg/istlsolverflexible.hh>
-#else
-#include  <ewoms/eclsimulators/linalg/istlsolvercpr.hh>
-#endif
 
-BEGIN_PROPERTIES
-NEW_TYPE_TAG(EclEFlowProblemSimple, INHERITS_FROM(EclEFlowProblem));
-NEW_PROP_TAG(FluidState);
-//SET_TYPE_PROP(EclBaseProblem, Problem, Ewoms::EclProblem<TypeTag>);
-SET_PROP(EclEFlowProblemSimple, FluidState)
-    {
-    private:
-      typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-      typedef GET_PROP_TYPE(TypeTag, Indices) Indices;
-      enum { enableTemperature = GET_PROP_VALUE(TypeTag, EnableTemperature) };
-      enum { enableSolvent = GET_PROP_VALUE(TypeTag, EnableSolvent) };
-      enum { enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy) };
-      enum { numPhases = GET_PROP_VALUE(TypeTag, NumPhases) };
-      typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-      typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
-      static const bool compositionSwitchEnabled = Indices::gasEnabled;
+namespace Ewoms {
+  namespace Properties {
 
-    public:
-//typedef Ewoms::BlackOilFluidSystemSimple<Scalar> type;
-       typedef Ewoms::BlackOilFluidState<Evaluation, FluidSystem, enableTemperature, enableEnergy, compositionSwitchEnabled,  Indices::numPhases > type;
-};
+    NEW_TYPE_TAG(EclEFlowProblemSimple, INHERITS_FROM(EclEFlowProblem));
 
-SET_BOOL_PROP(EclEFlowProblemSimple, MatrixAddWellContributions, true);
-SET_INT_PROP(EclEFlowProblemSimple, LinearSolverVerbosity,0);
-SET_SCALAR_PROP(EclEFlowProblemSimple, LinearSolverReduction, 1e-2);
-SET_INT_PROP(EclEFlowProblemSimple, LinearSolverMaxIter, 100);
-SET_BOOL_PROP(EclEFlowProblemSimple, UseAmg, true);//probably not used
-SET_BOOL_PROP(EclEFlowProblemSimple, UseCpr, true);
-SET_INT_PROP(EclEFlowProblemSimple, CprMaxEllIter, 1);
-SET_INT_PROP(EclEFlowProblemSimple, CprEllSolvetype, 3);
-SET_INT_PROP(EclEFlowProblemSimple, CprReuseSetup, 3);
-SET_INT_PROP(EclEFlowProblemSimple, CprSolverVerbose, 0);
-SET_STRING_PROP(EclEFlowProblemSimple, LinearSolverConfiguration, "ilu0");
-SET_STRING_PROP(EclEFlowProblemSimple, SystemStrategy, "quasiimpes");
+    SET_BOOL_PROP(EclEFlowProblemSimple, MatrixAddWellContributions, true);
+    SET_INT_PROP(EclEFlowProblemSimple, LinearSolverVerbosity,0);
+    SET_SCALAR_PROP(EclEFlowProblemSimple, LinearSolverReduction, 1e-2);
+    SET_INT_PROP(EclEFlowProblemSimple, LinearSolverMaxIter, 100);
+    SET_BOOL_PROP(EclEFlowProblemSimple, UseAmg, true);//probably not used
+    SET_BOOL_PROP(EclEFlowProblemSimple, UseCpr, true);
+    SET_INT_PROP(EclEFlowProblemSimple, CprMaxEllIter, 1);
+    SET_INT_PROP(EclEFlowProblemSimple, CprEllSolvetype, 3);
+    SET_INT_PROP(EclEFlowProblemSimple, CprReuseSetup, 3);
+    SET_INT_PROP(EclEFlowProblemSimple, CprSolverVerbose, 0);
+    SET_STRING_PROP(EclEFlowProblemSimple, LinearSolverConfiguration, "ilu0");
+    SET_STRING_PROP(EclEFlowProblemSimple, SystemStrategy, "quasiimpes");
 
     SET_PROP(EclEFlowProblemSimple, FluidSystem)
     {
     private:
-      //typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-      typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-      typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
+      //typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+      typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+      typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
 
     public:
         typedef Ewoms::BlackOilFluidSystem<Scalar> type;

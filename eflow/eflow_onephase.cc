@@ -22,8 +22,6 @@
 BEGIN_PROPERTIES
 
 NEW_TYPE_TAG(EclEFlowProblemSimple, INHERITS_FROM(EclEFlowProblem));
-NEW_PROP_TAG(FluidState);
-NEW_PROP_TAG(FluidSystem);
 //! The indices required by the model
 SET_PROP(EclEFlowProblemSimple, Indices)
 {
@@ -44,49 +42,12 @@ public:
                                          /*enebledCompIdx=*/FluidSystem::waterCompIdx>
         type;
 };
-SET_PROP(EclEFlowProblemSimple, FluidState)
-{
-private:
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-    typedef GET_PROP_TYPE(TypeTag, Indices) Indices;
-    enum { enableTemperature = GET_PROP_VALUE(TypeTag, EnableTemperature) };
-    enum { enableSolvent = GET_PROP_VALUE(TypeTag, EnableSolvent) };
-    enum { enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy) };
-    enum { enableBrine = GET_PROP_VALUE(TypeTag, EnableBrine) };
-    enum { numPhases = GET_PROP_VALUE(TypeTag, NumPhases) };
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
-    static const bool compositionSwitchEnabled = Indices::gasEnabled;
-
-public:
-    // typedef Ewoms::BlackOilFluidSystemSimple<Scalar> type;
-    typedef Ewoms::BlackOilFluidState<Evaluation,
-                                    FluidSystem,
-                                    enableTemperature,
-                                    enableEnergy,
-                                    compositionSwitchEnabled,
-                                    enableBrine,
-                                    Indices::numPhases>
-        type;
-};
-
-// SET_PROP(EclEFlowProblemSimple, FluidSystem)
-// {
-// private:
-//   //typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-//   typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-//   typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
-//   typedef GET_PROP_TYPE(TypeTag, Indices) Indices;
-
-// public:
-//   typedef Ewoms::BlackOilFluidSystem<Scalar,Indices> type;
-// };
 
 END_PROPERTIES
 
 int main(int argc, char** argv)
 {
     using TypeTag = TTAG(EclEFlowProblemSimple);
-    auto mainObject = Ewoms::EFlowNihMain(argc, argv);
+    auto mainObject = Ewoms::Main(argc, argv);
     return mainObject.runStatic<TypeTag>();
 }

@@ -22,6 +22,8 @@
 #include <ewoms/eclsimulators/wells/wellinterface.hh>
 #include <ewoms/common/optional.hh>
 
+#include <dune/istl/umfpack.hh>
+
 namespace Ewoms
 {
 
@@ -228,8 +230,12 @@ namespace Ewoms
         // two off-diagonal matrices
         mutable OffDiagMatWell duneB_;
         mutable OffDiagMatWell duneC_;
-        // diagonal matrix for the well
+        // "diagonal" matrix for the well. It has offdiagonal entries for inlets and outlets.
         mutable DiagMatWell duneD_;
+        /// \brief solver for diagonal matrix
+        ///
+        /// This is a shared_ptr as MultisegmentWell is copied in computeWellPotentials...
+        mutable std::shared_ptr<Dune::UMFPack<DiagMatWell> > duneDSolver_;
 
         // residuals of the well equations
         mutable BVectorWell resWell_;
