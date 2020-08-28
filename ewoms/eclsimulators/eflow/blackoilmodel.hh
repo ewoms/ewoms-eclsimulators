@@ -104,16 +104,16 @@ namespace Ewoms {
         typedef WellStateFullyImplicitBlackoil WellState;
         typedef BlackoilModelParameters<TypeTag> ModelParameters;
 
-        typedef GET_PROP_TYPE(TypeTag, Simulator)         Simulator;
-        typedef GET_PROP_TYPE(TypeTag, Grid)              Grid;
-        typedef GET_PROP_TYPE(TypeTag, ElementContext)    ElementContext;
-        typedef GET_PROP_TYPE(TypeTag, SparseMatrixAdapter) SparseMatrixAdapter;
-        typedef GET_PROP_TYPE(TypeTag, SolutionVector)    SolutionVector ;
-        typedef GET_PROP_TYPE(TypeTag, PrimaryVariables)  PrimaryVariables ;
-        typedef GET_PROP_TYPE(TypeTag, FluidSystem)       FluidSystem;
-        typedef GET_PROP_TYPE(TypeTag, Indices)           Indices;
-        typedef GET_PROP_TYPE(TypeTag, MaterialLaw)       MaterialLaw;
-        typedef GET_PROP_TYPE(TypeTag, MaterialLawParams) MaterialLawParams;
+        using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+        using Grid = GET_PROP_TYPE(TypeTag, Grid);
+        using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
+        using SparseMatrixAdapter = GET_PROP_TYPE(TypeTag, SparseMatrixAdapter);
+        using SolutionVector = GET_PROP_TYPE(TypeTag, SolutionVector);
+        using PrimaryVariables = GET_PROP_TYPE(TypeTag, PrimaryVariables);
+        using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
+        using Indices = GET_PROP_TYPE(TypeTag, Indices);
+        using MaterialLaw = GET_PROP_TYPE(TypeTag, MaterialLaw);
+        using MaterialLawParams = GET_PROP_TYPE(TypeTag, MaterialLawParams);
 
         typedef double Scalar;
         static const int numEq = Indices::numEq;
@@ -665,15 +665,46 @@ namespace Ewoms {
             return pvSumLocal;
         }
 
+        double computeCnvErrorPv(const std::vector<Scalar>& B_avg, double dt)
+        {
+            double errorPV{};
+            const auto& eebosModel = eebosSimulator_.model();
+            const auto& eebosProblem = eebosSimulator_.problem();
+            const auto& eebosResid = eebosSimulator_.model().linearizer().residual();
+            const auto& gridView = eebosSimulator().gridView();
+            ElementContext elemCtx(eebosSimulator_);
+
+            for (const auto& elem: elements(gridView, Dune::Partitions::interiorBorder))
+            {
+                elemCtx.updatePrimaryStencil(elem);
+                elemCtx.updatePrimaryIntensiveQuantities(/*timeIdx=*/0);
+                const unsigned cell_idx = elemCtx.globalSpaceIndex(/*spaceIdx=*/0, /*timeIdx=*/0);
+                const double pvValue = eebosProblem.referencePorosity(cell_idx, /*timeIdx=*/0) * eebosModel.dofTotalVolume( cell_idx );
+                const auto& cellResidual = eebosResid[cell_idx];
+                bool cnvViolated = false;
+
+                for (unsigned eqIdx = 0; eqIdx < cellResidual.size(); ++eqIdx)
+                {
+                    using std::abs;
+                    Scalar CNV = cellResidual[eqIdx] * dt * B_avg[eqIdx] / pvValue;
+                    cnvViolated = cnvViolated || (abs(CNV) > param_.tolerance_cnv_);
+                }
+
+                if (cnvViolated)
+                {
+                    errorPV += pvValue;
+                }
+            }
+
+            return grid_.comm().sum(errorPV);
+        }
+
         ConvergenceReport getReservoirConvergence(const double dt,
                                                   const int iteration,
                                                   std::vector<Scalar>& B_avg,
                                                   std::vector<Scalar>& residual_norms)
         {
             typedef std::vector< Scalar > Vector;
-
-            const double tol_mb  = param_.tolerance_mb_;
-            const double tol_cnv = (iteration < param_.max_strict_iter_) ? param_.tolerance_cnv_ : param_.tolerance_cnv_relaxed_;
 
             const int numComp = numEq;
             Vector R_sum(numComp, 0.0 );
@@ -683,6 +714,17 @@ namespace Ewoms {
             // compute global sum and max of quantities
             const double pvSum = convergenceReduction(grid_.comm(), pvSumLocal,
                                                       R_sum, maxCoeff, B_avg);
+
+            auto cnvErrorPvFraction = computeCnvErrorPv(B_avg, dt);
+            cnvErrorPvFraction /= pvSum;
+
+            const double tol_mb  = param_.tolerance_mb_;
+            // Default value of relaxed_max_pv_fraction_ is 1 and
+            // max_strict_iter_ is 8. Hence only iteration chooses
+            // whether to use relaxed or not.
+            // To activate only fraction use fraction below 1 and iter 0.
+            const bool use_relaxed = cnvErrorPvFraction < param_.relaxed_max_pv_fraction_ && iteration >= param_.max_strict_iter_;
+            const double tol_cnv = use_relaxed ? param_.tolerance_cnv_relaxed_ :  param_.tolerance_cnv_;
 
             // Finish computation
             std::vector<Scalar> CNV(numComp);

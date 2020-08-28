@@ -41,8 +41,8 @@ namespace Ewoms {
 
 void eflowBlackoilSetDeck(double setupTime, Deck *deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig)
 {
-    typedef TTAG(EclEFlowProblem) TypeTag;
-    typedef GET_PROP_TYPE(TypeTag, Vanguard) Vanguard;
+    using TypeTag = TTAG(EclEFlowProblem);
+    using Vanguard = GET_PROP_TYPE(TypeTag, Vanguard);
 
     Vanguard::setExternalSetupTime(setupTime);
     Vanguard::setExternalDeck(deck);
@@ -52,7 +52,7 @@ void eflowBlackoilSetDeck(double setupTime, Deck *deck, EclipseState& eclState, 
 }
 
 std::unique_ptr<Ewoms::EFlowMain<TTAG(EclEFlowProblem)>>
-eflowBlackoilMainInit(int argc, char** argv)
+eflowBlackoilMainInit(int argc, char** argv, bool outputCout, bool outputFiles)
 {
     // we always want to use the default locale, and thus spare us the trouble
     // with incorrect locale settings.
@@ -64,14 +64,15 @@ eflowBlackoilMainInit(int argc, char** argv)
     Dune::MPIHelper::instance(argc, argv);
 #endif
 
-    return std::make_unique<Ewoms::EFlowMain<TTAG(EclEFlowProblem)>>();
+    return std::make_unique<Ewoms::EFlowMain<TTAG(EclEFlowProblem)>>(
+        argc, argv, outputCout, outputFiles);
 }
 
 // ----------------- Main program -----------------
 int eflowBlackoilMain(int argc, char** argv, bool outputCout, bool outputFiles)
 {
-    auto mainfunc = eflowBlackoilMainInit(argc, argv);
-    return mainfunc->execute(argc, argv, outputCout, outputFiles);
+    auto mainfunc = eflowBlackoilMainInit(argc, argv, outputCout, outputFiles);
+    return mainfunc->execute();
 }
 
 }

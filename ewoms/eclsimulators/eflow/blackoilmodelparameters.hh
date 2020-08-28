@@ -34,6 +34,7 @@ NEW_PROP_TAG(EclDeckFileName);
 NEW_PROP_TAG(DbhpMaxRel);
 NEW_PROP_TAG(DwellFractionMax);
 NEW_PROP_TAG(MaxResidualAllowed);
+NEW_PROP_TAG(RelaxedMaxPvFraction);
 NEW_PROP_TAG(ToleranceMb);
 NEW_PROP_TAG(ToleranceCnv);
 NEW_PROP_TAG(ToleranceCnvRelaxed);
@@ -64,6 +65,7 @@ NEW_PROP_TAG(MaxInnerIterWells);
 SET_SCALAR_PROP(EFlowModelParameters, DbhpMaxRel, 1.0);
 SET_SCALAR_PROP(EFlowModelParameters, DwellFractionMax, 0.2);
 SET_SCALAR_PROP(EFlowModelParameters, MaxResidualAllowed, 1e7);
+SET_SCALAR_PROP(EFlowModelParameters, RelaxedMaxPvFraction, 1.0);
 SET_SCALAR_PROP(EFlowModelParameters, ToleranceMb, 1e-6);
 SET_SCALAR_PROP(EFlowModelParameters, ToleranceCnv,1e-2);
 SET_SCALAR_PROP(EFlowModelParameters, ToleranceCnvRelaxed, 1e9);
@@ -99,7 +101,7 @@ namespace Ewoms
     struct BlackoilModelParameters
     {
     private:
-        typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+        using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
 
     public:
         /// Max relative change in bhp in single iteration.
@@ -108,6 +110,9 @@ namespace Ewoms
         double dwell_fraction_max_;
         /// Absolute max limit for residuals.
         double max_residual_allowed_;
+        //// Max allowed pore volume faction where CNV is violated. Below the
+        //// relaxed tolerance tolerance_cnv_relaxed_ is used.
+        double relaxed_max_pv_fraction_;
         /// Relative mass balance tolerance (total mass balance error).
         double tolerance_mb_;
         /// Local convergence tolerance (max of local saturation errors).
@@ -186,6 +191,7 @@ namespace Ewoms
             dbhp_max_rel_=  EWOMS_GET_PARAM(TypeTag, Scalar, DbhpMaxRel);
             dwell_fraction_max_ = EWOMS_GET_PARAM(TypeTag, Scalar, DwellFractionMax);
             max_residual_allowed_ = EWOMS_GET_PARAM(TypeTag, Scalar, MaxResidualAllowed);
+            relaxed_max_pv_fraction_ = EWOMS_GET_PARAM(TypeTag, Scalar, RelaxedMaxPvFraction);
             tolerance_mb_ = EWOMS_GET_PARAM(TypeTag, Scalar, ToleranceMb);
             tolerance_cnv_ = EWOMS_GET_PARAM(TypeTag, Scalar, ToleranceCnv);
             tolerance_cnv_relaxed_ = EWOMS_GET_PARAM(TypeTag, Scalar, ToleranceCnvRelaxed);
@@ -218,6 +224,8 @@ namespace Ewoms
             EWOMS_REGISTER_PARAM(TypeTag, Scalar, DbhpMaxRel, "Maximum relative change of the bottom-hole pressure in a single iteration");
             EWOMS_REGISTER_PARAM(TypeTag, Scalar, DwellFractionMax, "Maximum absolute change of a well's volume fraction in a single iteration");
             EWOMS_REGISTER_PARAM(TypeTag, Scalar, MaxResidualAllowed, "Absolute maximum tolerated for residuals without cutting the time step size");
+            EWOMS_REGISTER_PARAM(TypeTag, Scalar, RelaxedMaxPvFraction, "The fraction of the pore volume of the reservoir "
+                                 "where the volumetric error (CNV) may be voilated during strict Newton iterations.");
             EWOMS_REGISTER_PARAM(TypeTag, Scalar, ToleranceMb, "Tolerated mass balance error relative to total mass present");
             EWOMS_REGISTER_PARAM(TypeTag, Scalar, ToleranceCnv, "Local convergence tolerance (Maximum of local saturation errors)");
             EWOMS_REGISTER_PARAM(TypeTag, Scalar, ToleranceCnvRelaxed, "Relaxed local convergence tolerance that applies for iterations after the iterations with the strict tolerance");

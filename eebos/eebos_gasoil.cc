@@ -42,7 +42,7 @@ private:
     // it is unfortunately not possible to simply use 'TypeTag' here because this leads
     // to cyclic definitions of some properties. if this happens the compiler error
     // messages unfortunately are *really* confusing and not really helpful.
-    typedef GET_PROP_TYPE(TTAG(EebosTypeTag), FluidSystem) FluidSystem;
+    using FluidSystem = GET_PROP_TYPE(TTAG(EebosTypeTag), FluidSystem);
 
 public:
     typedef Ewoms::BlackOilTwoPhaseIndices<GET_PROP_VALUE(TypeTag, EnableSolvent),
@@ -63,8 +63,8 @@ void eebosGasOilSetDeck(Ewoms::Deck* deck,
                        Ewoms::ErrorGuard* errorGuard,
                        double externalSetupTime)
 {
-    typedef TTAG(EebosGasOilTypeTag) ProblemTypeTag;
-    typedef GET_PROP_TYPE(ProblemTypeTag, Vanguard) Vanguard;
+    using ProblemTypeTag = TTAG(EebosGasOilTypeTag);
+    using Vanguard = GET_PROP_TYPE(ProblemTypeTag, Vanguard);
 
     Vanguard::setExternalSetupTime(externalSetupTime);
     Vanguard::setExternalParseContext(parseContext);

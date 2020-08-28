@@ -33,10 +33,6 @@
 #  include <eflow/eflow_oilwater_polymer_injectivity.hh>
 # endif
 
-#include <ewoms/eclio/opmlog/opmlog.hh>
-#include <ewoms/eclio/opmlog/eclipseprtlog.hh>
-#include <ewoms/eclio/opmlog/logutil.hh>
-
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/parser.hh>
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
@@ -47,7 +43,7 @@
 #include <ewoms/common/parametersystem.hh>
 
 #include <ewoms/eclsimulators/eflow/eflowmain.hh>
-#include <ewoms/eclsimulators/eflow/missingfeatures.hh>
+#include <ewoms/eclsimulators/utils/readdeck.hh>
 
 #if HAVE_DUNE_FEM
 #include <dune/fem/misc/mpimanager.hh>
@@ -73,13 +69,13 @@ END_PROPERTIES
 
 namespace Ewoms {
   template <class TypeTag>
-  void eflowSetDeck(Deck *deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig)
+  void eflowSetDeck(std::unique_ptr<Deck> deck, std::unique_ptr<EclipseState> eclState, std::unique_ptr<Schedule> schedule, std::unique_ptr<SummaryConfig> summaryConfig)
   {
     using Vanguard = GET_PROP_TYPE(TypeTag, Vanguard);
-    Vanguard::setExternalDeck(deck);
-    Vanguard::setExternalEclState(&eclState);
-    Vanguard::setExternalSchedule(&schedule);
-    Vanguard::setExternalSummaryConfig(&summaryConfig);
+    Vanguard::setExternalDeck(std::move(deck));
+    Vanguard::setExternalEclState(std::move(eclState));
+    Vanguard::setExternalSchedule(std::move(schedule));
+    Vanguard::setExternalSummaryConfig(std::move(summaryConfig));
   }
 
 // ----------------- Main program -----------------
@@ -118,14 +114,7 @@ namespace Ewoms
     {
     private:
         using EFlowMainType = Ewoms::EFlowMain<TTAG(EclEFlowProblem)>;
-        enum class FileOutputMode {
-            //! \brief No output to files.
-            OUTPUT_NONE = 0,
-            //! \brief Output only to log files, no eclipse output.
-            OUTPUT_LOG_ONLY = 1,
-            //! \brief Output to all files.
-            OUTPUT_ALL = 3
-        };
+
     public:
         EFlowNihMain(int argc, char** argv) : argc_(argc), argv_(argv)  {  }
 
@@ -141,16 +130,16 @@ namespace Ewoms
 
         EFlowNihMain(int argc,
              char** argv,
-             std::shared_ptr<Ewoms::Deck> deck,
-             std::shared_ptr<Ewoms::EclipseState> eclipseState,
-             std::shared_ptr<Ewoms::Schedule> schedule,
-             std::shared_ptr<Ewoms::SummaryConfig> summaryConfig)
+             std::unique_ptr<Ewoms::Deck> deck,
+             std::unique_ptr<Ewoms::EclipseState> eclipseState,
+             std::unique_ptr<Ewoms::Schedule> schedule,
+             std::unique_ptr<Ewoms::SummaryConfig> summaryConfig)
             : argc_(argc)
             , argv_(argv)
-            , deck_(deck)
-            , eclipseState_(eclipseState)
-            , schedule_(schedule)
-            , summaryConfig_(summaryConfig)
+            , deck_(std::move(deck))
+            , eclipseState_(std::move(eclipseState))
+            , schedule_(std::move(schedule))
+            , summaryConfig_(std::move(summaryConfig))
         {
         }
 
@@ -214,7 +203,8 @@ namespace Ewoms
             else if( phases.size() == 2 ) {
                 // oil-gas
                 if (phases.active( Ewoms::Phase::GAS )) {
-                    Ewoms::eflowGasOilSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                    Ewoms::eflowGasOilSetDeck(setupTime_, deck_.get(), *eclipseState_,
+                                               *schedule_, *summaryConfig_);
                     return Ewoms::eflowGasOilMain(argc_, argv_, outputCout_, outputFiles_);
                 }
                 // oil-water
@@ -246,16 +236,25 @@ namespace Ewoms
                 }
 
                 if ( phases.size() == 3 ) { // oil water polymer case
-                    Ewoms::eflowOilWaterPolymerSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                    Ewoms::eflowOilWaterPolymerSetDeck(setupTime_, deck_.get(),
+                                                        *eclipseState_,
+                                                        *schedule_,
+                                                        *summaryConfig_);
                     return Ewoms::eflowOilWaterPolymerMain(argc_, argv_, outputCout_, outputFiles_);
                 } else {
-                    Ewoms::eflowPolymerSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                    Ewoms::eflowPolymerSetDeck(setupTime_, deck_.get(),
+                                                *eclipseState_,
+                                                *schedule_,
+                                                *summaryConfig_);
                     return Ewoms::eflowPolymerMain(argc_, argv_, outputCout_, outputFiles_);
                 }
             }
             // Foam case
             else if ( phases.active( Ewoms::Phase::FOAM ) ) {
-                Ewoms::eflowFoamSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                Ewoms::eflowFoamSetDeck(setupTime_, deck_.get(),
+                                         *eclipseState_,
+                                         *schedule_,
+                                         *summaryConfig_);
                 return Ewoms::eflowFoamMain(argc_, argv_, outputCout_, outputFiles_);
             }
             // Brine case
@@ -267,27 +266,42 @@ namespace Ewoms
                     return EXIT_FAILURE;
                 }
                 if ( phases.size() == 3 ) { // oil water brine case
-                    Ewoms::eflowOilWaterBrineSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                    Ewoms::eflowOilWaterBrineSetDeck(setupTime_, deck_.get(),
+                                                      *eclipseState_,
+                                                      *schedule_,
+                                                      *summaryConfig_);
                     return Ewoms::eflowOilWaterBrineMain(argc_, argv_, outputCout_, outputFiles_);
                 } else {
-                    Ewoms::eflowBrineSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                    Ewoms::eflowBrineSetDeck(setupTime_, deck_.get(),
+                                              *eclipseState_,
+                                              *schedule_,
+                                              *summaryConfig_);
                     return Ewoms::eflowBrineMain(argc_, argv_, outputCout_, outputFiles_);
                 }
             }
             // Solvent case
             else if ( phases.active( Ewoms::Phase::SOLVENT ) ) {
-                Ewoms::eflowSolventSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                Ewoms::eflowSolventSetDeck(setupTime_, deck_.get(),
+                                            *eclipseState_,
+                                            *schedule_,
+                                            *summaryConfig_);
                 return Ewoms::eflowSolventMain(argc_, argv_, outputCout_, outputFiles_);
             }
             // Energy case
             else if (eclipseState_->getSimulationConfig().isThermal()) {
-                Ewoms::eflowEnergySetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                Ewoms::eflowEnergySetDeck(setupTime_, deck_.get(),
+                                           *eclipseState_,
+                                           *schedule_,
+                                           *summaryConfig_);
                 return Ewoms::eflowEnergyMain(argc_, argv_, outputCout_, outputFiles_);
             }
 #endif // FLOW_BLACKOIL_ONLY
             // Blackoil case
             else if( phases.size() == 3 ) {
-                Ewoms::eflowBlackoilSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                Ewoms::eflowBlackoilSetDeck(setupTime_, deck_.get(),
+                                             *eclipseState_,
+                                             *schedule_,
+                                             *summaryConfig_);
                 return Ewoms::eflowBlackoilMain(argc_, argv_, outputCout_, outputFiles_);
             }
             else {
@@ -300,7 +314,10 @@ namespace Ewoms
         template <class TypeTag>
         int dispatchStatic_()
         {
-            Ewoms::eflowSetDeck<TypeTag>(deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+            Ewoms::eflowSetDeck<TypeTag>(deck_.get(),
+                                          *eclipseState_,
+                                          *schedule_,
+                                          *summaryConfig_);
             return Ewoms::eflowMain<TypeTag>(argc_, argv_, outputCout_, outputFiles_);
         }
 
@@ -333,8 +350,8 @@ namespace Ewoms
             // use a type tag just for parsing the parameters before we instantiate the actual
             // simulator object. (Which parses the parameters again, but since this is done in an
             // identical manner it does not matter.)
-            typedef TTAG(EFlowEarlyBird) PreTypeTag;
-            typedef GET_PROP_TYPE(PreTypeTag, Problem) PreProblem;
+            using PreTypeTag = TTAG(EFlowEarlyBird);
+            using PreProblem = GET_PROP_TYPE(PreTypeTag, Problem);
 
             PreProblem::setBriefDescription("EFlow, an advanced reservoir simulator for ECL-decks provided by the eWoms project.");
             int status = Ewoms::EFlowMain<PreTypeTag>::setupParameters_(argc_, argv_);
@@ -367,7 +384,7 @@ namespace Ewoms
                 deckFilename = EWOMS_GET_PARAM(PreTypeTag, std::string, EclDeckFileName);
             }
 
-            typedef GET_PROP_TYPE(PreTypeTag, Vanguard) PreVanguard;
+            using PreVanguard = GET_PROP_TYPE(PreTypeTag, Vanguard);
             try {
                 deckFilename = PreVanguard::canonicalDeckPath(deckFilename).string();
             }
@@ -385,108 +402,29 @@ namespace Ewoms
                 Ewoms::EFlowMain<PreTypeTag>::printBanner();
             }
             // Create Deck and EclipseState.
+            if (outputCout_) {
+                std::cout << "Reading deck file '" << deckFilename << "'\n";
+                std::cout.flush();
+            }
             try {
-                if (outputCout_) {
-                    std::cout << "Reading deck file '" << deckFilename << "'\n";
-                    std::cout.flush();
+                const bool init_from_restart_file = !EWOMS_GET_PARAM(PreTypeTag, bool, SchedRestart);
+                if (outputDir.empty())
+                    outputDir = EWOMS_GET_PARAM(PreTypeTag, std::string, OutputDir);
+                outputMode = setupLogging(mpiRank,
+                                          deckFilename,
+                                          outputDir,
+                                          EWOMS_GET_PARAM(PreTypeTag, std::string, OutputMode),
+                                          outputCout_, "STDOUT_LOGGER");
+                auto parseContext =
+                    std::make_unique<Ewoms::ParseContext>(std::vector<std::pair<std::string , InputError::Action>>
+                                                        {{Ewoms::ParseContext::PARSE_RANDOM_SLASH, Ewoms::InputError::IGNORE},
+                                                         {Ewoms::ParseContext::PARSE_MISSING_DIMS_KEYWORD, Ewoms::InputError::WARN},
+                                                         {Ewoms::ParseContext::SUMMARY_UNKNOWN_WELL, Ewoms::InputError::WARN},
+                                                         {Ewoms::ParseContext::SUMMARY_UNKNOWN_GROUP, Ewoms::InputError::WARN}});
 
-                    Ewoms::Parser parser;
-                    Ewoms::ParseContext parseContext({{Ewoms::ParseContext::PARSE_RANDOM_SLASH, Ewoms::InputError::IGNORE},
-                                                    {Ewoms::ParseContext::PARSE_MISSING_DIMS_KEYWORD, Ewoms::InputError::WARN},
-                                                    {Ewoms::ParseContext::SUMMARY_UNKNOWN_WELL, Ewoms::InputError::WARN},
-                                                    {Ewoms::ParseContext::SUMMARY_UNKNOWN_GROUP, Ewoms::InputError::WARN}});
-                    Ewoms::ErrorGuard errorGuard;
-                    if (outputDir.empty())
-                        outputDir = EWOMS_GET_PARAM(PreTypeTag, std::string, OutputDir);
-                    outputMode = setupLogging_(mpiRank,
-                                      deckFilename,
-                                      outputDir,
-                                      EWOMS_GET_PARAM(PreTypeTag, std::string, OutputMode),
-                                      outputCout_, "STDOUT_LOGGER");
-
-                    if (EWOMS_GET_PARAM(PreTypeTag, bool, EclStrictParsing))
-                        parseContext.update( Ewoms::InputError::DELAYED_EXIT1);
-
-                    Ewoms::EFlowMain<PreTypeTag>::printPRTHeader(outputCout_);
-
-                    std::string failureMessage;
-
-                    if (mpiRank == 0) {
-                        try
-                        {
-                            if (!deck_)
-                                deck_.reset( new Ewoms::Deck( parser.parseFile(deckFilename , parseContext, errorGuard)));
-                            Ewoms::MissingFeatures::checkKeywords(*deck_, parseContext, errorGuard);
-                            if ( outputCout_ )
-                                Ewoms::checkDeck(*deck_, parser, parseContext, errorGuard);
-
-                            if (!eclipseState_) {
-#if HAVE_MPI
-                                eclipseState_.reset(new Ewoms::ParallelEclipseState(*deck_));
-#else
-                                eclipseState_.reset(new Ewoms::EclipseState(*deck_));
-#endif
-                            }
-                            /*
-                              For the time being initializing wells and groups from the
-                              restart file is not possible, but work is underways and it is
-                              included here as a switch.
-                            */
-                            const bool init_from_restart_file = !EWOMS_GET_PARAM(PreTypeTag, bool, SchedRestart);
-                            const auto& init_config = eclipseState_->getInitConfig();
-                            if (init_config.restartRequested() && init_from_restart_file) {
-                                int report_step = init_config.getRestartStep();
-                                const auto& rst_filename = eclipseState_->getIOConfig().getRestartFileName( init_config.getRestartRootName(), report_step, false );
-                                Ewoms::EclIO::ERst rst_file(rst_filename);
-                                const auto& rst_state = Ewoms::RestartIO::RstState::load(rst_file, report_step);
-                                if (!schedule_)
-                                    schedule_.reset(new Ewoms::Schedule(*deck_, *eclipseState_, parseContext, errorGuard, &rst_state) );
-                            }
-                            else {
-                                if (!schedule_)
-                                    schedule_.reset(new Ewoms::Schedule(*deck_, *eclipseState_, parseContext, errorGuard));
-                            }
-                            setupMessageLimiter_(schedule_->getMessageLimits(), "STDOUT_LOGGER");
-                            if (!summaryConfig_)
-                                summaryConfig_.reset( new Ewoms::SummaryConfig(*deck_, *schedule_, eclipseState_->getTableManager(), parseContext, errorGuard));
-                        }
-                        catch(const std::exception& e)
-                        {
-                            failureMessage = e.what();
-                        }
-                    }
-#if HAVE_MPI
-                    else {
-                        if (!summaryConfig_)
-                            summaryConfig_.reset(new Ewoms::SummaryConfig);
-                        if (!schedule_)
-                            schedule_.reset(new Ewoms::Schedule());
-                        if (!eclipseState_)
-                            eclipseState_.reset(new Ewoms::ParallelEclipseState);
-                    }
-
-                    auto comm = Dune::MPIHelper::getCollectiveCommunication();
-                    if (false) // hack for smaller delta to OPM
-                    {
-                        if (errorGuard) {
-                            errorGuard.dump();
-                            errorGuard.clear();
-                        }
-                        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-                    }
-
-                    Ewoms::eclStateBroadcast(*eclipseState_, *schedule_, *summaryConfig_);
-#endif
-
-                    Ewoms::checkConsistentArrayDimensions(*eclipseState_, *schedule_, parseContext, errorGuard);
-
-                    if (errorGuard) {
-                        errorGuard.dump();
-                        errorGuard.clear();
-
-                        throw std::runtime_error("Unrecoverable errors were encountered while loading input.");
-                    }
-                }
+                readDeck(mpiRank, deckFilename, deck_, eclipseState_, schedule_,
+                         summaryConfig_, nullptr, std::move(parseContext),
+                         init_from_restart_file, outputCout_);
                 setupTime_ = externalSetupTimer.elapsed();
                 outputFiles_ = (outputMode != FileOutputMode::OUTPUT_NONE);
             }
@@ -551,119 +489,6 @@ namespace Ewoms
             }
         }
 
-        void ensureOutputDirExists_(const std::string& cmdline_output_dir)
-        {
-            if (!Ewoms::filesystem::is_directory(cmdline_output_dir)) {
-                try {
-                    Ewoms::filesystem::create_directories(cmdline_output_dir);
-                }
-                catch (...) {
-                    throw std::runtime_error("Creation of output directory '" + cmdline_output_dir + "' failed\n");
-                }
-            }
-        }
-
-        // Setup the OpmLog backends
-        FileOutputMode setupLogging_(int mpi_rank_, const std::string& deck_filename, const std::string& cmdline_output_dir, const std::string& cmdline_output, bool output_cout_, const std::string& stdout_log_id) {
-
-            if (!cmdline_output_dir.empty()) {
-                ensureOutputDirExists_(cmdline_output_dir);
-            }
-
-            // create logFile
-            using Ewoms::filesystem::path;
-            path fpath(deck_filename);
-            std::string baseName;
-            std::ostringstream debugFileStream;
-            std::ostringstream logFileStream;
-
-            // Strip extension "." or ".DATA"
-            std::string extension = boost::to_upper_copy(fpath.extension().string());
-            if (extension == ".DATA" || extension == ".") {
-                baseName = boost::to_upper_copy(fpath.stem().string());
-            } else {
-                baseName = boost::to_upper_copy(fpath.filename().string());
-            }
-
-            std::string output_dir = cmdline_output_dir;
-            if (output_dir.empty()) {
-                output_dir = fpath.has_parent_path()
-                    ? absolute(fpath.parent_path()).generic_string()
-                    : Ewoms::filesystem::current_path().generic_string();
-            }
-
-            logFileStream << output_dir << "/" << baseName;
-            debugFileStream << output_dir << "/" << baseName;
-
-            if (mpi_rank_ != 0) {
-                // Added rank to log file for non-zero ranks.
-                // This prevents message loss.
-                debugFileStream << "." << mpi_rank_;
-                // If the following file appears then there is a bug.
-                logFileStream << "." << mpi_rank_;
-            }
-            logFileStream << ".PRT";
-            debugFileStream << ".DBG";
-
-            FileOutputMode output;
-            {
-                static std::map<std::string, FileOutputMode> stringToOutputMode =
-                    { {"none", FileOutputMode::OUTPUT_NONE },
-                      {"false", FileOutputMode::OUTPUT_LOG_ONLY },
-                      {"log", FileOutputMode::OUTPUT_LOG_ONLY },
-                      {"all" , FileOutputMode::OUTPUT_ALL },
-                      {"true" , FileOutputMode::OUTPUT_ALL }};
-                auto outputModeIt = stringToOutputMode.find(cmdline_output);
-                if (outputModeIt != stringToOutputMode.end()) {
-                    output = outputModeIt->second;
-                }
-                else {
-                    output = FileOutputMode::OUTPUT_ALL;
-                    std::cerr << "Value " << cmdline_output <<
-                        " is not a recognized output mode. Using \"all\" instead."
-                              << std::endl;
-                }
-            }
-
-            if (output > FileOutputMode::OUTPUT_NONE) {
-                std::shared_ptr<Ewoms::EclipsePRTLog> prtLog = std::make_shared<Ewoms::EclipsePRTLog>(logFileStream.str(), Ewoms::Log::NoDebugMessageTypes, false, output_cout_);
-                Ewoms::OpmLog::addBackend("ECLIPSEPRTLOG", prtLog);
-                prtLog->setMessageLimiter(std::make_shared<Ewoms::MessageLimiter>());
-                prtLog->setMessageFormatter(std::make_shared<Ewoms::SimpleMessageFormatter>(false));
-            }
-
-            if (output >= FileOutputMode::OUTPUT_LOG_ONLY) {
-                std::string debugFile = debugFileStream.str();
-                std::shared_ptr<Ewoms::StreamLog> debugLog = std::make_shared<Ewoms::EclipsePRTLog>(debugFileStream.str(), Ewoms::Log::DefaultMessageTypes, false, output_cout_);
-                Ewoms::OpmLog::addBackend("DEBUGLOG", debugLog);
-            }
-
-            if (mpi_rank_ == 0) {
-                std::shared_ptr<Ewoms::StreamLog> streamLog = std::make_shared<Ewoms::StreamLog>(std::cout, Ewoms::Log::StdoutMessageTypes);
-                Ewoms::OpmLog::addBackend(stdout_log_id, streamLog);
-                streamLog->setMessageFormatter(std::make_shared<Ewoms::SimpleMessageFormatter>(true));
-            }
-            return output;
-        }
-
-        void setupMessageLimiter_(const Ewoms::MessageLimits msgLimits,  const std::string& stdout_log_id) {
-            std::shared_ptr<Ewoms::StreamLog> stream_log = Ewoms::OpmLog::getBackend<Ewoms::StreamLog>(stdout_log_id);
-
-            const std::map<int64_t, int> limits = {{Ewoms::Log::MessageType::Note,
-                                            msgLimits.getCommentPrintLimit(0)},
-                                           {Ewoms::Log::MessageType::Info,
-                                            msgLimits.getMessagePrintLimit(0)},
-                                           {Ewoms::Log::MessageType::Warning,
-                                            msgLimits.getWarningPrintLimit(0)},
-                                           {Ewoms::Log::MessageType::Error,
-                                            msgLimits.getErrorPrintLimit(0)},
-                                           {Ewoms::Log::MessageType::Problem,
-                                            msgLimits.getProblemPrintLimit(0)},
-                                           {Ewoms::Log::MessageType::Bug,
-                                            msgLimits.getBugPrintLimit(0)}};
-            stream_log->setMessageLimiter(std::make_shared<Ewoms::MessageLimiter>(10, limits));
-        }
-
         int argc_;
         char** argv_;
         bool outputCout_;
@@ -672,10 +497,10 @@ namespace Ewoms
         std::string deckFilename_;
         std::string flowProgName_;
         char *saveArgs_[2];
-        std::shared_ptr<Ewoms::Deck> deck_;
-        std::shared_ptr<Ewoms::EclipseState> eclipseState_;
-        std::shared_ptr<Ewoms::Schedule> schedule_;
-        std::shared_ptr<Ewoms::SummaryConfig> summaryConfig_;
+        std::unique_ptr<Ewoms::Deck> deck_;
+        std::unique_ptr<Ewoms::EclipseState> eclipseState_;
+        std::unique_ptr<Ewoms::Schedule> schedule_;
+        std::unique_ptr<Ewoms::SummaryConfig> summaryConfig_;
     };
 
 } // namespace Ewoms

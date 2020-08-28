@@ -41,9 +41,8 @@ namespace Ewoms {
     SET_PROP(EclEFlowProblemSimple, FluidSystem)
     {
     private:
-      //typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-      typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-      typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
+      using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+      using Evaluation = GET_PROP_TYPE(TypeTag, Evaluation);
 
     public:
         typedef Ewoms::BlackOilFluidSystem<Scalar> type;

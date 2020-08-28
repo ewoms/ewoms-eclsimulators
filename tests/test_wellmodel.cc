@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE(TestStandardWellInput) {
     const auto& wells_ecl = setup_test.schedule->getWells(setup_test.current_timestep);
     BOOST_CHECK_EQUAL( wells_ecl.size(), 2);
     const Ewoms::Well& well = wells_ecl[1];
-    const Ewoms::BlackoilModelParameters<TTAG(EclEFlowProblem) > param;
+    const Ewoms::BlackoilModelParameters<TTAG(EclEFlowProblem)> param;
 
     // For the conversion between the surface volume rate and resrevoir voidage rate
     typedef Ewoms::BlackOilFluidSystem<double> FluidSystem;

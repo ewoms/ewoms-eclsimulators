@@ -44,8 +44,8 @@ END_PROPERTIES
 namespace Ewoms {
 void eflowFoamSetDeck(double setupTime, Deck *deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig)
 {
-    typedef TTAG(EclEFlowFoamProblem) TypeTag;
-    typedef GET_PROP_TYPE(TypeTag, Vanguard) Vanguard;
+    using TypeTag = TTAG(EclEFlowFoamProblem);
+    using Vanguard = GET_PROP_TYPE(TypeTag, Vanguard);
 
     Vanguard::setExternalSetupTime(setupTime);
     Vanguard::setExternalDeck(deck);
@@ -68,8 +68,9 @@ int eflowFoamMain(int argc, char** argv, bool outputCout, bool outputFiles)
     Dune::MPIHelper::instance(argc, argv).rank();
 #endif
 
-    Ewoms::EFlowMain<TTAG(EclEFlowFoamProblem)> mainfunc;
-    return mainfunc.execute(argc, argv, outputCout, outputFiles);
+    Ewoms::EFlowMain<TTAG(EclEFlowFoamProblem)>
+        mainfunc {argc, argv, outputCout, outputFiles};
+    return mainfunc.execute();
 }
 
 }

@@ -106,7 +106,7 @@ template <class TypeTag>
 std::unique_ptr<GET_PROP_TYPE(TypeTag, Simulator)>
 initSimulator(const char *filename)
 {
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
 
     std::string filenameArg = "--ecl-deck-file-name=";
     filenameArg += filename;
@@ -123,12 +123,12 @@ initSimulator(const char *filename)
 
 void test_summary()
 {
-    typedef typename TTAG(TestEclOutputTypeTag) TypeTag;
+    using TypeTag = TTAG(TestEclOutputTypeTag);
     const std::string filename = "SUMMARY_DECK_NON_CONSTANT_POROSITY.DATA";
     const std::string casename = "SUMMARY_DECK_NON_CONSTANT_POROSITY";
 
     auto simulator = initSimulator<TypeTag>(filename.data());
-    typedef GET_PROP_TYPE(TypeTag, Vanguard) Vanguard;
+    using Vanguard = GET_PROP_TYPE(TypeTag, Vanguard);
     typedef Ewoms::CollectDataToIORank< Vanguard > CollectDataToIORankType;
     CollectDataToIORankType collectToIORank(simulator->vanguard());
     Ewoms::EclOutputBlackOilModule<TypeTag> eclOutputModule(*simulator, collectToIORank);
@@ -265,7 +265,7 @@ int main(int argc, char** argv)
     Dune::MPIHelper::instance(argc, argv);
 #endif
 
-    typedef TTAG(TestEclOutputTypeTag) TypeTag;
+    using TypeTag = TTAG(TestEclOutputTypeTag);
     Ewoms::registerAllParameters_<TypeTag>();
     test_summary();
     test_readWriteWells();

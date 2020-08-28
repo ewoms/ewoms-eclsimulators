@@ -41,12 +41,12 @@ template <typename TypeTag>
 class AquiferInterface
 {
 public:
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-    typedef GET_PROP_TYPE(TypeTag, Indices) BlackoilIndices;
-    typedef GET_PROP_TYPE(TypeTag, RateVector) RateVector;
-    typedef GET_PROP_TYPE(TypeTag, IntensiveQuantities) IntensiveQuantities;
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
+    using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
+    using BlackoilIndices = GET_PROP_TYPE(TypeTag, Indices);
+    using RateVector = GET_PROP_TYPE(TypeTag, RateVector);
+    using IntensiveQuantities = GET_PROP_TYPE(TypeTag, IntensiveQuantities);
 
     enum { enableTemperature = GET_PROP_VALUE(TypeTag, EnableTemperature) };
     enum { enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy) };

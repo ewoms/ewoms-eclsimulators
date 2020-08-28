@@ -49,15 +49,15 @@ template<class TypeTag>
 class SimulatorFullyImplicitBlackoil
 {
 public:
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef GET_PROP_TYPE(TypeTag, Grid) Grid;
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-    typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
-    typedef GET_PROP_TYPE(TypeTag, Indices) BlackoilIndices;
-    typedef GET_PROP_TYPE(TypeTag, PrimaryVariables)  PrimaryVariables;
-    typedef GET_PROP_TYPE(TypeTag, MaterialLaw) MaterialLaw;
-    typedef GET_PROP_TYPE(TypeTag, SolutionVector)    SolutionVector ;
-    typedef GET_PROP_TYPE(TypeTag, MaterialLawParams) MaterialLawParams;
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using Grid = GET_PROP_TYPE(TypeTag, Grid);
+    using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
+    using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
+    using BlackoilIndices = GET_PROP_TYPE(TypeTag, Indices);
+    using PrimaryVariables = GET_PROP_TYPE(TypeTag, PrimaryVariables);
+    using MaterialLaw = GET_PROP_TYPE(TypeTag, MaterialLaw);
+    using SolutionVector = GET_PROP_TYPE(TypeTag, SolutionVector);
+    using MaterialLawParams = GET_PROP_TYPE(TypeTag, MaterialLawParams);
 
     typedef AdaptiveTimeStepper<TypeTag> TimeStepper;
     typedef Ewoms::BlackOilPolymerModule<TypeTag> PolymerModule;

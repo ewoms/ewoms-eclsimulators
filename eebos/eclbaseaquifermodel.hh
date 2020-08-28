@@ -55,8 +55,8 @@ namespace Ewoms {
 template <class TypeTag>
 class EclBaseAquiferModel
 {
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef GET_PROP_TYPE(TypeTag, RateVector) RateVector;
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using RateVector = GET_PROP_TYPE(TypeTag, RateVector);
 
 public:
     EclBaseAquiferModel(Simulator& simulator)

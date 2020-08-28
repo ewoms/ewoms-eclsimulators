@@ -62,12 +62,12 @@ class EclPolyhedralGridVanguard : public EclBaseVanguard<TypeTag>
 {
     friend class EclBaseVanguard<TypeTag>;
 
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
 
 public:
-    typedef GET_PROP_TYPE(TypeTag, Grid) Grid;
-    typedef GET_PROP_TYPE(TypeTag, EquilGrid) EquilGrid;
-    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
+    using Grid = GET_PROP_TYPE(TypeTag, Grid);
+    using EquilGrid = GET_PROP_TYPE(TypeTag, EquilGrid);
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
 
 private:
     typedef Grid* GridPointer;

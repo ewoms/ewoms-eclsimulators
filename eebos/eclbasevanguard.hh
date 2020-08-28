@@ -112,16 +112,16 @@ namespace Ewoms {
 template <class TypeTag>
 class EclBaseVanguard : public BaseVanguard<TypeTag>
 {
-    typedef BaseVanguard<TypeTag> ParentType;
-    typedef GET_PROP_TYPE(TypeTag, Vanguard) Implementation;
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
+    using ParentType = BaseVanguard<TypeTag>;
+    using Implementation = GET_PROP_TYPE(TypeTag, Vanguard);
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
 
     enum { enableExperiments = GET_PROP_VALUE(TypeTag, EnableExperiments) };
 
 public:
-    typedef GET_PROP_TYPE(TypeTag, Grid) Grid;
-    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
+    using Grid = GET_PROP_TYPE(TypeTag, Grid);
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
 
 protected:
     static const int dimension = Grid::dimension;

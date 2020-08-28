@@ -56,7 +56,7 @@ namespace Ewoms {
     template <class TypeTag, class PhysicalModel>
     class NonlinearSolver
     {
-        typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+        using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
 
     public:
         // Available relaxation scheme types.

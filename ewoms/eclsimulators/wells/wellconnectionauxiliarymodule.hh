@@ -31,8 +31,8 @@ template<class TypeTag>
 class WellConnectionAuxiliaryModule
     : public Ewoms::BaseAuxiliaryModule<TypeTag>
 {
-    typedef GET_PROP_TYPE(TypeTag, GlobalEqVector) GlobalEqVector;
-    typedef GET_PROP_TYPE(TypeTag, SparseMatrixAdapter) SparseMatrixAdapter;
+    using GlobalEqVector = GET_PROP_TYPE(TypeTag, GlobalEqVector);
+    using SparseMatrixAdapter = GET_PROP_TYPE(TypeTag, SparseMatrixAdapter);
 
 public:
 

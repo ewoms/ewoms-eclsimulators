@@ -35,7 +35,7 @@ namespace Ewoms {
 
 bool eebosBlackOilDeckFileNameIsSet(int argc, char** argv)
 {
-    typedef TTAG(EebosTypeTag) ProblemTypeTag;
+    using ProblemTypeTag = TTAG(EebosTypeTag);
 
     // use the ewoms parameter machinery and the blackoil vanguard to handle the grunt of
     // the work
@@ -53,8 +53,8 @@ bool eebosBlackOilDeckFileNameIsSet(int argc, char** argv)
 
 std::string eebosBlackOilGetDeckFileName(int argc, char** argv)
 {
-    typedef TTAG(EebosTypeTag) ProblemTypeTag;
-    typedef GET_PROP_TYPE(ProblemTypeTag, Vanguard) Vanguard;
+    using ProblemTypeTag = TTAG(EebosTypeTag);
+    using Vanguard = GET_PROP_TYPE(ProblemTypeTag, Vanguard);
 
     // use the ewoms parameter machinery and the blackoil vanguard to handle the grunt of
     // the work

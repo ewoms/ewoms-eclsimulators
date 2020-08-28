@@ -43,8 +43,8 @@ namespace Ewoms
 template <typename TypeTag>
 class BlackoilAquiferModel
 {
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef GET_PROP_TYPE(TypeTag, RateVector) RateVector;
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using RateVector = GET_PROP_TYPE(TypeTag, RateVector);
 
 public:
     explicit BlackoilAquiferModel(Simulator& simulator);
@@ -70,8 +70,8 @@ public:
 
 protected:
     // ---------      Types      ---------
-    typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+    using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
 
     typedef AquiferCarterTracy<TypeTag> AquiferCarterTracy_object;
     typedef AquiferFetkovich<TypeTag> AquiferFetkovich_object;

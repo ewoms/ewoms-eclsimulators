@@ -31,22 +31,32 @@
 #include "collecttoiorank.hh"
 #include "ecloutputblackoilmodule.hh"
 
-#include <eebos/nncsorter.hh>
-#include <ewoms/eclsimulators/utils/parallelrestart.hh>
 #include <ewoms/numerics/models/blackoil/blackoilmodel.hh>
+
 #include <ewoms/eclsimulators/wells/blackoilwellmodel.hh>
+
 #include <ewoms/numerics/discretizations/ecfv/ecfvdiscretization.hh>
 #include <ewoms/numerics/io/baseoutputwriter.hh>
-#include <ewoms/eclgrids/gridhelpers.hh>
-#include <ewoms/eclgrids/utility/cartesiantocompressed.hh>
+#include <ewoms/common/parallel/tasklets.hh>
+
+#include <eebos/nncsorter.hh>
+
 #include <ewoms/eclio/output/eclipseio.hh>
+
 #include <ewoms/eclio/output/restartvalue.hh>
 #include <ewoms/eclio/output/summary.hh>
 #include <ewoms/eclio/parser/units/unitsystem.hh>
-#include <ewoms/eclio/opmlog/opmlog.hh>
-#include <ewoms/common/parallel/tasklets.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/action/state.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqconfig.hh>
+
+#include <ewoms/eclsimulators/utils/parallelrestart.hh>
+#include <ewoms/eclgrids/gridhelpers.hh>
+#include <ewoms/eclgrids/utility/cartesiantocompressed.hh>
+
 #include <ewoms/common/valgrind.hh>
 #include <ewoms/common/exceptions.hh>
+
+#include <ewoms/eclio/opmlog/opmlog.hh>
 
 #include <list>
 #include <utility>
@@ -144,15 +154,15 @@ bool directVerticalNeighbors(const std::array<int, 3>& cartDims,
 template <class TypeTag>
 class EclWriter
 {
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef GET_PROP_TYPE(TypeTag, Vanguard) Vanguard;
-    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
-    typedef GET_PROP_TYPE(TypeTag, EquilGrid) EquilGrid;
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-    typedef typename GridView::template Codim<0>::Entity Element;
-    typedef typename GridView::template Codim<0>::Iterator ElementIterator;
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using Vanguard = GET_PROP_TYPE(TypeTag, Vanguard);
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
+    using EquilGrid = GET_PROP_TYPE(TypeTag, EquilGrid);
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
+    using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
+    using Element = typename GridView::template Codim<0>::Entity;
+    using ElementIterator = typename GridView::template Codim<0>::Iterator;
 
     typedef CollectDataToIORank<Vanguard> CollectDataToIORankType;
 
@@ -306,6 +316,10 @@ public:
                          miscSummaryData,
                          regionData,
                          blockData);
+
+            const auto& udq_config = schedule().getUDQConfig(reportStepNum);
+            udq_config.eval( summaryState() );
+
             buffer = summaryState().serialize();
         }
 

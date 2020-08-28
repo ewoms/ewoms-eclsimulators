@@ -71,13 +71,13 @@ class EclCpGridVanguard : public EclBaseVanguard<TypeTag>
 {
     friend class EclBaseVanguard<TypeTag>;
 
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef GET_PROP_TYPE(TypeTag, ElementMapper) ElementMapper;
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using ElementMapper = GET_PROP_TYPE(TypeTag, ElementMapper);
 
 public:
-    typedef GET_PROP_TYPE(TypeTag, Grid) Grid;
-    typedef GET_PROP_TYPE(TypeTag, EquilGrid) EquilGrid;
-    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
+    using Grid = GET_PROP_TYPE(TypeTag, Grid);
+    using EquilGrid = GET_PROP_TYPE(TypeTag, EquilGrid);
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
 
 private:
     typedef Dune::CartesianIndexMapper<Grid> CartesianIndexMapper;

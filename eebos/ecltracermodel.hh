@@ -62,12 +62,12 @@ namespace Ewoms {
 template <class TypeTag>
 class EclTracerModel
 {
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, Stencil) Stencil;
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-    typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using Stencil = GET_PROP_TYPE(TypeTag, Stencil);
+    using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
+    using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
 
     typedef Ewoms::DenseAd::Evaluation<Scalar,1> TracerEvaluation;
 

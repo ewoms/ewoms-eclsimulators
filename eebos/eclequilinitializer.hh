@@ -65,12 +65,12 @@ namespace Ewoms {
 template <class TypeTag>
 class EclEquilInitializer
 {
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, MaterialLaw) MaterialLaw;
-    typedef GET_PROP_TYPE(TypeTag, Indices) Indices;
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using MaterialLaw = GET_PROP_TYPE(TypeTag, MaterialLaw);
+    using Indices = GET_PROP_TYPE(TypeTag, Indices);
 
     enum { numPhases = FluidSystem::numPhases };
 

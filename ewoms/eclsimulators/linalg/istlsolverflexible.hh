@@ -62,7 +62,7 @@ class ISTLSolverFlexible
     using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
     using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
     using MatrixType = typename SparseMatrixAdapter::IstlMatrix;
-    using WellModel = typename GET_PROP_TYPE(TypeTag, EclWellModel);
+    using WellModel = GET_PROP_TYPE(TypeTag, EclWellModel);
 #if HAVE_MPI
     using Communication = Dune::OwnerOverlapCopyCommunication<int, int>;
 #else
@@ -73,14 +73,14 @@ class ISTLSolverFlexible
     using SolverType = Dune::FlexibleSolver<MatrixType, VectorType>;
 
     // for quasiImpesWeights
-    typedef typename GET_PROP_TYPE(TypeTag, GlobalEqVector) Vector;
-    typedef typename GET_PROP_TYPE(TypeTag, Indices) Indices;
+    using Vector = GET_PROP_TYPE(TypeTag, GlobalEqVector);
+    using Indices = GET_PROP_TYPE(TypeTag, Indices);
     typedef typename SparseMatrixAdapter::IstlMatrix Matrix;
     typedef typename SparseMatrixAdapter::MatrixBlock MatrixBlockType;
     typedef typename Vector::block_type BlockVector;
-    typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
+    using Evaluation = GET_PROP_TYPE(TypeTag, Evaluation);
     typedef typename GridView::template Codim<0>::Entity Element;
-    typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
+    using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
 
 public:
     static void registerParameters()

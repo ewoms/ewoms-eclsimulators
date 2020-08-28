@@ -73,22 +73,22 @@ class EcfvDiscretization;
 template <class TypeTag>
 class EclPeacemanWell : public BaseAuxiliaryModule<TypeTag>
 {
-    typedef BaseAuxiliaryModule<TypeTag> AuxModule;
+    using AuxModule = BaseAuxiliaryModule<TypeTag>;
 
-    typedef typename AuxModule::NeighborSet NeighborSet;
-    typedef GET_PROP_TYPE(TypeTag, SparseMatrixAdapter) SparseMatrixAdapter;
-    typedef GET_PROP_TYPE(TypeTag, SolutionVector) SolutionVector;
-    typedef GET_PROP_TYPE(TypeTag, GlobalEqVector) GlobalEqVector;
+    using NeighborSet = typename AuxModule::NeighborSet;
+    using SparseMatrixAdapter = GET_PROP_TYPE(TypeTag, SparseMatrixAdapter);
+    using SolutionVector = GET_PROP_TYPE(TypeTag, SolutionVector);
+    using GlobalEqVector = GET_PROP_TYPE(TypeTag, GlobalEqVector);
 
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
-    typedef GET_PROP_TYPE(TypeTag, Discretization) Discretization;
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
-    typedef GET_PROP_TYPE(TypeTag, IntensiveQuantities) IntensiveQuantities;
-    typedef GET_PROP_TYPE(TypeTag, RateVector) RateVector;
-    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using Evaluation = GET_PROP_TYPE(TypeTag, Evaluation);
+    using Discretization = GET_PROP_TYPE(TypeTag, Discretization);
+    using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
+    using IntensiveQuantities = GET_PROP_TYPE(TypeTag, IntensiveQuantities);
+    using RateVector = GET_PROP_TYPE(TypeTag, RateVector);
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
 
     typedef Ewoms::MathToolbox<Evaluation> Toolbox;
 

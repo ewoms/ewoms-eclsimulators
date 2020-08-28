@@ -71,17 +71,16 @@ class EcfvDiscretization;
 template <class TypeTag>
 class EclOutputBlackOilModule
 {
-
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef GET_PROP_TYPE(TypeTag, Discretization) Discretization;
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
-    typedef GET_PROP_TYPE(TypeTag, MaterialLaw) MaterialLaw;
-    typedef GET_PROP_TYPE(TypeTag, MaterialLawParams) MaterialLawParams;
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
-    typedef typename GridView::template Codim<0>::Entity Element;
-    typedef typename GridView::template Codim<0>::Iterator ElementIterator;
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using Discretization = GET_PROP_TYPE(TypeTag, Discretization);
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
+    using MaterialLaw = GET_PROP_TYPE(TypeTag, MaterialLaw);
+    using MaterialLawParams = GET_PROP_TYPE(TypeTag, MaterialLawParams);
+    using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
+    using Element = typename GridView::template Codim<0>::Entity;
+    using ElementIterator = typename GridView::template Codim<0>::Iterator;
 
     enum { numPhases = FluidSystem::numPhases };
     enum { oilPhaseIdx = FluidSystem::oilPhaseIdx };

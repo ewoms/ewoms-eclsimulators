@@ -71,14 +71,14 @@ namespace Ewoms {
 template <class TypeTag>
 class EclWellManager
 {
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
-    typedef GET_PROP_TYPE(TypeTag, Grid) Grid;
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-    typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
-    typedef GET_PROP_TYPE(TypeTag, RateVector) RateVector;
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
+    using Grid = GET_PROP_TYPE(TypeTag, Grid);
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using Evaluation = GET_PROP_TYPE(TypeTag, Evaluation);
+    using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
+    using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
+    using RateVector = GET_PROP_TYPE(TypeTag, RateVector);
 
     enum { numEq = GET_PROP_VALUE(TypeTag, NumEq) };
     enum { numPhases = FluidSystem::numPhases };

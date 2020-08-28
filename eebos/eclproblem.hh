@@ -166,8 +166,8 @@ SET_TAG_PROP(EclBaseProblem, LocalLinearizerSplice, AutoDiffLocalLinearizer);
 SET_PROP(EclBaseProblem, MaterialLaw)
 {
 private:
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
 
     typedef Ewoms::ThreePhaseMaterialTraits<Scalar,
                                           /*wettingPhaseIdx=*/FluidSystem::waterPhaseIdx,
@@ -184,8 +184,8 @@ public:
 SET_PROP(EclBaseProblem, SolidEnergyLaw)
 {
 private:
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
 
 public:
     typedef Ewoms::EclThermalLawManager<Scalar, FluidSystem> EclThermalLawManager;
@@ -197,8 +197,8 @@ public:
 SET_PROP(EclBaseProblem, ThermalConductionLaw)
 {
 private:
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
 
 public:
     typedef Ewoms::EclThermalLawManager<Scalar, FluidSystem> EclThermalLawManager;
@@ -211,8 +211,8 @@ public:
 SET_PROP(EclBaseProblem, Stencil)
 {
 private:
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
 
 public:
     typedef Ewoms::EcfvStencil<Scalar,
@@ -377,15 +377,15 @@ namespace Ewoms {
 template <class TypeTag>
 class EclProblem : public GET_PROP_TYPE(TypeTag, BaseProblem)
 {
-    typedef GET_PROP_TYPE(TypeTag, BaseProblem) ParentType;
-    typedef GET_PROP_TYPE(TypeTag, Problem) Implementation;
+    using ParentType = GET_PROP_TYPE(TypeTag, BaseProblem);
+    using Implementation = GET_PROP_TYPE(TypeTag, Problem);
 
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
-    typedef GET_PROP_TYPE(TypeTag, Stencil) Stencil;
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-    typedef GET_PROP_TYPE(TypeTag, GlobalEqVector) GlobalEqVector;
-    typedef GET_PROP_TYPE(TypeTag, EqVector) EqVector;
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
+    using Stencil = GET_PROP_TYPE(TypeTag, Stencil);
+    using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
+    using GlobalEqVector = GET_PROP_TYPE(TypeTag, GlobalEqVector);
+    using EqVector = GET_PROP_TYPE(TypeTag, EqVector);
 
     // Grid and world dimension
     enum { dim = GridView::dimension };
@@ -394,14 +394,11 @@ class EclProblem : public GET_PROP_TYPE(TypeTag, BaseProblem)
     // copy some indices for convenience
     enum { numEq = GET_PROP_VALUE(TypeTag, NumEq) };
     enum { numPhases = FluidSystem::numPhases };
-    enum { numComponents = FluidSystem::numComponents };
     enum { enableExperiments = GET_PROP_VALUE(TypeTag, EnableExperiments) };
     enum { enableSolvent = GET_PROP_VALUE(TypeTag, EnableSolvent) };
     enum { enablePolymer = GET_PROP_VALUE(TypeTag, EnablePolymer) };
     enum { enableBrine = GET_PROP_VALUE(TypeTag, EnableBrine) };
     enum { enablePolymerMolarWeight = GET_PROP_VALUE(TypeTag, EnablePolymerMW) };
-    enum { enableFoam = GET_PROP_VALUE(TypeTag, EnableFoam) };
-    enum { enableTemperature = GET_PROP_VALUE(TypeTag, EnableTemperature) };
     enum { enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy) };
     enum { enableThermalFluxBoundaries = GET_PROP_VALUE(TypeTag, EnableThermalFluxBoundaries) };
     enum { enableApiTracking = GET_PROP_VALUE(TypeTag, EnableApiTracking) };
@@ -412,24 +409,24 @@ class EclProblem : public GET_PROP_TYPE(TypeTag, BaseProblem)
     enum { oilCompIdx = FluidSystem::oilCompIdx };
     enum { waterCompIdx = FluidSystem::waterCompIdx };
 
-    typedef GET_PROP_TYPE(TypeTag, PrimaryVariables) PrimaryVariables;
-    typedef GET_PROP_TYPE(TypeTag, RateVector) RateVector;
-    typedef GET_PROP_TYPE(TypeTag, BoundaryRateVector) BoundaryRateVector;
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef typename GridView::template Codim<0>::Entity Element;
-    typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
-    typedef typename GET_PROP(TypeTag, MaterialLaw)::EclMaterialLawManager EclMaterialLawManager;
-    typedef typename GET_PROP(TypeTag, SolidEnergyLaw)::EclThermalLawManager EclThermalLawManager;
-    typedef typename EclMaterialLawManager::MaterialLawParams MaterialLawParams;
-    typedef typename EclThermalLawManager::SolidEnergyLawParams SolidEnergyLawParams;
-    typedef typename EclThermalLawManager::ThermalConductionLawParams ThermalConductionLawParams;
-    typedef GET_PROP_TYPE(TypeTag, MaterialLaw) MaterialLaw;
-    typedef GET_PROP_TYPE(TypeTag, DofMapper) DofMapper;
-    typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
-    typedef GET_PROP_TYPE(TypeTag, Indices) Indices;
-    typedef GET_PROP_TYPE(TypeTag, IntensiveQuantities) IntensiveQuantities;
-    typedef GET_PROP_TYPE(TypeTag, EclWellModel) EclWellModel;
-    typedef GET_PROP_TYPE(TypeTag, EclAquiferModel) EclAquiferModel;
+    using PrimaryVariables = GET_PROP_TYPE(TypeTag, PrimaryVariables);
+    using RateVector = GET_PROP_TYPE(TypeTag, RateVector);
+    using BoundaryRateVector = GET_PROP_TYPE(TypeTag, BoundaryRateVector);
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using Element = typename GridView::template Codim<0>::Entity;
+    using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
+    using EclMaterialLawManager = typename GET_PROP(TypeTag, MaterialLaw)::EclMaterialLawManager;
+    using EclThermalLawManager = typename GET_PROP(TypeTag, SolidEnergyLaw)::EclThermalLawManager;
+    using MaterialLawParams = typename EclMaterialLawManager::MaterialLawParams;
+    using SolidEnergyLawParams = typename EclThermalLawManager::SolidEnergyLawParams;
+    using ThermalConductionLawParams = typename EclThermalLawManager::ThermalConductionLawParams;
+    using MaterialLaw = GET_PROP_TYPE(TypeTag, MaterialLaw);
+    using DofMapper = GET_PROP_TYPE(TypeTag, DofMapper);
+    using Evaluation = GET_PROP_TYPE(TypeTag, Evaluation);
+    using Indices = GET_PROP_TYPE(TypeTag, Indices);
+    using IntensiveQuantities = GET_PROP_TYPE(TypeTag, IntensiveQuantities);
+    using EclWellModel = GET_PROP_TYPE(TypeTag, EclWellModel);
+    using EclAquiferModel = GET_PROP_TYPE(TypeTag, EclAquiferModel);
 
     typedef BlackOilSolventModule<TypeTag> SolventModule;
     typedef BlackOilPolymerModule<TypeTag> PolymerModule;

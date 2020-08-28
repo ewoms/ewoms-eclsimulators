@@ -92,7 +92,7 @@ class EclTransBaseProblem
 template <class TypeTag>
 class EclTransIntensiveQuantities
 {
-    typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
+    using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
 protected:
     void update_(const ElementContext& elemCtx EWOMS_UNUSED, unsigned dofIdx EWOMS_UNUSED, unsigned timeIdx EWOMS_UNUSED)
     { }
@@ -105,14 +105,14 @@ protected:
 template <class TypeTag>
 class EclTransExtensiveQuantities
 {
-    typedef GET_PROP_TYPE(TypeTag, ExtensiveQuantities) Implementation;
+    using Implementation = GET_PROP_TYPE(TypeTag, ExtensiveQuantities);
 
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
-    typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
-    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
-    typedef GET_PROP_TYPE(TypeTag, MaterialLaw) MaterialLaw;
+    using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
+    using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using Evaluation = GET_PROP_TYPE(TypeTag, Evaluation);
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
+    using MaterialLaw = GET_PROP_TYPE(TypeTag, MaterialLaw);
 
     enum { dimWorld = GridView::dimensionworld };
     enum { gasPhaseIdx = FluidSystem::gasPhaseIdx };

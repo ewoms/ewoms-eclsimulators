@@ -69,7 +69,7 @@ struct EclWellModel;
 SET_PROP(EFlowIstlSolver, SparseMatrixAdapter)
 {
 private:
-    typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
     enum { numEq = GET_PROP_VALUE(TypeTag, NumEq) };
     typedef Dune::FieldMatrix<Scalar, numEq, numEq> Block;
 
@@ -100,20 +100,20 @@ DenseMatrix transposeDenseMatrix(const DenseMatrix& M)
     class ISTLSolver
     {
     protected:
-        typedef typename GET_PROP_TYPE(TypeTag, GridView) GridView;
-        typedef typename GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-        typedef typename GET_PROP_TYPE(TypeTag, SparseMatrixAdapter) SparseMatrixAdapter;
-        typedef typename GET_PROP_TYPE(TypeTag, GlobalEqVector) Vector;
-        typedef typename GET_PROP_TYPE(TypeTag, Indices) Indices;
-        typedef typename GET_PROP_TYPE(TypeTag, EclWellModel) WellModel;
-        typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
+        using GridView = GET_PROP_TYPE(TypeTag, GridView);
+        using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+        using SparseMatrixAdapter = GET_PROP_TYPE(TypeTag, SparseMatrixAdapter);
+        using Vector = GET_PROP_TYPE(TypeTag, GlobalEqVector);
+        using Indices = GET_PROP_TYPE(TypeTag, Indices);
+        using WellModel = GET_PROP_TYPE(TypeTag, EclWellModel);
+        using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
         typedef typename SparseMatrixAdapter::IstlMatrix Matrix;
 
         typedef typename SparseMatrixAdapter::MatrixBlock MatrixBlockType;
         typedef typename Vector::block_type BlockVector;
-        typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
+        using Evaluation = GET_PROP_TYPE(TypeTag, Evaluation);
         typedef typename GridView::template Codim<0>::Entity Element;
-        typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
+        using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
         using FlexibleSolverType = Dune::FlexibleSolver<Matrix, Vector>;
         using AbstractOperatorType = Dune::AssembledLinearOperator<Matrix, Vector, Vector>;
         using WellModelOperator = WellModelAsLinearOperator<WellModel, Vector, Vector>;

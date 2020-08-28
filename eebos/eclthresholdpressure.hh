@@ -75,11 +75,11 @@ namespace Ewoms {
 template <class TypeTag>
 class EclThresholdPressure
 {
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
-    typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
-    typedef GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using Evaluation = GET_PROP_TYPE(TypeTag, Evaluation);
+    using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
+    using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
 
     enum { enableExperiments = GET_PROP_VALUE(TypeTag, EnableExperiments) };
     enum { numPhases = FluidSystem::numPhases };

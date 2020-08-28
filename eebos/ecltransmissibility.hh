@@ -75,12 +75,12 @@ namespace Ewoms {
 template <class TypeTag>
 class EclTransmissibility
 {
-    typedef GET_PROP_TYPE(TypeTag, Grid) Grid;
-    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, Vanguard) Vanguard;
-    typedef GET_PROP_TYPE(TypeTag, ElementMapper) ElementMapper;
-    typedef typename GridView::Intersection Intersection;
+    using Grid = GET_PROP_TYPE(TypeTag, Grid);
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using Vanguard = GET_PROP_TYPE(TypeTag, Vanguard);
+    using ElementMapper = GET_PROP_TYPE(TypeTag, ElementMapper);
+    using Intersection = typename GridView::Intersection;
 
     static const bool enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy);
 

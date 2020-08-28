@@ -47,8 +47,8 @@ void eebosFoamSetDeck(Ewoms::Deck* deck,
                      Ewoms::ErrorGuard* errorGuard,
                      double externalSetupTime)
 {
-    typedef TTAG(EebosFoamTypeTag) ProblemTypeTag;
-    typedef GET_PROP_TYPE(ProblemTypeTag, Vanguard) Vanguard;
+    using ProblemTypeTag = TTAG(EebosFoamTypeTag);
+    using Vanguard = GET_PROP_TYPE(ProblemTypeTag, Vanguard);
 
     Vanguard::setExternalSetupTime(externalSetupTime);
     Vanguard::setExternalParseContext(parseContext);

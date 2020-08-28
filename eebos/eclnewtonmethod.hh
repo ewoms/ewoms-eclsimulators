@@ -53,12 +53,12 @@ template <class TypeTag>
 class EclNewtonMethod : public BlackOilNewtonMethod<TypeTag>
 {
     typedef BlackOilNewtonMethod<TypeTag> ParentType;
-    typedef GET_PROP_TYPE(TypeTag, DiscNewtonMethod) DiscNewtonMethod;
+    using DiscNewtonMethod = GET_PROP_TYPE(TypeTag, DiscNewtonMethod);
 
-    typedef GET_PROP_TYPE(TypeTag, Simulator) Simulator;
-    typedef GET_PROP_TYPE(TypeTag, SolutionVector) SolutionVector;
-    typedef GET_PROP_TYPE(TypeTag, GlobalEqVector) GlobalEqVector;
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+    using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+    using SolutionVector = GET_PROP_TYPE(TypeTag, SolutionVector);
+    using GlobalEqVector = GET_PROP_TYPE(TypeTag, GlobalEqVector);
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
 
     static const unsigned numEq = GET_PROP_VALUE(TypeTag, NumEq);
 

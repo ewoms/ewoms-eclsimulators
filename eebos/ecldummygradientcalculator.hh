@@ -48,10 +48,9 @@ namespace Ewoms {
 template<class TypeTag>
 class EclDummyGradientCalculator
 {
-
-    typedef GET_PROP_TYPE(TypeTag, GridView) GridView;
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
-    typedef GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
+    using GridView = GET_PROP_TYPE(TypeTag, GridView);
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
 
     enum { dimWorld = GridView::dimensionworld };
 

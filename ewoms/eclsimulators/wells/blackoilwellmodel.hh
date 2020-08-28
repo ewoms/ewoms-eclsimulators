@@ -69,15 +69,15 @@ namespace Ewoms {
             typedef WellStateFullyImplicitBlackoil WellState;
             typedef BlackoilModelParameters<TypeTag> ModelParameters;
 
-            typedef GET_PROP_TYPE(TypeTag, Grid)                Grid;
-            typedef GET_PROP_TYPE(TypeTag, FluidSystem)         FluidSystem;
-            typedef GET_PROP_TYPE(TypeTag, ElementContext)      ElementContext;
-            typedef GET_PROP_TYPE(TypeTag, Indices)             Indices;
-            typedef GET_PROP_TYPE(TypeTag, Simulator)           Simulator;
-            typedef GET_PROP_TYPE(TypeTag, Scalar)              Scalar;
-            typedef GET_PROP_TYPE(TypeTag, RateVector)          RateVector;
-            typedef GET_PROP_TYPE(TypeTag, GlobalEqVector)      GlobalEqVector;
-            typedef GET_PROP_TYPE(TypeTag, SparseMatrixAdapter) SparseMatrixAdapter;
+            using Grid = GET_PROP_TYPE(TypeTag, Grid);
+            using FluidSystem = GET_PROP_TYPE(TypeTag, FluidSystem);
+            using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
+            using Indices = GET_PROP_TYPE(TypeTag, Indices);
+            using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
+            using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+            using RateVector = GET_PROP_TYPE(TypeTag, RateVector);
+            using GlobalEqVector = GET_PROP_TYPE(TypeTag, GlobalEqVector);
+            using SparseMatrixAdapter = GET_PROP_TYPE(TypeTag, SparseMatrixAdapter);
 
             typedef typename Ewoms::BaseAuxiliaryModule<TypeTag>::NeighborSet NeighborSet;
 
