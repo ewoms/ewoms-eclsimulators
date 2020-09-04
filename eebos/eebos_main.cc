@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 
     std::unique_ptr<Ewoms::ParseContext> parseContext
         = Ewoms::eebosBlackOilCreateParseContext(argc, argv);
-    std::unique_ptr<Ewoms::ErrorGuard> errorGuard(new Ewoms::ErrorGuard);
+    auto errorGuard = std::make_unique<Ewoms::ErrorGuard>();
 
     // deal with parallel runs
     int myRank = Dune::MPIHelper::instance(argc, argv).rank();
@@ -81,7 +81,7 @@ int main(int argc, char **argv)
     // parse the deck file
     if (myRank == 0)
         std::cout << "Parsing deck file \"" << deckFileName << "\"" << std::endl;
-    std::unique_ptr<Ewoms::Deck> deck(new Ewoms::Deck(parser.parseFile(deckFileName, *parseContext, *errorGuard)));
+    auto deck = std::make_unique<Ewoms::Deck>(parser.parseFile(deckFileName, *parseContext, *errorGuard));
 
     // TODO: check which variant ought to be used
     bool waterActive = deck->hasKeyword("WATER");

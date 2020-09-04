@@ -20,6 +20,8 @@
 #include <ewoms/eclsimulators/wells/simfibodetails.hh>
 #include <ewoms/eclsimulators/deprecated/props/phaseusagefromdeck.hh>
 
+#include <utility>
+
 namespace Ewoms {
     template<typename TypeTag>
     BlackoilWellModel<TypeTag>::
@@ -338,7 +340,7 @@ namespace Ewoms {
             if (has_polymer_)
             {
                 const Grid& grid = eebosSimulator_.vanguard().grid();
-                if (PolymerModule::hasPlyshlog() || GET_PROP_VALUE(TypeTag, EnablePolymerMW) ) {
+                if (PolymerModule::hasPlyshlog() || GET_PROP_VALUE(TypeTag, EnablePolymerMW)) {
                         computeRepRadiusPerfLength(grid, local_deferredLogger);
                 }
             }
@@ -433,7 +435,7 @@ namespace Ewoms {
 
         Ewoms::DeferredLogger local_deferredLogger;
         for (const auto& well : well_container_) {
-            if (GET_PROP_VALUE(TypeTag, EnablePolymerMW) && well->isInjector()) {
+            if (GET_PROP_VALUE(TypeTag, EnablePolymerMW)&& well->isInjector()) {
                 well->updateWaterThroughput(dt, well_state_);
             }
         }
@@ -529,7 +531,7 @@ namespace Ewoms {
             const size_t numCells = Ewoms::UgGridHelpers::numCells(grid());
             const bool handle_ms_well = (param_.use_multisegment_well_ && anyMSWellOpenLocal());
             well_state_.resize(wells_ecl_, schedule(), handle_ms_well, numCells, phaseUsage, well_perf_data_, summaryState, globalNumWells); // Resize for restart step
-            wellsToState(restartValues.wells, phaseUsage, handle_ms_well, well_state_);
+            wellsToState(restartValues.wells, restartValues.groups, phaseUsage, handle_ms_well, well_state_);
         }
 
         previous_well_state_ = well_state_;
@@ -1498,10 +1500,13 @@ namespace Ewoms {
     void
     BlackoilWellModel<TypeTag>::
     wellsToState( const data::Wells& wells,
+                  const data::GroupValues& groupValues,
                   const PhaseUsage& phases,
                   const bool handle_ms_well,
                   WellStateFullyImplicitBlackoil& state) const
     {
+        using GPMode = Group::ProductionCMode;
+        using GIMode = Group::InjectionCMode;
 
         using rt = data::Rates::opt;
         const auto np = phases.num_phases;
@@ -1589,6 +1594,24 @@ namespace Ewoms {
                         state.segRates()[(top_segment_index + segment_index) * np + p] = segment_rates.get(phs[p]);
                     }
                 }
+            }
+        }
+
+        for (const auto& [group, value] : groupValues) {
+            const auto cpc = value.currentControl.currentProdConstraint;
+            const auto cgi = value.currentControl.currentGasInjectionConstraint;
+            const auto cwi = value.currentControl.currentWaterInjectionConstraint;
+
+            if (cpc != GPMode::NONE) {
+                state.setCurrentProductionGroupControl(group, cpc);
+            }
+
+            if (cgi != GIMode::NONE) {
+                state.setCurrentInjectionGroupControl(Phase::GAS, group, cgi);
+            }
+
+            if (cwi != GIMode::NONE) {
+                state.setCurrentInjectionGroupControl(Phase::WATER, group, cwi);
             }
         }
     }
@@ -2066,7 +2089,7 @@ namespace Ewoms {
     actionOnBrokenConstraints(const Group& group, const Group::ExceedAction& exceed_action, const Group::ProductionCMode& newControl, Ewoms::DeferredLogger& deferred_logger) {
 
         auto& well_state = well_state_;
-        const Group::ProductionCMode& oldControl = well_state.currentProductionGroupControl(group.name());
+        const Group::ProductionCMode oldControl = well_state.currentProductionGroupControl(group.name());
 
         std::ostringstream ss;
 
@@ -2120,7 +2143,7 @@ namespace Ewoms {
     BlackoilWellModel<TypeTag>::
     actionOnBrokenConstraints(const Group& group, const Group::InjectionCMode& newControl, const Phase& controlPhase, Ewoms::DeferredLogger& deferred_logger) {
         auto& well_state = well_state_;
-        const Group::InjectionCMode& oldControl = well_state.currentInjectionGroupControl(controlPhase, group.name());
+        const Group::InjectionCMode oldControl = well_state.currentInjectionGroupControl(controlPhase, group.name());
 
         std::ostringstream ss;
         if (oldControl != newControl) {
@@ -2305,6 +2328,79 @@ namespace Ewoms {
     }
 
     template<typename TypeTag>
+    std::unordered_map<std::string, data::GroupGuideRates>
+    BlackoilWellModel<TypeTag>::
+    calculateAllGroupGuiderates(const int reportStepIdx, const Schedule& sched) const
+    {
+        auto gr = std::unordered_map<std::string, data::GroupGuideRates>{};
+        auto up = std::vector<std::string>{};
+
+        // Start at well level, accumulate contributions towards root of
+        // group tree (FIELD group).
+
+        for (const auto& wname : sched.wellNames(reportStepIdx)) {
+            if (! (this->well_state_.hasWellRates(wname) &&
+                   this->guideRate_->has(wname)))
+            {
+                continue;
+            }
+
+            const auto& well   = sched.getWell(wname, reportStepIdx);
+            const auto& parent = well.groupName();
+
+            if (parent == "FIELD") {
+                // Well parented directly to "FIELD".  Inadvisable and
+                // unexpected, but nothing to do about that here.  Just skip
+                // this guide rate contribution.
+                continue;
+            }
+
+            auto& grval = well.isInjector()
+                ? gr[parent].injection
+                : gr[parent].production;
+
+            grval += this->getGuideRateValues(well);
+            up.push_back(parent);
+        }
+
+        // Propagate accumulated guide rates up towards root of group tree.
+        // Override accumulation if there is a GUIDERAT specification that
+        // applies to a group.
+        std::sort(up.begin(), up.end());
+        auto start = 0*up.size();
+        auto u     = std::unique(up.begin(), up.end());
+        auto nu    = std::distance(up.begin(), u);
+        while (nu > 0) {
+            const auto ntot = up.size();
+
+            for (auto gi = 0*nu; gi < nu; ++gi) {
+                const auto& gname = up[start + gi];
+                const auto& group = sched.getGroup(gname, reportStepIdx);
+
+                if (this->guideRate_->has(gname)) {
+                    gr[gname].production = this->getGuideRateValues(group);
+                }
+
+                const auto parent = group.parent();
+                if (parent == "FIELD") { continue; }
+
+                gr[parent].injection  += gr[gname].injection;
+                gr[parent].production += gr[gname].production;
+                up.push_back(parent);
+            }
+
+            start = ntot;
+
+            auto begin = up.begin() + ntot;
+            std::sort(begin, up.end());
+            u  = std::unique(begin, up.end());
+            nu = std::distance(begin, u);
+        }
+
+        return gr;
+    }
+
+    template<typename TypeTag>
     void
     BlackoilWellModel<TypeTag>::
     assignGroupControl(const Group& group, data::GroupData& gdata) const
@@ -2340,4 +2436,114 @@ namespace Ewoms {
         }
     }
 
+    template <typename TypeTag>
+    data::GuideRateValue
+    BlackoilWellModel<TypeTag>::
+    getGuideRateValues(const Well& well) const
+    {
+        auto grval = data::GuideRateValue{};
+
+        assert (this->guideRate_ != nullptr);
+
+        const auto& wname = well.name();
+        if (! this->well_state_.hasWellRates(wname)) {
+            // No flow rates for 'wname' -- might be before well comes
+            // online (e.g., for the initial condition before simulation
+            // starts).
+            return grval;
+        }
+
+        if (! this->guideRate_->has(wname)) {
+            // No guiderates exist for 'wname'.
+            return grval;
+        }
+
+        const auto qs = WellGroupHelpers::
+            getRateVector(this->well_state_, this->phase_usage_, wname);
+
+        this->getGuideRateValues(qs, well.isInjector(), wname, grval);
+
+        return grval;
+    }
+
+    template <typename TypeTag>
+    data::GuideRateValue
+    BlackoilWellModel<TypeTag>::
+    getGuideRateValues(const Group& group) const
+    {
+        auto grval = data::GuideRateValue{};
+
+        assert (this->guideRate_ != nullptr);
+
+        const auto& gname = group.name();
+        if (! this->well_state_.hasProductionGroupRates(gname)) {
+            // No flow rates for 'gname' -- might be before group comes
+            // online (e.g., for the initial condition before simulation
+            // starts).
+            return grval;
+        }
+
+        if (! this->guideRate_->has(gname)) {
+            // No guiderates exist for 'gname'.
+            return grval;
+        }
+
+        const auto qs = WellGroupHelpers::
+            getProductionGroupRateVector(this->well_state_, this->phase_usage_, gname);
+
+        const auto is_inj = false; // This procedure only applies to G*PGR.
+        this->getGuideRateValues(qs, is_inj, gname, grval);
+
+        return grval;
+    }
+
+    template <typename TypeTag>
+    void
+    BlackoilWellModel<TypeTag>::
+    getGuideRateValues(const GuideRate::RateVector& qs,
+                       const bool                   is_inj,
+                       const std::string&           wgname,
+                       data::GuideRateValue&        grval) const
+    {
+        auto getGR = [this, &wgname, &qs](const GuideRateModel::Target t)
+        {
+            return this->guideRate_->get(wgname, t, qs);
+        };
+
+        // Note: GuideRate does currently (2020-07-20) not support Target::RES.
+        grval.set(data::GuideRateValue::Item::Gas,
+                  getGR(GuideRateModel::Target::GAS));
+
+        grval.set(data::GuideRateValue::Item::Water,
+                  getGR(GuideRateModel::Target::WAT));
+
+        if (! is_inj) {
+            // Producer.  Extract "all" guiderate values.
+            grval.set(data::GuideRateValue::Item::Oil,
+                      getGR(GuideRateModel::Target::OIL));
+        }
+    }
+
+    template <typename TypeTag>
+    void
+    BlackoilWellModel<TypeTag>::
+    assignGroupGuideRates(const Group& group,
+                          const std::unordered_map<std::string, data::GroupGuideRates>& groupGuideRates,
+                          data::GroupData& gdata) const
+    {
+        auto& prod = gdata.guideRates.production;  prod.clear();
+        auto& inj  = gdata.guideRates.injection;   inj .clear();
+
+        auto xgrPos = groupGuideRates.find(group.name());
+        if ((xgrPos == groupGuideRates.end()) ||
+            !this->guideRate_->has(group.name()))
+        {
+            // No guiderates defined for this group.
+            return;
+        }
+
+        const auto& xgr = xgrPos->second;
+        prod = xgr.production;
+        inj  = xgr.injection;
+    }
 } // namespace Ewoms

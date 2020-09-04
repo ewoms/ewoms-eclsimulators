@@ -449,6 +449,20 @@ std::size_t packSize(const std::array<T,N>& data, Dune::MPIHelper::MPICommunicat
     return N*packSize(data[0], comm);
 }
 
+// data::GroupGuideRates
+inline std::size_t packSize(const data::GroupGuideRates& data, Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.production, comm)
+        +  packSize(data.injection, comm);
+}
+
+// data::GroupGuideRates
+inline std::size_t packSize(const data::GroupData& data, Dune::MPIHelper::MPICommunicator comm)
+{
+    return packSize(data.currentControl, comm)
+        +  packSize(data.guideRates, comm);
+}
+
 // Ewoms::data::Well
 inline std::size_t packSize(const data::Well& data, Dune::MPIHelper::MPICommunicator comm)
 {
@@ -482,6 +496,14 @@ inline std::size_t packSize(const data::Solution& data, Dune::MPIHelper::MPIComm
     return packSize(static_cast<const std::map< std::string, data::CellData>&>(data), comm);
 }
 
+// Ewoms::data::GroupValues
+inline std::size_t packSize(const data::GroupValues& data, Dune::MPIHelper::MPICommunicator comm)
+{
+    // Needs explicit conversion to a supported base type holding the data
+    // to prevent throwing.
+    return packSize(static_cast<const std::map<std::string, data::GroupData>&>(data), comm);
+}
+
 // Ewoms::data::WellRates
 inline std::size_t packSize(const data::WellRates& data, Dune::MPIHelper::MPICommunicator comm)
 {
@@ -493,7 +515,10 @@ inline std::size_t packSize(const data::WellRates& data, Dune::MPIHelper::MPICom
 // Ewoms::RestartValue
 inline std::size_t packSize(const RestartValue& data, Dune::MPIHelper::MPICommunicator comm)
 {
-    return packSize(data.solution, comm) + packSize(data.wells, comm) + packSize(data.extra, comm);
+    return packSize(data.solution, comm)
+        +  packSize(data.wells, comm)
+        +  packSize(data.groups, comm)
+        +  packSize(data.extra, comm);
 }
 
 ///////////////////
@@ -738,6 +763,22 @@ void pack(const std::unordered_map<T1,T2,H,P,A>& data, std::vector<char>& buffer
     }
 }
 
+// Ewoms::data::GroupGuideRates
+inline void pack(const data::GroupGuideRates& data, std::vector<char>& buffer, int& position,
+                 Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.production, buffer, position, comm);
+    pack(data.injection, buffer, position, comm);
+}
+
+// Ewoms::data::GroupData
+inline void pack(const data::GroupData& data, std::vector<char>& buffer, int& position,
+                 Dune::MPIHelper::MPICommunicator comm)
+{
+    pack(data.currentControl, buffer, position, comm);
+    pack(data.guideRates, buffer, position, comm);
+}
+
 // Ewoms::data::Well
 inline void pack(const data::Well& data, std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm)
@@ -790,12 +831,23 @@ inline void pack(const data::WellRates& data, std::vector<char>& buffer, int& po
          buffer, position, comm);
 }
 
+// Ewoms::data::GroupValues
+inline void pack(const data::GroupValues& data, std::vector<char>& buffer, int& position,
+                 Dune::MPIHelper::MPICommunicator comm)
+{
+    // Needs explicit conversion to a supported base type holding the data
+    // to prevent throwing.
+    pack(static_cast<const std::map< std::string, data::GroupData>&>(data),
+         buffer, position, comm);
+}
+
 // Ewoms::data::RestartValue
 inline void pack(const RestartValue& data, std::vector<char>& buffer, int& position,
           Dune::MPIHelper::MPICommunicator comm)
 {
     pack(data.solution, buffer, position, comm);
     pack(data.wells, buffer, position, comm);
+    pack(data.groups, buffer, position, comm);
     pack(data.extra, buffer, position, comm);
 }
 
@@ -1077,6 +1129,22 @@ inline void unpack(data::Well& data, std::vector<char>& buffer, int& position,
     unpack(data.current_control, buffer, position, comm);
 }
 
+// Ewoms::data::GroupGuideRates
+inline void unpack(data::GroupGuideRates& data, std::vector<char>& buffer, int& position,
+                   Dune::MPIHelper::MPICommunicator comm)
+{
+    unpack(data.production, buffer, position, comm);
+    unpack(data.injection, buffer, position, comm);
+}
+
+// Ewoms::data::GroupData
+inline void unpack(data::GroupData& data, std::vector<char>& buffer, int& position,
+                   Dune::MPIHelper::MPICommunicator comm)
+{
+    unpack(data.currentControl, buffer, position, comm);
+    unpack(data.guideRates, buffer, position, comm);
+}
+
 // Ewoms::RestartKey
 inline void unpack(RestartKey& data, std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm)
@@ -1115,12 +1183,23 @@ inline void unpack(data::WellRates& data, std::vector<char>& buffer, int& positi
            buffer, position, comm);
 }
 
+// Ewoms::data::GroupValues
+inline void unpack(data::GroupValues& data, std::vector<char>& buffer, int& position,
+                   Dune::MPIHelper::MPICommunicator comm)
+{
+    // Needs explicit conversion to a supported base type holding the data
+    // to prevent throwing.
+    unpack(static_cast<std::map< std::string, data::GroupData>&>(data),
+           buffer, position, comm);
+}
+
 // Ewoms::RestartValue
 inline void unpack(RestartValue& data, std::vector<char>& buffer, int& position,
             Dune::MPIHelper::MPICommunicator comm)
 {
     unpack(data.solution, buffer, position, comm);
     unpack(data.wells, buffer, position, comm);
+    unpack(data.groups, buffer, position, comm);
     unpack(data.extra, buffer, position, comm);
 }
 

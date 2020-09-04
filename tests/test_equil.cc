@@ -71,9 +71,7 @@
     }
 
 BEGIN_PROPERTIES
-
 NEW_TYPE_TAG(TestEquilTypeTag, INHERITS_FROM(BlackOilModel, EclBaseProblem));
-
 END_PROPERTIES
 
 template <class TypeTag>

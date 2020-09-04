@@ -49,6 +49,8 @@
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/summarystate.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/action/state.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqstate.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqconfig.hh>
 
 #include <ewoms/common/string.hh>
 #include <ewoms/eclio/opmlog/opmlog.hh>
@@ -311,7 +313,7 @@ public:
         tmp.emplace_back(Ewoms::ParseContext::PARSE_EXTRA_RECORDS, Ewoms::InputError::WARN);
         tmp.emplace_back(Ewoms::ParseContext::PARSE_WGNAME_SPACE, Ewoms::InputError::WARN);
 
-        std::unique_ptr<Ewoms::ParseContext> parseContext(new Ewoms::ParseContext(tmp));
+        auto parseContext = std::make_unique<Ewoms::ParseContext>(tmp);
 
         const std::string ignoredKeywords = EWOMS_GET_PARAM(TypeTag, std::string, IgnoreKeywords);
         if (ignoredKeywords.size() > 0) {
@@ -542,6 +544,14 @@ public:
 
             throw std::runtime_error("Unrecoverable errors were encountered while loading input.");
         }
+
+        udqState_.reset(new Ewoms::UDQState( this->eclSchedule_->getUDQConfig(0).params().undefinedValue()));
+
+        // Possibly override IOConfig setting for how often RESTART files should get
+        // written to disk (every N report step)
+        int outputInterval = EWOMS_GET_PARAM(TypeTag, int, EclOutputInterval);
+        if (outputInterval >= 0)
+            schedule().restart().overrideRestartWriteInterval(outputInterval);
     }
 
     /*!
@@ -619,6 +629,18 @@ public:
 
     const Ewoms::Action::State& actionState() const
     { return *actionState_; }
+
+    /*!
+     * \brief Returns the udq state
+     *
+     * The UDQState keeps track of the result of user defined quantity (UDQ) evaluations that can
+     * be specified in the ECL format.
+     */
+    Ewoms::UDQState& udqState()
+    { return *udqState_; }
+
+    const Ewoms::UDQState& udqState() const
+    { return *udqState_; }
 
     /*!
      * \brief Parameter deciding the edge-weight strategy of the load balancer.
@@ -796,6 +818,7 @@ private:
     std::unique_ptr<Ewoms::SummaryConfig> internalEclSummaryConfig_;
     std::unique_ptr<Ewoms::SummaryState> summaryState_;
     std::unique_ptr<Ewoms::Action::State> actionState_;
+    std::unique_ptr<Ewoms::UDQState> udqState_;
 
     // these attributes point  either to the internal  or to the external version of the
     // parser objects.

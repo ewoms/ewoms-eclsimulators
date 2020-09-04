@@ -20,51 +20,40 @@
 #include <ewoms/eclsimulators/eflow/main.hh>
 #include  <ewoms/eclsimulators/linalg/istlsolverflexible.hh>
 
-namespace Ewoms {
-  namespace Properties {
+BEGIN_PROPERTIES
 
-    NEW_TYPE_TAG(EclEFlowProblemSimple, INHERITS_FROM(EclEFlowProblem));
+NEW_TYPE_TAG(EclEFlowProblemSimple, INHERITS_FROM(EclEFlowProblem));
 
-    SET_BOOL_PROP(EclEFlowProblemSimple, MatrixAddWellContributions, true);
-    SET_INT_PROP(EclEFlowProblemSimple, LinearSolverVerbosity,0);
-    SET_SCALAR_PROP(EclEFlowProblemSimple, LinearSolverReduction, 1e-2);
-    SET_INT_PROP(EclEFlowProblemSimple, LinearSolverMaxIter, 100);
-    SET_BOOL_PROP(EclEFlowProblemSimple, UseAmg, true);//probably not used
-    SET_BOOL_PROP(EclEFlowProblemSimple, UseCpr, true);
-    SET_INT_PROP(EclEFlowProblemSimple, CprMaxEllIter, 1);
-    SET_INT_PROP(EclEFlowProblemSimple, CprEllSolvetype, 3);
-    SET_INT_PROP(EclEFlowProblemSimple, CprReuseSetup, 3);
-    SET_INT_PROP(EclEFlowProblemSimple, CprSolverVerbose, 0);
-    SET_STRING_PROP(EclEFlowProblemSimple, LinearSolverConfiguration, "ilu0");
-    SET_STRING_PROP(EclEFlowProblemSimple, SystemStrategy, "quasiimpes");
+SET_BOOL_PROP(EclEFlowProblemSimple, MatrixAddWellContributions, true);
+SET_INT_PROP(EclEFlowProblemSimple, LinearSolverVerbosity, 0);
+SET_SCALAR_PROP(EclEFlowProblemSimple, LinearSolverReduction, 1e-2);
+SET_INT_PROP(EclEFlowProblemSimple, LinearSolverMaxIter, 100);
+SET_BOOL_PROP(EclEFlowProblemSimple, UseAmg, true);
+SET_BOOL_PROP(EclEFlowProblemSimple, UseCpr, true);
+SET_INT_PROP(EclEFlowProblemSimple, CprMaxEllIter, 1);
+SET_INT_PROP(EclEFlowProblemSimple, CprEllSolvetype, 3);
+SET_INT_PROP(EclEFlowProblemSimple, CprReuseSetup, 3);
+SET_INT_PROP(EclEFlowProblemSimple, CprSolverVerbose, 0);
+SET_STRING_PROP(EclEFlowProblemSimple, LinearSolverConfiguration, "ilu0");
+SET_STRING_PROP(EclEFlowProblemSimple, SystemStrategy, "quasiimpes");
 
-    SET_PROP(EclEFlowProblemSimple, FluidSystem)
-    {
-    private:
-      using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
-      using Evaluation = GET_PROP_TYPE(TypeTag, Evaluation);
+SET_PROP(EclEFlowProblemSimple, FluidSystem)
+{
+private:
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
+    using Evaluation = GET_PROP_TYPE(TypeTag, Evaluation);
 
-    public:
-        typedef Ewoms::BlackOilFluidSystem<Scalar> type;
-    };
-    //NEW_TYPE_TAG(EclEFlowProblem, INHERITS_FROM(BlackOilModel, EclBaseProblem));
-    SET_TYPE_PROP(EclEFlowProblemSimple, IntensiveQuantities, Ewoms::BlackOilIntensiveQuantities<TypeTag>);
-    //SET_TYPE_PROP(EclEFlowProblemSimple, LinearSolverBackend, Ewoms::ISTLSolver<TypeTag>);
-    //SET_TAG_PROP(EclEFlowProblemSimple, LinearSolverSplice, ParallelBiCGStabLinearSolver);
-    //SET_TYPE_PROP(EclEFlowProblemSimple, LinearSolverBackend, Ewoms::Linear::ParallelBiCGStabSolverBackend<TypeTag>);//not work
-    //SET_TYPE_PROP(EclEFlowProblemSimple, LinearSolverBackend, Ewoms::Linear::SuperLUBackend<TypeTag>)//not work
-    //SET_TAG_PROP(EclEFlowProblem, FluidState, Ewoms::BlackOilFluidState);
-#if DUNE_VERSION_NEWER(DUNE_ISTL, 2, 6)
-    SET_TYPE_PROP(EclEFlowProblemSimple, LinearSolverBackend, Ewoms::ISTLSolverFlexible<TypeTag>);
-#else
-    SET_TYPE_PROP(EclEFlowProblemSimple, LinearSolverBackend, Ewoms::ISTLSolverCpr<TypeTag>);
-#endif
-    SET_BOOL_PROP(EclEFlowProblemSimple, EnableStorageCache, true);
-    SET_BOOL_PROP(EclEFlowProblemSimple, EnableIntensiveQuantityCache, true);
+public:
+    typedef Ewoms::BlackOilFluidSystem<Scalar> type;
+};
 
-    //SET_INT_PROP(EclEFlowProblemSimple, NumWellAdjoint, 1);
-    //SET_BOOL_PROP(EclEFlowProblem, EnableStorageCache, true);
-    //SET_BOOL_PROP(EclEFlowProblem, EnableIntensiveQuantityCache, true);
+SET_TYPE_PROP(EclEFlowProblemSimple,
+              IntensiveQuantities,
+              Ewoms::BlackOilIntensiveQuantities<TypeTag>);
+
+SET_TYPE_PROP(EclEFlowProblemSimple, LinearSolverBackend, Ewoms::ISTLSolverFlexible<TypeTag>);
+SET_BOOL_PROP(EclEFlowProblemSimple, EnableStorageCache, true);
+SET_BOOL_PROP(EclEFlowProblemSimple, EnableIntensiveQuantityCache, true);
 
 END_PROPERTIES
 

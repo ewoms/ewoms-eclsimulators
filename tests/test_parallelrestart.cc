@@ -23,6 +23,9 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <tuple>
+#include <utility>
+
 #include <ewoms/eclio/opmlog/location.hh>
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/deck/deckitem.hh>
@@ -180,6 +183,16 @@ Ewoms::data::CurrentControl getCurrentControl()
     return curr;
 }
 
+Ewoms::data::GuideRateValue getWellGuideRate()
+{
+    using Item = Ewoms::data::GuideRateValue::Item;
+
+    return Ewoms::data::GuideRateValue{}.set(Item::Oil  , 1.23)
+                                      .set(Item::Gas  , 2.34)
+                                      .set(Item::Water, 3.45)
+                                      .set(Item::ResV , 4.56);
+}
+
 Ewoms::data::Well getWell()
 {
     Ewoms::data::Well well1;
@@ -191,9 +204,44 @@ Ewoms::data::Well getWell()
     well1.connections.push_back(getConnection());
     well1.segments.insert({0, getSegment()});
     well1.current_control = getCurrentControl();
+    well1.guide_rates = getWellGuideRate();
     return well1;
 }
 
+Ewoms::data::GroupGuideRates getGroupGuideRates()
+{
+    using Item = Ewoms::data::GuideRateValue::Item;
+
+    auto gr = Ewoms::data::GroupGuideRates{};
+
+    gr.production.set(Item::Oil ,   999.888)
+                 .set(Item::Gas ,  8888.777)
+                 .set(Item::ResV, 12345.678);
+
+    gr.injection.set(Item::Gas  , 9876.543)
+                .set(Item::Water, 2345.987);
+
+    return gr;
+}
+
+Ewoms::data::GroupConstraints getGroupConstraints()
+{
+    using PMode = ::Ewoms::Group::ProductionCMode;
+    using IMode = ::Ewoms::Group::InjectionCMode;
+
+    return Ewoms::data::GroupConstraints{}
+    .set(PMode::ORAT,           // Production
+         IMode::VREP,           // Gas Injection
+         IMode::NONE);          // Water Injection
+}
+
+Ewoms::data::GroupData getGroupData()
+{
+    return Ewoms::data::GroupData {
+        getGroupConstraints(),
+        getGroupGuideRates()
+    };
+}
 }
 
 template<class T>
@@ -243,6 +291,24 @@ BOOST_AUTO_TEST_CASE(Rates)
     DO_CHECKS(data::Rates)
 }
 
+BOOST_AUTO_TEST_CASE(dataGuideRateValue)
+{
+    using Item = Ewoms::data::GuideRateValue::Item;
+
+    const auto val1 = Ewoms::data::GuideRateValue{}
+    .set(Item::Oil ,   999.888)
+    .set(Item::Gas ,  8888.777)
+    .set(Item::ResV, 12345.678);
+
+    const auto val2 = PackUnpack(val1);
+
+    BOOST_CHECK_MESSAGE(! std::get<0>(val2).has(Item::Water),
+                        "Water Must Not Appear From "
+                        "Serializing GuideRateValues");
+
+    DO_CHECKS(data::GuideRateValue)
+}
+
 BOOST_AUTO_TEST_CASE(dataConnection)
 {
     Ewoms::data::Connection val1 = getConnection();
@@ -279,6 +345,30 @@ BOOST_AUTO_TEST_CASE(WellRates)
     DO_CHECKS(data::WellRates)
 }
 
+BOOST_AUTO_TEST_CASE(dataGroupConstraints)
+{
+    const auto val1 = getGroupConstraints();
+    const auto val2 = PackUnpack(val1);
+
+    DO_CHECKS(data::GroupConstraints)
+}
+
+BOOST_AUTO_TEST_CASE(dataGroupGuideRates)
+{
+    const auto val1 = getGroupData().guideRates;
+    const auto val2 = PackUnpack(val1);
+
+    DO_CHECKS(data::GroupGuideRates)
+}
+
+BOOST_AUTO_TEST_CASE(dataGroupData)
+{
+    const auto val1 = getGroupData();
+    const auto val2 = PackUnpack(val1);
+
+    DO_CHECKS(data::GroupData)
+}
+
 BOOST_AUTO_TEST_CASE(CellData)
 {
     Ewoms::data::CellData val1;
@@ -298,11 +388,18 @@ BOOST_AUTO_TEST_CASE(RestartKey)
 
 BOOST_AUTO_TEST_CASE(RestartValue)
 {
-    Ewoms::data::WellRates wells1;
-    Ewoms::data::GroupValues groups1;
-    wells1.insert({"test_well", getWell()});
-    Ewoms::RestartValue val1(getSolution(), wells1, groups1);
-    auto val2 = PackUnpack(val1);
+    auto wells1 = Ewoms::data::WellRates {{
+        { "test_well", getWell() },
+    }};
+    auto groups1 = Ewoms::data::GroupValues {{
+        { "test_group1", getGroupData() },
+    }};
+
+    const auto val1 = Ewoms::RestartValue {
+        getSolution(), std::move(wells1), std::move(groups1)
+    };
+    const auto val2 = PackUnpack(val1);
+
     DO_CHECKS(RestartValue)
 }
 

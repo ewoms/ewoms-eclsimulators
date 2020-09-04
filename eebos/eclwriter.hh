@@ -48,6 +48,7 @@
 #include <ewoms/eclio/parser/units/unitsystem.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/action/state.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqconfig.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqstate.hh>
 
 #include <ewoms/eclsimulators/utils/parallelrestart.hh>
 #include <ewoms/eclgrids/gridhelpers.hh>
@@ -318,7 +319,7 @@ public:
                          blockData);
 
             const auto& udq_config = schedule().getUDQConfig(reportStepNum);
-            udq_config.eval( summaryState() );
+            udq_config.eval( summaryState(), udqState() );
 
             buffer = summaryState().serialize();
         }
@@ -659,6 +660,7 @@ private:
     {
         Ewoms::Action::State actionState_;
         Ewoms::SummaryState summaryState_;
+        Ewoms::UDQState udqState_;
         Ewoms::EclipseIO& eclIO_;
         int reportStepNum_;
         bool isSubStep_;
@@ -668,6 +670,7 @@ private:
 
         explicit EclWriteTasklet(const Ewoms::Action::State& actionState,
                                  const Ewoms::SummaryState& summaryState,
+                                 const Ewoms::UDQState& udqState,
                                  Ewoms::EclipseIO& eclIO,
                                  int reportStepNum,
                                  bool isSubStep,
@@ -676,6 +679,7 @@ private:
                                  bool writeDoublePrecision)
             : actionState_(actionState)
             , summaryState_(summaryState)
+            , udqState_(udqState)
             , eclIO_(eclIO)
             , reportStepNum_(reportStepNum)
             , isSubStep_(isSubStep)
@@ -689,6 +693,7 @@ private:
         {
             eclIO_.writeTimeStep(actionState_,
                                  summaryState_,
+                                 udqState_,
                                  reportStepNum_,
                                  isSubStep_,
                                  secondsElapsed_,
@@ -700,11 +705,14 @@ private:
     const Ewoms::EclipseState& eclState() const
     { return simulator_.vanguard().eclState(); }
 
+    Ewoms::SummaryState& summaryState()
+    { return simulator_.vanguard().summaryState(); }
+
     Ewoms::Action::State& actionState()
     { return simulator_.vanguard().actionState(); }
 
-    Ewoms::SummaryState& summaryState()
-    { return simulator_.vanguard().summaryState(); }
+    Ewoms::UDQState& udqState()
+    { return simulator_.vanguard().udqState(); }
 
     const Ewoms::Schedule& schedule() const
     { return simulator_.vanguard().schedule(); }
@@ -767,7 +775,7 @@ private:
         // first, create a tasklet to write the data for the current time
         // step to disk
         auto eclWriteTasklet = std::make_shared<EclWriteTasklet>(
-            this->actionState(), this->summaryState(), *this->eclIO_,
+            this->actionState(), this->summaryState(), this->udqState(), *this->eclIO_,
             reportStepNum, isSubStep, curTime, std::move(restartValue),
             EWOMS_GET_PARAM(TypeTag, bool, EclOutputDoublePrecision)
             );

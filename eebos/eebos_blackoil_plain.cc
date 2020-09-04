@@ -46,6 +46,6 @@ END_PROPERTIES
 
 int main(int argc, char **argv)
 {
-    using ProblemTypeTag = Ewoms::TTAG(EebosPlainTypeTag);
+    using ProblemTypeTag = TTAG(EebosPlainTypeTag);
     return Ewoms::start<ProblemTypeTag>(argc, argv);
 }

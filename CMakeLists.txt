@@ -71,25 +71,25 @@ ewoms_add_application(eebos
                     SOURCES eebos/eebos_main.cc ${EEBOS_TARGETS})
 
 ######
-# eebos variants only for debugging
+# eebos variants for code development
 ######
 
 # variant that uses the default ewoms linear solver and the toy ECL well model
-ewoms_add_application(eebos_plain
+ewoms_add_application(eebos_blackoil_plain
                     DEFAULT_ENABLE_IF ${BUILD_EEBOS_DEBUG_EXTENSIONS}
-                    SOURCES eebos/eebos_plain.cc
+                    SOURCES eebos/eebos_blackoil_plain.cc
                     EXE_NAME eebos_blackoil_plain)
 
 # variant that uses an AMG-based linear solver
-ewoms_add_application(eebos_amg
+ewoms_add_application(eebos_blackoil_amg
                     DEFAULT_ENABLE_IF ${BUILD_EEBOS_DEBUG_EXTENSIONS}
                     SOURCES eebos/eebos_blackoil_amg.cc
                     EXE_NAME eebos_blackoil_amg)
 
 # variant that uses different phase and component indices than the others
-ewoms_add_application(eebos_altidx
+ewoms_add_application(eebos_blackoil_altidx
                     DEFAULT_ENABLE_IF ${BUILD_EEBOS_DEBUG_EXTENSIONS}
-                    SOURCES eebos/eebos_altidx.cc
+                    SOURCES eebos/eebos_blackoil_altidx.cc
                     EXE_NAME eebos_blackoil_altidx)
 
 # target to seletively build eebos or any of its specialized variants

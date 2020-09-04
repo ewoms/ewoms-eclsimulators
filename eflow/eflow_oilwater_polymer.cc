@@ -44,7 +44,6 @@ BEGIN_PROPERTIES
 NEW_TYPE_TAG(EclEFlowOilWaterPolymerProblem, INHERITS_FROM(EclEFlowProblem));
 SET_BOOL_PROP(EclEFlowOilWaterPolymerProblem, EnablePolymer, true);
 //! The indices required by the model
-//! The indices required by the model
 SET_PROP(EclEFlowOilWaterPolymerProblem, Indices)
 {
 private:

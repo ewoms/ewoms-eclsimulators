@@ -64,7 +64,7 @@ namespace Ewoms
     class EFlowMain
     {
     public:
-        typedef typename GET_PROP(TypeTag, MaterialLaw)::EclMaterialLawManager MaterialLawManager;
+        using MaterialLawManager = typename GET_PROP(TypeTag, MaterialLaw)::EclMaterialLawManager;
         using EebosSimulator = GET_PROP_TYPE(TypeTag, Simulator);
         using Grid = GET_PROP_TYPE(TypeTag, Grid);
         using GridView = GET_PROP_TYPE(TypeTag, GridView);

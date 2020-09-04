@@ -23,6 +23,28 @@
 #include <algorithm>
 #include <vector>
 
+namespace {
+    Ewoms::GuideRate::RateVector
+    getGuideRateVector(const std::vector<double>& rates, const Ewoms::PhaseUsage& pu)
+    {
+        using Ewoms::BlackoilPhases;
+
+        double oilRate = 0.0;
+        if (pu.phase_used[BlackoilPhases::Liquid])
+            oilRate = rates[pu.phase_pos[BlackoilPhases::Liquid]];
+
+        double gasRate = 0.0;
+        if (pu.phase_used[BlackoilPhases::Vapour])
+            gasRate = rates[pu.phase_pos[BlackoilPhases::Vapour]];
+
+        double waterRate = 0.0;
+        if (pu.phase_used[BlackoilPhases::Aqua])
+            waterRate = rates[pu.phase_pos[BlackoilPhases::Aqua]];
+
+        return {oilRate, gasRate, waterRate};
+    }
+} // namespace Anonymous
+
 namespace Ewoms
 {
 
@@ -560,20 +582,13 @@ namespace WellGroupHelpers
     GuideRate::RateVector
     getRateVector(const WellStateFullyImplicitBlackoil& well_state, const PhaseUsage& pu, const std::string& name)
     {
-        const std::vector<double>& rates = well_state.currentWellRates(name);
-        double oilRate = 0.0;
-        if (pu.phase_used[BlackoilPhases::Liquid])
-            oilRate = rates[pu.phase_pos[BlackoilPhases::Liquid]];
+        return getGuideRateVector(well_state.currentWellRates(name), pu);
+    }
 
-        double gasRate = 0.0;
-        if (pu.phase_used[BlackoilPhases::Vapour])
-            gasRate = rates[pu.phase_pos[BlackoilPhases::Vapour]];
-
-        double waterRate = 0.0;
-        if (pu.phase_used[BlackoilPhases::Aqua])
-            waterRate = rates[pu.phase_pos[BlackoilPhases::Aqua]];
-
-        return GuideRate::RateVector {oilRate, gasRate, waterRate};
+    GuideRate::RateVector
+    getProductionGroupRateVector(const WellStateFullyImplicitBlackoil& well_state, const PhaseUsage& pu, const std::string& group_name)
+    {
+        return getGuideRateVector(well_state.currentProductionGroupRates(group_name), pu);
     }
 
     double getGuideRate(const std::string& name,
@@ -780,21 +795,7 @@ namespace WellGroupHelpers
 
     GuideRate::RateVector FractionCalculator::getGroupRateVector(const std::string& group_name)
     {
-
-        std::vector<double> groupRates = well_state_.currentProductionGroupRates(group_name);
-        double oilRate = 0.0;
-        if (pu_.phase_used[BlackoilPhases::Liquid])
-            oilRate = groupRates[pu_.phase_pos[BlackoilPhases::Liquid]];
-
-        double gasRate = 0.0;
-        if (pu_.phase_used[BlackoilPhases::Vapour])
-            gasRate = groupRates[pu_.phase_pos[BlackoilPhases::Vapour]];
-
-        double waterRate = 0.0;
-        if (pu_.phase_used[BlackoilPhases::Aqua])
-            waterRate = groupRates[pu_.phase_pos[BlackoilPhases::Aqua]];
-
-        return GuideRate::RateVector {oilRate, gasRate, waterRate};
+        return getProductionGroupRateVector(this->well_state_, this->pu_, group_name);
     }
 
     double fractionFromGuideRates(const std::string& name,

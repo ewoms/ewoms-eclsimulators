@@ -30,7 +30,7 @@ private:
     // it is unfortunately not possible to simply use 'TypeTag' here because this leads
     // to cyclic definitions of some properties. if this happens the compiler error
     // messages unfortunately are *really* confusing and not really helpful.
-    using BaseTypeTag = EclEFlowProblem;
+    using BaseTypeTag = TTAG(EclEFlowProblem);
     using FluidSystem = GET_PROP_TYPE(BaseTypeTag, FluidSystem);
 
 public:

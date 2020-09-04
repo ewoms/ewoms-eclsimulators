@@ -67,7 +67,7 @@ SET_SCALAR_PROP(EFlowModelParameters, DwellFractionMax, 0.2);
 SET_SCALAR_PROP(EFlowModelParameters, MaxResidualAllowed, 1e7);
 SET_SCALAR_PROP(EFlowModelParameters, RelaxedMaxPvFraction, 1.0);
 SET_SCALAR_PROP(EFlowModelParameters, ToleranceMb, 1e-6);
-SET_SCALAR_PROP(EFlowModelParameters, ToleranceCnv,1e-2);
+SET_SCALAR_PROP(EFlowModelParameters, ToleranceCnv, 1e-2);
 SET_SCALAR_PROP(EFlowModelParameters, ToleranceCnvRelaxed, 1e9);
 SET_SCALAR_PROP(EFlowModelParameters, ToleranceWells, 1e-4);
 SET_SCALAR_PROP(EFlowModelParameters, ToleranceWellControl, 1e-7);
@@ -88,7 +88,6 @@ SET_INT_PROP(EFlowModelParameters, MaxInnerIterWells, 50);
 SET_INT_PROP(EFlowModelParameters, StrictInnerIterMsWells, 40);
 SET_SCALAR_PROP(EFlowModelParameters, RegularizationFactorMsw, 1);
 SET_BOOL_PROP(EFlowModelParameters, EnableWellOperabilityCheck, true);
-
 SET_SCALAR_PROP(EFlowModelParameters, RelaxedEFlowTolInnerIterMsw, 1);
 SET_SCALAR_PROP(EFlowModelParameters, RelaxedPressureTolInnerIterMsw, 0.5e5);
 

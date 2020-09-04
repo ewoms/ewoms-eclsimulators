@@ -178,7 +178,7 @@ DenseMatrix transposeDenseMatrix(const DenseMatrix& M)
 #else
             const std::string gpu_mode = EWOMS_GET_PARAM(TypeTag, std::string, GpuMode);
             if (gpu_mode.compare("none") != 0) {
-                EWOMS_THROW(std::logic_error,"Error cannot use GPU solver since neither CUDA nor OpenCL was not found by cmake");
+                EWOMS_THROW(std::logic_error,"Error cannot use GPU solver since neither CUDA nor OpenCL were found by cmake");
             }
 #endif
             extractParallelGridInformationToISTL(simulator_.vanguard().grid(), parallelInformation_);
@@ -463,7 +463,8 @@ DenseMatrix transposeDenseMatrix(const DenseMatrix& M)
 #if HAVE_CUDA || HAVE_OPENCL
                 bool use_gpu = bdaBridge->getUseGpu();
                 if (use_gpu) {
-                    WellContributions wellContribs;
+                    const std::string gpu_mode = EWOMS_GET_PARAM(TypeTag, std::string, GpuMode);
+                    WellContributions wellContribs(gpu_mode);
                     if (!useWellConn_) {
                         simulator_.problem().wellModel().getWellContributions(wellContribs);
                     }
@@ -476,7 +477,13 @@ DenseMatrix transposeDenseMatrix(const DenseMatrix& M)
                         // CPU fallback
                         use_gpu = bdaBridge->getUseGpu();  // update value, BdaBridge might have disabled cusparseSolver
                         if (use_gpu) {
-                            OpmLog::warning("cusparseSolver did not converge, now trying Dune to solve current linear system...");
+                            if(gpu_mode.compare("cusparse") == 0){
+                                OpmLog::warning("cusparseSolver did not converge, now trying Dune to solve current linear system...");
+                            }
+
+                            if(gpu_mode.compare("opencl") == 0){
+                                OpmLog::warning("openclSolver did not converge, now trying Dune to solve current linear system...");
+                            }
                         }
 
                         // call Dune
@@ -511,7 +518,7 @@ DenseMatrix transposeDenseMatrix(const DenseMatrix& M)
             const MILU_VARIANT ilu_milu  = parameters_.ilu_milu_;
             const bool ilu_redblack = parameters_.ilu_redblack_;
             const bool ilu_reorder_spheres = parameters_.ilu_reorder_sphere_;
-            std::unique_ptr<SeqPreconditioner> precond(new SeqPreconditioner(opA.getmat(), ilu_fillin, relax, ilu_milu, ilu_redblack, ilu_reorder_spheres));
+            auto precond = std::make_unique<SeqPreconditioner>(opA.getmat(), ilu_fillin, relax, ilu_milu, ilu_redblack, ilu_reorder_spheres);
             return precond;
         }
 
@@ -755,9 +762,16 @@ DenseMatrix transposeDenseMatrix(const DenseMatrix& M)
                     }
 #endif
                 } else {
-                    using SeqLinearOperator = Dune::MatrixAdapter<Matrix, Vector, Vector>;
-                    linearOperatorForFlexibleSolver_ = std::make_unique<SeqLinearOperator>(getMatrix());
-                    flexibleSolver_ = std::make_unique<FlexibleSolverType>(*linearOperatorForFlexibleSolver_, prm_, weightsCalculator);
+                    if (useWellConn_) {
+                        using SeqLinearOperator = Dune::MatrixAdapter<Matrix, Vector, Vector>;
+                        linearOperatorForFlexibleSolver_ = std::make_unique<SeqLinearOperator>(getMatrix());
+                        flexibleSolver_ = std::make_unique<FlexibleSolverType>(*linearOperatorForFlexibleSolver_, prm_, weightsCalculator);
+                    } else {
+                        using SeqLinearOperator = WellModelMatrixAdapter<Matrix, Vector, Vector, false>;
+                        wellOperator_ = std::make_unique<WellModelOperator>(simulator_.problem().wellModel());
+                        linearOperatorForFlexibleSolver_ = std::make_unique<SeqLinearOperator>(getMatrix(), *wellOperator_);
+                        flexibleSolver_ = std::make_unique<FlexibleSolverType>(*linearOperatorForFlexibleSolver_, prm_, weightsCalculator);
+                    }
                 }
             }
             else

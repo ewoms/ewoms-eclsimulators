@@ -68,9 +68,12 @@ SET_BOOL_PROP(EebosTypeTag, UseMultisegmentWell, false);
 
 // set some properties that are only required by the well model
 SET_BOOL_PROP(EebosTypeTag, MatrixAddWellContributions, true);
+
 SET_BOOL_PROP(EebosTypeTag, EnableTerminalOutput, false);
+
 // eflow's well model only works with surface volumes
 SET_BOOL_PROP(EebosTypeTag, BlackoilConserveSurfaceVolume, true);
+
 // the values for the residual are for the whole cell instead of for a cubic meter of the cell
 SET_BOOL_PROP(EebosTypeTag, UseVolumetricResidual, false);
 

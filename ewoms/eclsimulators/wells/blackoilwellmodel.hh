@@ -22,6 +22,7 @@
 #include <ewoms/eclio/opmlog/opmlog.hh>
 
 #include <cassert>
+#include <unordered_map>
 #include <tuple>
 
 #include <ewoms/eclio/parser/eclipsestate/runspec.hh>
@@ -188,11 +189,15 @@ namespace Ewoms {
             {
                 auto gvalues = ::Ewoms::data::GroupValues{};
 
+                const auto groupGuideRates =
+                    calculateAllGroupGuiderates(reportStepIdx, sched);
+
                 for (const auto& gname : sched.groupNames(reportStepIdx)) {
                     const auto& grup = sched.getGroup(gname, reportStepIdx);
 
                     auto& gdata = gvalues[gname];
                     this->assignGroupControl(grup, gdata);
+                    this->assignGroupGuideRates(grup, groupGuideRates, gdata);
                 }
 
                 return gvalues;
@@ -209,6 +214,9 @@ namespace Ewoms {
                     }
 
                     xwPos->second.current_control.isProducer = well.isProducer();
+
+                    auto& grval = xwPos->second.guide_rates;  grval.clear();
+                    grval += this->getGuideRateValues(well);
                 }
 
                 return wsrpt;
@@ -398,6 +406,7 @@ namespace Ewoms {
 
             // convert well data from ewoms-eclio to well state from ewoms-eclsimulators
             void wellsToState( const data::Wells& wells,
+                               const data::GroupValues& groupValues,
                                const PhaseUsage& phases,
                                const bool handle_ms_well,
                                WellStateFullyImplicitBlackoil& state ) const;
@@ -427,7 +436,20 @@ namespace Ewoms {
 
             void setWsolvent(const Group& group, const Schedule& schedule, const int reportStepIdx, double wsolvent);
 
+            std::unordered_map<std::string, data::GroupGuideRates>
+            calculateAllGroupGuiderates(const int reportStepIdx, const Schedule& sched) const;
+
             void assignGroupControl(const Group& group, data::GroupData& gdata) const;
+            data::GuideRateValue getGuideRateValues(const Well& well) const;
+            data::GuideRateValue getGuideRateValues(const Group& group) const;
+            void getGuideRateValues(const GuideRate::RateVector& qs,
+                                    const bool                   is_inj,
+                                    const std::string&           wgname,
+                                    data::GuideRateValue&        grval) const;
+
+            void assignGroupGuideRates(const Group& group,
+                                       const std::unordered_map<std::string, data::GroupGuideRates>& groupGuideRates,
+                                       data::GroupData& gdata) const;
         };
 
 } // namespace Ewoms
