@@ -147,6 +147,21 @@ NEW_PROP_TAG(EnableAsyncEclOutput);
 // value.
 NEW_PROP_TAG(EclOutputDoublePrecision);
 
+// Global switch to enable or disable all ECL-style simulation output
+NEW_PROP_TAG(EnableEclOutput);
+
+// Switch to determining whether to write ECL-style asynchronously
+//
+// I.e., in a non-blocking way. Writing asynsynchronously may lead to race conditions and
+// other "fun" issues for debugging and only really makes a noticeable difference if the
+// mass storage to be written to is slow (e.g., if it is on a network file system), but
+// the code for this feature is quite mature, so it is enabled by default.
+NEW_PROP_TAG(EnableAsyncEclOutput);
+
+// Determines whether to write ECL output using double or single-precision floating point
+// value.
+NEW_PROP_TAG(EclOutputDoublePrecision);
+
 // time stepping parameters
 NEW_PROP_TAG(EclMaxTimeStepSizeAfterWellEvent);
 NEW_PROP_TAG(EclRestartShrinkFactor);

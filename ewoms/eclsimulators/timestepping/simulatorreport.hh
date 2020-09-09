@@ -33,6 +33,7 @@ namespace Ewoms
         double total_time;
         double solver_time;
         double assemble_time;
+        double assemble_time_well;
         double linear_solve_setup_time;
         double linear_solve_time;
         double update_time;

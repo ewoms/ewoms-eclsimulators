@@ -777,6 +777,8 @@ namespace Ewoms {
     {
 
         last_report_ = SimulatorReportSingle();
+        Dune::Timer perfTimer;
+        perfTimer.start();
 
         if ( ! wellsActive() ) {
             return;
@@ -824,6 +826,7 @@ namespace Ewoms {
         logAndCheckForExceptionsAndThrow(local_deferredLogger, exception_thrown, "assemble() failed.", terminal_output_);
 
         last_report_.converged = true;
+        last_report_.assemble_time_well += perfTimer.stop();
     }
 
     template<typename TypeTag>

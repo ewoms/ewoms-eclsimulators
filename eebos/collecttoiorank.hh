@@ -324,6 +324,15 @@ public:
             ElementMapper elemMapper(localGridView);
 #endif
 
+            const auto& cartMapper = vanguard.cartesianIndexMapper();
+            sortedCartesianIdx_.reserve(vanguard.gridView().size(0));
+
+            for(const auto& elem: elements(localGridView)) {
+                auto idx = elemMapper.index(elem);
+                sortedCartesianIdx_.push_back(cartMapper.cartesianIndex(idx));
+            }
+
+            std::sort(sortedCartesianIdx_.begin(), sortedCartesianIdx_.end());
             localIdxToGlobalIdx_.resize(localGridView.size(0), -1);
 
             // the I/O rank receives from all other ranks
@@ -762,15 +771,14 @@ public:
     const std::vector<int>& globalRanks() const
     { return globalRanks_; }
 
-    bool isGlobalIdxOnThisRank(unsigned globalIdx) const
+    bool isCartIdxOnThisRank(int cartIdx) const
     {
         if (!isParallel())
             return true;
 
-        if (localIdxToGlobalIdx_.empty())
-            throw std::logic_error("index map is not created on this rank");
-
-        return std::find(localIdxToGlobalIdx_.begin(), localIdxToGlobalIdx_.end(), globalIdx) != localIdxToGlobalIdx_.end();
+        assert(!needsReordering);
+        auto candidate = std::lower_bound(sortedCartesianIdx_.begin(), sortedCartesianIdx_.end(), cartIdx);
+        return (candidate != sortedCartesianIdx_.end() && *candidate == cartIdx);
     }
 
 protected:
@@ -784,6 +792,10 @@ protected:
     Ewoms::data::Wells globalWellData_;
     Ewoms::data::GroupValues globalGroupData_;
     std::vector<int> localIdxToGlobalIdx_;
+    /// \brief sorted list of cartesian indices present-
+    ///
+    /// non-empty only when running in parallel
+    std::vector<int> sortedCartesianIdx_;
 };
 
 } // end namespace Ewoms

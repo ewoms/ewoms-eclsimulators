@@ -34,6 +34,7 @@ namespace Ewoms
           total_time(0.0),
           solver_time(0.0),
           assemble_time(0.0),
+          assemble_time_well(0.0),
           linear_solve_setup_time(0.0),
           linear_solve_time(0.0),
           update_time(0.0),
@@ -57,6 +58,7 @@ namespace Ewoms
         linear_solve_time += sr.linear_solve_time;
         solver_time += sr.solver_time;
         assemble_time += sr.assemble_time;
+        assemble_time_well += sr.assemble_time_well;
         update_time += sr.update_time;
         output_write_time += sr.output_write_time;
         total_time += sr.total_time;
@@ -99,6 +101,14 @@ namespace Ewoms
             }
             os << std::endl;
 
+            t = assemble_time_well + (failureReport ? failureReport->assemble_time_well : 0.0);
+            os << "   Well assembly time (seconds): " << t;
+            if (failureReport) {
+                os << " (Failed: " << failureReport->assemble_time_well << "; "
+                   << 100*failureReport->assemble_time_well/t << "%)";
+            }
+            os << std::endl;
+
             t = linear_solve_time + (failureReport ? failureReport->linear_solve_time : 0.0);
             os << " Linear solve time (seconds): " << t;
             if (failureReport) {
@@ -108,7 +118,7 @@ namespace Ewoms
             os << std::endl;
 
             t = linear_solve_setup_time + (failureReport ? failureReport->linear_solve_setup_time : 0.0);
-            os << " Linear solve setup time (seconds): " << t;
+            os << "   Linear solve setup time (seconds): " << t;
             if (failureReport) {
                 os << " (Failed: " << failureReport->linear_solve_setup_time << "; "
                    << 100*failureReport->linear_solve_setup_time/t << "%)";
