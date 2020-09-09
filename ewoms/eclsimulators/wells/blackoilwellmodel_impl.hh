@@ -1600,7 +1600,9 @@ namespace Ewoms {
             }
         }
 
-        for (const auto& [group, value] : groupValues) {
+        for (const auto& pair : groupValues) {
+            const auto& group = pair.first;
+            const auto& value = pair.second;
             const auto cpc = value.currentControl.currentProdConstraint;
             const auto cgi = value.currentControl.currentGasInjectionConstraint;
             const auto cwi = value.currentControl.currentWaterInjectionConstraint;
