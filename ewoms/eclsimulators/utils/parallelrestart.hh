@@ -933,8 +933,11 @@ void unpack(Ewoms::optional<T>&data, std::vector<char>& buffer, int& position,
 {
     bool hasValue;
     unpack(hasValue, buffer, position, comm);
-    if (hasValue)
-        unpack(*data, buffer, position, comm);
+    if (hasValue) {
+        T val;
+        unpack(val, buffer, position, comm);
+        data = std::optional<T>(val);
+    }
     else
         data = Ewoms::nullopt;
 }

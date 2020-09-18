@@ -38,6 +38,8 @@
 #include <ewoms/eclsimulators/utils/paralleleclipsestate.hh>
 #include <ewoms/eclsimulators/utils/parallelserialization.hh>
 
+#include <cstdlib>
+
 namespace Ewoms
 {
 
@@ -136,6 +138,7 @@ FileOutputMode setupLogging(int mpi_rank_, const std::string& deck_filename, con
     return output;
 }
 
+namespace {
 void setupMessageLimiter(const Ewoms::MessageLimits msgLimits,  const std::string& stdout_log_id) {
     std::shared_ptr<Ewoms::StreamLog> stream_log = Ewoms::OpmLog::getBackend<Ewoms::StreamLog>(stdout_log_id);
 
@@ -153,6 +156,7 @@ void setupMessageLimiter(const Ewoms::MessageLimits msgLimits,  const std::strin
                                             msgLimits.getBugPrintLimit(0)}};
     stream_log->setMessageLimiter(std::make_shared<Ewoms::MessageLimiter>(10, limits));
 }
+}
 
 void readDeck(int rank, std::string& deckFilename, std::unique_ptr<Ewoms::Deck>& deck, std::unique_ptr<Ewoms::EclipseState>& eclipseState,
               std::unique_ptr<Ewoms::Schedule>& schedule, std::unique_ptr<Ewoms::SummaryConfig>& summaryConfig,
@@ -164,9 +168,7 @@ void readDeck(int rank, std::string& deckFilename, std::unique_ptr<Ewoms::Deck>&
         errorGuard = std::make_unique<ErrorGuard>();
     }
 
-#if HAVE_MPI
-    int parseSuccess = 0;
-#endif
+    int parseSuccess = 1; // > 0 is success
     std::string failureMessage;
 
     if (rank==0) {
@@ -217,13 +219,13 @@ void readDeck(int rank, std::string& deckFilename, std::unique_ptr<Ewoms::Deck>&
             }
             if (!summaryConfig)
                 summaryConfig = std::make_unique<Ewoms::SummaryConfig>(*deck, *schedule, eclipseState->getTableManager(), *parseContext, *errorGuard);
-#if HAVE_MPI
-            parseSuccess = 1;
-#endif
+
+            Ewoms::checkConsistentArrayDimensions(*eclipseState, *schedule, *parseContext, *errorGuard);
         }
         catch(const std::exception& e)
         {
             failureMessage = e.what();
+            parseSuccess = 0;
         }
     }
 #if HAVE_MPI
@@ -236,27 +238,39 @@ void readDeck(int rank, std::string& deckFilename, std::unique_ptr<Ewoms::Deck>&
             eclipseState = std::make_unique<Ewoms::ParallelEclipseState>();
     }
 
-    auto comm = Dune::MPIHelper::getCollectiveCommunication();
-    parseSuccess = comm.max(parseSuccess);
-    if (!parseSuccess)
+    try
     {
-        if (*errorGuard) {
-            errorGuard->dump();
-            errorGuard->clear();
-        }
-        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+        Ewoms::eclStateBroadcast(*eclipseState, *schedule, *summaryConfig);
+    }
+    catch(const std::exception& e)
+    {
+        failureMessage = e.what();
+        parseSuccess = 0;
     }
 
-    Ewoms::eclStateBroadcast(*eclipseState, *schedule, *summaryConfig);
 #endif
 
-    Ewoms::checkConsistentArrayDimensions(*eclipseState, *schedule, *parseContext, *errorGuard);
+    if (*errorGuard) { // errors encountered
+        parseSuccess = 0;
+    }
 
-    if (*errorGuard) {
-        errorGuard->dump();
-        errorGuard->clear();
+    // print errors and warnings!
+    errorGuard->dump();
+    errorGuard->clear();
 
-        throw std::runtime_error("Unrecoverable errors were encountered while loading input.");
+    auto comm = Dune::MPIHelper::getCollectiveCommunication();
+    parseSuccess = comm.min(parseSuccess);
+
+    if (!parseSuccess)
+    {
+        if (rank == 0)
+        {
+            OpmLog::error(std::string("Unrecoverable errors were encountered while loading input: ")+failureMessage);
+        }
+#if HAVE_MPI
+        MPI_Finalize();
+#endif
+        std::exit(EXIT_FAILURE);
     }
 }
 } // end namespace Ewoms

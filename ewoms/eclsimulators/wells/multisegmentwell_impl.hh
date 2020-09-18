@@ -1901,8 +1901,14 @@ namespace Ewoms
         }
 
         resWell_[seg][SPres] = pressure_equation.value();
-        for (int pv_idx = 0; pv_idx < numWellEq; ++pv_idx) {
-            duneD_[seg][seg][SPres][pv_idx] = pressure_equation.derivative(pv_idx + numEq);
+        const int seg_upwind = upwinding_segments_[seg];
+        duneD_[seg][seg][SPres][SPres] += pressure_equation.derivative(SPres + numEq);
+        duneD_[seg][seg][SPres][GTotal] += pressure_equation.derivative(GTotal + numEq);
+        if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
+            duneD_[seg][seg_upwind][SPres][WFrac] += pressure_equation.derivative(WFrac + numEq);
+        }
+        if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
+            duneD_[seg][seg_upwind][SPres][GFrac] += pressure_equation.derivative(GFrac + numEq);
         }
 
         // contribution from the outlet segment
@@ -1952,37 +1958,48 @@ namespace Ewoms
     MultisegmentWell<TypeTag>::
     handleAccelerationPressureLoss(const int seg, WellState& well_state) const
     {
-        // TODO: this pressure loss is not significant enough to be well tested yet.
-        // handle the out velcocity head
         const double area = segmentSet()[seg].crossArea();
         const EvalWell mass_rate = segment_mass_rates_[seg];
-        const EvalWell density = segment_densities_[seg];
-        const EvalWell out_velocity_head = mswellhelpers::velocityHead(area, mass_rate, density);
-
-        resWell_[seg][SPres] -= out_velocity_head.value();
-        for (int pv_idx = 0; pv_idx < numWellEq; ++pv_idx) {
-            duneD_[seg][seg][SPres][pv_idx] -= out_velocity_head.derivative(pv_idx + numEq);
+        const int seg_upwind = upwinding_segments_[seg];
+        EvalWell density = segment_densities_[seg_upwind];
+        // WARNING
+        // We disregard the derivatives from the upwind density to make sure derivatives
+        // wrt. to different segments dont get mixed.
+        if (seg != seg_upwind) {
+            density.clearDerivatives();
         }
 
-        // calcuate the maximum cross-area among the segment and its inlet segments
-        double max_area = area;
-        for (const int inlet : segment_inlets_[seg]) {
-            const double inlet_area = segmentSet()[inlet].crossArea();
-            if (inlet_area > max_area) {
-                max_area = inlet_area;
-            }
-        }
-
+        EvalWell accelerationPressureLoss = mswellhelpers::velocityHead(area, mass_rate, density);
         // handling the velocity head of intlet segments
         for (const int inlet : segment_inlets_[seg]) {
-            const EvalWell inlet_density = segment_densities_[inlet];
-            const EvalWell inlet_mass_rate = segment_mass_rates_[inlet];
-            const EvalWell inlet_velocity_head = mswellhelpers::velocityHead(area, inlet_mass_rate, inlet_density);
-            well_state.segPressDropAcceleration()[seg] = inlet_velocity_head.value();
-            resWell_[seg][SPres] += inlet_velocity_head.value();
-            for (int pv_idx = 0; pv_idx < numWellEq; ++pv_idx) {
-                duneD_[seg][inlet][SPres][pv_idx] += inlet_velocity_head.derivative(pv_idx + numEq);
+            const int seg_upwind_inlet = upwinding_segments_[inlet];
+            const double inlet_area = segmentSet()[inlet].crossArea();
+            EvalWell inlet_density = segment_densities_[seg_upwind_inlet];
+            // WARNING
+            // We disregard the derivatives from the upwind density to make sure derivatives
+            // wrt. to different segments dont get mixed.
+            if (inlet != seg_upwind_inlet) {
+                inlet_density.clearDerivatives();
             }
+            const EvalWell inlet_mass_rate = segment_mass_rates_[inlet];
+            accelerationPressureLoss -= mswellhelpers::velocityHead(std::max(inlet_area, area), inlet_mass_rate, inlet_density);
+        }
+
+        // We change the sign of the accelerationPressureLoss for injectors.
+        // Is this correct? Testing indicates that this is what the reference simulator does
+        const double sign = mass_rate < 0. ? 1.0 : - 1.0;
+        accelerationPressureLoss *= sign;
+
+        well_state.segPressDropAcceleration()[seg] = accelerationPressureLoss.value();
+
+        resWell_[seg][SPres] -= accelerationPressureLoss.value();
+        duneD_[seg][seg][SPres][SPres] -= accelerationPressureLoss.derivative(SPres + numEq);
+        duneD_[seg][seg][SPres][GTotal] -= accelerationPressureLoss.derivative(GTotal + numEq);
+        if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
+            duneD_[seg][seg_upwind][SPres][WFrac] -= accelerationPressureLoss.derivative(WFrac + numEq);
+        }
+        if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
+            duneD_[seg][seg_upwind][SPres][GFrac] -= accelerationPressureLoss.derivative(GFrac + numEq);
         }
     }
 
@@ -2330,8 +2347,12 @@ namespace Ewoms
                     // and WFrac and GFrac in seg_upwind
                     resWell_[seg][comp_idx] -= segment_rate.value();
                     duneD_[seg][seg][comp_idx][GTotal] -= segment_rate.derivative(GTotal + numEq);
-                    duneD_[seg][seg_upwind][comp_idx][WFrac] -= segment_rate.derivative(WFrac + numEq);
-                    duneD_[seg][seg_upwind][comp_idx][GFrac] -= segment_rate.derivative(GFrac + numEq);
+                    if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
+                        duneD_[seg][seg_upwind][comp_idx][WFrac] -= segment_rate.derivative(WFrac + numEq);
+                    }
+                    if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
+                        duneD_[seg][seg_upwind][comp_idx][GFrac] -= segment_rate.derivative(GFrac + numEq);
+                    }
                     // pressure derivative should be zero
                 }
             }
@@ -2347,8 +2368,12 @@ namespace Ewoms
                         // and WFrac and GFrac in inlet_upwind
                         resWell_[seg][comp_idx] += inlet_rate.value();
                         duneD_[seg][inlet][comp_idx][GTotal] += inlet_rate.derivative(GTotal + numEq);
-                        duneD_[seg][inlet_upwind][comp_idx][WFrac] += inlet_rate.derivative(WFrac + numEq);
-                        duneD_[seg][inlet_upwind][comp_idx][GFrac] += inlet_rate.derivative(GFrac + numEq);
+                        if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
+                            duneD_[seg][inlet_upwind][comp_idx][WFrac] += inlet_rate.derivative(WFrac + numEq);
+                        }
+                        if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
+                            duneD_[seg][inlet_upwind][comp_idx][GFrac] += inlet_rate.derivative(GFrac + numEq);
+                        }
                         // pressure derivative should be zero
                     }
                 }
@@ -2917,9 +2942,15 @@ namespace Ewoms
         pressure_equation = pressure_equation - sicd_pressure_drop;
         well_state.segPressDropFriction()[seg] = sicd_pressure_drop.value();
 
+        const int seg_upwind = upwinding_segments_[seg];
         resWell_[seg][SPres] = pressure_equation.value();
-        for (int pv_idx = 0; pv_idx < numWellEq; ++pv_idx) {
-            duneD_[seg][seg][SPres][pv_idx] = pressure_equation.derivative(pv_idx + numEq);
+        duneD_[seg][seg][SPres][SPres] += pressure_equation.derivative(SPres + numEq);
+        duneD_[seg][seg][SPres][GTotal] += pressure_equation.derivative(GTotal + numEq);
+        if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
+            duneD_[seg][seg_upwind][SPres][WFrac] += pressure_equation.derivative(WFrac + numEq);
+        }
+        if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
+            duneD_[seg][seg_upwind][SPres][GFrac] += pressure_equation.derivative(GFrac + numEq);
         }
 
         // contribution from the outlet segment
@@ -2950,15 +2981,20 @@ namespace Ewoms
 
         EvalWell pressure_equation = getSegmentPressure(seg);
 
-        // const int seg_upwind = upwinding_segments_[seg];
+        const int seg_upwind = upwinding_segments_[seg];
 
         const auto valve_pressure_drop = pressureDropValve(seg);
         pressure_equation = pressure_equation - valve_pressure_drop;
         well_state.segPressDropFriction()[seg] = valve_pressure_drop.value();
 
         resWell_[seg][SPres] = pressure_equation.value();
-        for (int pv_idx = 0; pv_idx < numWellEq; ++pv_idx) {
-            duneD_[seg][seg][SPres][pv_idx] = pressure_equation.derivative(pv_idx + numEq);
+        duneD_[seg][seg][SPres][SPres] += pressure_equation.derivative(SPres + numEq);
+        duneD_[seg][seg][SPres][GTotal] += pressure_equation.derivative(GTotal + numEq);
+        if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
+            duneD_[seg][seg_upwind][SPres][WFrac] += pressure_equation.derivative(WFrac + numEq);
+        }
+        if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
+            duneD_[seg][seg_upwind][SPres][GFrac] += pressure_equation.derivative(GFrac + numEq);
         }
 
         // contribution from the outlet segment

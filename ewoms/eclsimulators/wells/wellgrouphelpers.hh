@@ -105,6 +105,8 @@ namespace WellGroupHelpers
             updateGuideRateForGroups(
                 groupTmp, schedule, pu, reportStepIdx, simTime, isInjector, wellState, comm, guideRate, thisPot);
 
+            const auto gefac = groupTmp.getGroupEfficiencyFactor();
+
             // accumulate group contribution from sub group unconditionally
             if (isInjector) {
                 const Phase all[] = {Phase::WATER, Phase::OIL, Phase::GAS};
@@ -119,7 +121,7 @@ namespace WellGroupHelpers
                     else
                         continue;
 
-                    pot[phasePos] += thisPot[phasePos];
+                    pot[phasePos] += gefac * thisPot[phasePos];
                 }
             } else {
                 const Group::ProductionCMode& currentGroupControl = wellState.currentProductionGroupControl(groupName);
@@ -128,12 +130,13 @@ namespace WellGroupHelpers
                     continue;
                 }
                 for (int phase = 0; phase < np; phase++) {
-                    pot[phase] += thisPot[phase];
+                    pot[phase] += gefac * thisPot[phase];
                 }
             }
         }
         for (const std::string& wellName : group.wells()) {
             const auto& wellTmp = schedule.getWell(wellName, reportStepIdx);
+            const auto wefac = wellTmp.getEfficiencyFactor();
 
             if (wellTmp.isProducer() && isInjector)
                 continue;
@@ -152,7 +155,7 @@ namespace WellGroupHelpers
             const auto wellrate_index = well_index * wellState.numPhases();
             // add contribution from wells unconditionally
             for (int phase = 0; phase < np; phase++) {
-                pot[phase] += wellState.wellPotentials()[wellrate_index + phase];
+                pot[phase] += wefac * wellState.wellPotentials()[wellrate_index + phase];
             }
         }
 
@@ -168,11 +171,9 @@ namespace WellGroupHelpers
         if (pu.phase_used[BlackoilPhases::Aqua])
             waterPot = pot[pu.phase_pos[BlackoilPhases::Aqua]];
 
-        const double gefac = group.getGroupEfficiencyFactor();
-
-        oilPot = comm.sum(oilPot) * gefac;
-        gasPot = comm.sum(gasPot) * gefac;
-        waterPot = comm.sum(waterPot) * gefac;
+        oilPot = comm.sum(oilPot);
+        gasPot = comm.sum(gasPot);
+        waterPot = comm.sum(waterPot);
 
         if (isInjector) {
             wellState.setCurrentGroupInjectionPotentials(group.name(), pot);
@@ -212,10 +213,9 @@ namespace WellGroupHelpers
                 if (pu.phase_used[BlackoilPhases::Aqua] > 0)
                     waterpot = wpot[pu.phase_pos[BlackoilPhases::Aqua]];
             }
-            const double wefac = well.getEfficiencyFactor();
-            oilpot = comm.sum(oilpot) * wefac;
-            gaspot = comm.sum(gaspot) * wefac;
-            waterpot = comm.sum(waterpot) * wefac;
+            oilpot = comm.sum(oilpot);
+            gaspot = comm.sum(gaspot);
+            waterpot = comm.sum(waterpot);
             guideRate->compute(well.name(), reportStepIdx, simTime, oilpot, gaspot, waterpot);
         }
     }

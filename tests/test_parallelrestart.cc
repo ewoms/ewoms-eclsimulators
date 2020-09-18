@@ -26,7 +26,7 @@
 #include <tuple>
 #include <utility>
 
-#include <ewoms/eclio/opmlog/location.hh>
+#include <ewoms/eclio/opmlog/keywordlocation.hh>
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/deck/deckitem.hh>
 #include <ewoms/eclio/parser/eclipsestate/aquancon.hh>
@@ -63,6 +63,7 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/msw/icd.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/msw/sicd.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/msw/valve.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/network/node.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/oilvaporizationproperties.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/rftconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
@@ -464,11 +465,12 @@ TEST_FOR_TYPE(GuideRateModel)
 TEST_FOR_TYPE(InitConfig)
 TEST_FOR_TYPE(IOConfig)
 TEST_FOR_TYPE(JFunc)
-TEST_FOR_TYPE(Location)
+TEST_FOR_TYPE(KeywordLocation)
 TEST_FOR_TYPE(MessageLimits)
 TEST_FOR_TYPE(MLimits)
 TEST_FOR_TYPE(MULTREGTScanner)
 TEST_FOR_TYPE(NNC)
+TEST_FOR_TYPE2(Network, Node)
 TEST_FOR_TYPE(OilVaporizationProperties)
 TEST_FOR_TYPE(Phases)
 TEST_FOR_TYPE(PlymwinjTable)
