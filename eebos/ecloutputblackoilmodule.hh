@@ -29,7 +29,6 @@
 
 #include <array>
 #include <numeric>
-#include <optional>
 #include <stdexcept>
 
 #include <ewoms/numerics/models/blackoil/blackoilproperties.hh>
@@ -45,6 +44,7 @@
 #include <ewoms/common/propertysystem.hh>
 #include <ewoms/common/parametersystem.hh>
 #include <ewoms/common/valgrind.hh>
+#include <ewoms/common/optional.hh>
 
 #include <dune/common/fvector.hh>
 
@@ -1069,7 +1069,7 @@ public:
     }
 
     int regionMax(const std::vector<int>& region) {
-        const auto max_value = region.empty() ? 0 : *std::max_element(region.begin(), region.end());
+        auto max_value = region.empty() ? 0 : *std::max_element(region.begin(), region.end());
         return this->simulator_.gridView().comm().max(max_value);
     }
 
@@ -2262,8 +2262,8 @@ private:
     std::vector<int> failedCellsPd_;
     std::unordered_map<std::string, std::vector<int>> regions_;
     std::array<ScalarBuffer, FipDataType::numFipTypes> fip_;
-    std::optional<std::array<ScalarBuffer, FipDataType::numFipTypes>> regionInitialInplace_;
-    std::optional<std::array<Scalar, FipDataType::numFipTypes>> fieldInitialInplace_;
+    Ewoms::optional<std::array<ScalarBuffer, FipDataType::numFipTypes>> regionInitialInplace_;
+    Ewoms::optional<std::array<Scalar, FipDataType::numFipTypes>> fieldInitialInplace_;
 
     std::vector<Ewoms::SummaryConfigNode> RPRNodes_;
     std::vector<Ewoms::SummaryConfigNode> RPRPNodes_;
