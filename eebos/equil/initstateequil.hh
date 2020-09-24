@@ -48,7 +48,6 @@
 #include <ewoms/eclio/parser/eclipsestate/tables/pdvdtable.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/saltvdtable.hh>
 #include <ewoms/eclio/opmlog/opmlog.hh>
-#include <ewoms/eclio/data/simulationdatacontainer.hh>
 
 #include <ewoms/material/fluidsystems/blackoilfluidsystem.hh>
 #include <ewoms/material/fluidstates/simplemodularfluidstate.hh>

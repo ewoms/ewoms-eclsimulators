@@ -184,23 +184,15 @@ namespace Ewoms {
 
             void initFromRestartFile(const RestartValue& restartValues);
 
-            Ewoms::data::GroupValues
-            groupData(const int reportStepIdx, const Ewoms::Schedule& sched) const
+            Ewoms::data::GroupAndNetworkValues
+            groupAndNetworkData(const int reportStepIdx, const Ewoms::Schedule& sched) const
             {
-                auto gvalues = ::Ewoms::data::GroupValues{};
+                auto grp_nwrk_values = ::Ewoms::data::GroupAndNetworkValues{};
 
-                const auto groupGuideRates =
-                    calculateAllGroupGuiderates(reportStepIdx, sched);
+                this->assignGroupValues(reportStepIdx, sched,
+                                        grp_nwrk_values.groupData);
 
-                for (const auto& gname : sched.groupNames(reportStepIdx)) {
-                    const auto& grup = sched.getGroup(gname, reportStepIdx);
-
-                    auto& gdata = gvalues[gname];
-                    this->assignGroupControl(grup, gdata);
-                    this->assignGroupGuideRates(grup, groupGuideRates, gdata);
-                }
-
-                return gvalues;
+                return grp_nwrk_values;
             }
 
             Ewoms::data::Wells wellData() const
@@ -280,6 +272,8 @@ namespace Ewoms {
             std::vector<int> cartesian_to_compressed_;
 
             std::vector<bool> is_cell_perforated_;
+
+            std::function<bool(const Well&)> is_shut_or_defunct_;
 
             void initializeWellPerfData();
 
@@ -406,7 +400,7 @@ namespace Ewoms {
 
             // convert well data from ewoms-eclio to well state from ewoms-eclsimulators
             void wellsToState( const data::Wells& wells,
-                               const data::GroupValues& groupValues,
+                               const data::GroupAndNetworkValues& grpNwrkValues,
                                const PhaseUsage& phases,
                                const bool handle_ms_well,
                                WellStateFullyImplicitBlackoil& state ) const;
@@ -435,6 +429,10 @@ namespace Ewoms {
             void updateWsolvent(const Group& group, const Schedule& schedule, const int reportStepIdx, const WellStateFullyImplicitBlackoil& wellState);
 
             void setWsolvent(const Group& group, const Schedule& schedule, const int reportStepIdx, double wsolvent);
+
+            void assignGroupValues(const int                               reportStepIdx,
+                                   const Schedule&                         sched,
+                                   std::map<std::string, data::GroupData>& gvalues) const;
 
             std::unordered_map<std::string, data::GroupGuideRates>
             calculateAllGroupGuiderates(const int reportStepIdx, const Schedule& sched) const;

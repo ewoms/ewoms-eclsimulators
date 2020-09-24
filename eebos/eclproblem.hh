@@ -71,7 +71,6 @@
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/rockwnodtable.hh>
 #include <ewoms/eclio/parser/eclipsestate/tables/overburdtable.hh>
-#include <ewoms/common/exceptions.hh>
 #include <ewoms/common/conditionalstorage.hh>
 
 #include <dune/common/version.hh>

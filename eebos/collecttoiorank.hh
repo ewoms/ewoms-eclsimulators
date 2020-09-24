@@ -35,7 +35,6 @@
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
 #include <ewoms/eclio/parser/eclipsestate/grid/eclipsegrid.hh>
 
-#include <ewoms/common/exceptions.hh>
 #include <ewoms/common/unused.hh>
 
 #include <dune/grid/common/mcmgmapper.hh>
@@ -575,17 +574,17 @@ public:
 
     };
 
-    class PackUnPackGroupData : public P2PCommunicatorType::DataHandleInterface
+    class PackUnPackGroupAndNetworkValues : public P2PCommunicatorType::DataHandleInterface
     {
-        const Ewoms::data::GroupValues& localGroupData_;
-        Ewoms::data::GroupValues&       globalGroupData_;
+        const Ewoms::data::GroupAndNetworkValues& localGroupAndNetworkData_;
+        Ewoms::data::GroupAndNetworkValues&       globalGroupAndNetworkData_;
 
     public:
-        PackUnPackGroupData(const Ewoms::data::GroupValues& localGroupData,
-                            Ewoms::data::GroupValues&       globalGroupData,
-                            const bool                    isIORank)
-            : localGroupData_ (localGroupData)
-            , globalGroupData_(globalGroupData)
+        PackUnPackGroupAndNetworkValues(const Ewoms::data::GroupAndNetworkValues& localGroupAndNetworkData,
+                                        Ewoms::data::GroupAndNetworkValues&       globalGroupAndNetworkData,
+                                        const bool                              isIORank)
+            : localGroupAndNetworkData_ (localGroupAndNetworkData)
+            , globalGroupAndNetworkData_(globalGroupAndNetworkData)
         {
             if (! isIORank) { return; }
 
@@ -607,13 +606,13 @@ public:
                 };
             }
 
-            // write all group data
-           this->localGroupData_.write(buffer);
+            // write all group and network (node/branch) data
+            this->localGroupAndNetworkData_.write(buffer);
         }
 
         // unpack all data associated with link
         void unpack(int /*link*/, MessageBufferType& buffer)
-        { this->globalGroupData_.read(buffer); }
+        { this->globalGroupAndNetworkData_.read(buffer); }
     };
 
     class PackUnPackBlockData : public P2PCommunicatorType::DataHandleInterface
@@ -678,12 +677,12 @@ public:
     void collect(const Ewoms::data::Solution& localCellData,
                  const std::map<std::pair<std::string, int>, double>& localBlockData,
                  const Ewoms::data::Wells& localWellData,
-                 const Ewoms::data::GroupValues& localGroupData)
+                 const Ewoms::data::GroupAndNetworkValues& localGroupAndNetworkData)
     {
         globalCellData_ = {};
         globalBlockData_.clear();
         globalWellData_.clear();
-        globalGroupData_.clear();
+        globalGroupAndNetworkData_.clear();
 
         // index maps only have to be build when reordering is needed
         if(!needsReordering && !isParallel())
@@ -710,9 +709,9 @@ public:
             this->isIORank()
         };
 
-        PackUnPackGroupData packUnpackGroupData {
-            localGroupData,
-            this->globalGroupData_,
+        PackUnPackGroupAndNetworkValues packUnpackGroupAndNetworkData {
+            localGroupAndNetworkData,
+            this->globalGroupAndNetworkData_,
             this->isIORank()
         };
 
@@ -724,7 +723,7 @@ public:
 
         toIORankComm_.exchange(packUnpackCellData);
         toIORankComm_.exchange(packUnpackWellData);
-        toIORankComm_.exchange(packUnpackGroupData);
+        toIORankComm_.exchange(packUnpackGroupAndNetworkData);
         toIORankComm_.exchange(packUnpackBlockData);
 
 #ifndef NDEBUG
@@ -742,8 +741,8 @@ public:
     const Ewoms::data::Wells& globalWellData() const
     { return globalWellData_; }
 
-    const Ewoms::data::GroupValues& globalGroupData() const
-    { return globalGroupData_; }
+    const Ewoms::data::GroupAndNetworkValues& globalGroupAndNetworkData() const
+    { return globalGroupAndNetworkData_; }
 
     bool isIORank() const
     { return toIORankComm_.rank() == ioRank; }
@@ -790,7 +789,7 @@ protected:
     Ewoms::data::Solution globalCellData_;
     std::map<std::pair<std::string, int>, double> globalBlockData_;
     Ewoms::data::Wells globalWellData_;
-    Ewoms::data::GroupValues globalGroupData_;
+    Ewoms::data::GroupAndNetworkValues globalGroupAndNetworkData_;
     std::vector<int> localIdxToGlobalIdx_;
     /// \brief sorted list of cartesian indices present-
     ///

@@ -62,17 +62,18 @@ const std::vector<int>& ParallelFieldPropsManager::get_int(const std::string& ke
         // Some of the keywords might be defaulted.
         // We will let rank 0 create them and distribute them using get_global_int
         auto data = get_global_int(keyword);
-        auto& local_data = const_cast<std::map<std::string, std::vector<int>>&>(m_intProps)[keyword];
-        local_data.resize(m_activeSize());
+        auto& local_data = const_cast<std::map<std::string, Fieldprops::FieldData<int>>&>(m_intProps)[keyword];
+        local_data.data.resize(m_activeSize());
+        local_data.value_status.resize(m_activeSize());
 
         for (int i = 0; i < m_activeSize(); ++i)
         {
-            local_data[i] = data[m_local2Global(i)];
+            local_data.data[i] = data[m_local2Global(i)];
         }
-        return local_data;
+        return local_data.data;
     }
 
-    return it->second;
+    return it->second.data;
 }
 
 std::vector<int> ParallelFieldPropsManager::get_global_int(const std::string& keyword) const
@@ -114,16 +115,17 @@ const std::vector<double>& ParallelFieldPropsManager::get_double(const std::stri
         // Some of the keywords might be defaulted.
         // We will let rank 0 create them and distribute them using get_global_int
         auto data = get_global_double(keyword);
-        auto& local_data = const_cast<std::map<std::string, std::vector<double>>&>(m_doubleProps)[keyword];
-        local_data.resize(m_activeSize());
+        auto& local_data = const_cast<std::map<std::string, Fieldprops::FieldData<double>>&>(m_doubleProps)[keyword];
+        local_data.data.resize(m_activeSize());
+        local_data.value_status.resize(m_activeSize());
         for (int i = 0; i < m_activeSize(); ++i)
         {
-            local_data[i] = data[m_local2Global(i)];
+            local_data.data[i] = data[m_local2Global(i)];
         }
-        return local_data;
+        return local_data.data;
     }
 
-    return it->second;
+    return it->second.data;
 }
 
 std::vector<double> ParallelFieldPropsManager::get_global_double(const std::string& keyword) const
@@ -157,10 +159,27 @@ std::vector<double> ParallelFieldPropsManager::get_global_double(const std::stri
     return result;
 }
 
+bool ParallelFieldPropsManager::tran_active(const std::string& keyword) const
+{
+    auto calculator = m_tran.find(keyword);
+    return calculator != m_tran.end() && calculator->second.size();
+}
+
+void ParallelFieldPropsManager::apply_tran(const std::string& keyword,
+                                           std::vector<double>& data) const
+{
+    Ewoms::apply_tran(m_tran, m_doubleProps, m_activeSize(), keyword, data);
+}
+
 bool ParallelFieldPropsManager::has_int(const std::string& keyword) const
 {
     auto it = m_intProps.find(keyword);
     return it != m_intProps.end();
+}
+
+void ParallelFieldPropsManager::deserialize_tran(const std::vector<char>& buffer)
+{
+    Ewoms::deserialize_tran(m_tran, buffer);
 }
 
 bool ParallelFieldPropsManager::has_double(const std::string& keyword) const

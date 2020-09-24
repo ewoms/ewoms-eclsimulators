@@ -496,12 +496,10 @@ inline std::size_t packSize(const data::Solution& data, Dune::MPIHelper::MPIComm
     return packSize(static_cast<const std::map< std::string, data::CellData>&>(data), comm);
 }
 
-// Ewoms::data::GroupValues
-inline std::size_t packSize(const data::GroupValues& data, Dune::MPIHelper::MPICommunicator comm)
+inline std::size_t packSize(const data::GroupAndNetworkValues& data, Dune::MPIHelper::MPICommunicator comm)
 {
-    // Needs explicit conversion to a supported base type holding the data
-    // to prevent throwing.
-    return packSize(static_cast<const std::map<std::string, data::GroupData>&>(data), comm);
+    return packSize(data.groupData, comm)
+        +  packSize(data.nodeData, comm);
 }
 
 // Ewoms::data::WellRates
@@ -517,7 +515,7 @@ inline std::size_t packSize(const RestartValue& data, Dune::MPIHelper::MPICommun
 {
     return packSize(data.solution, comm)
         +  packSize(data.wells, comm)
-        +  packSize(data.groups, comm)
+        +  packSize(data.grp_nwrk, comm)
         +  packSize(data.extra, comm);
 }
 
@@ -832,13 +830,11 @@ inline void pack(const data::WellRates& data, std::vector<char>& buffer, int& po
 }
 
 // Ewoms::data::GroupValues
-inline void pack(const data::GroupValues& data, std::vector<char>& buffer, int& position,
+inline void pack(const data::GroupAndNetworkValues& data, std::vector<char>& buffer, int& position,
                  Dune::MPIHelper::MPICommunicator comm)
 {
-    // Needs explicit conversion to a supported base type holding the data
-    // to prevent throwing.
-    pack(static_cast<const std::map< std::string, data::GroupData>&>(data),
-         buffer, position, comm);
+    pack(data.groupData, buffer, position, comm);
+    pack(data.nodeData, buffer, position, comm);
 }
 
 // Ewoms::data::RestartValue
@@ -847,7 +843,7 @@ inline void pack(const RestartValue& data, std::vector<char>& buffer, int& posit
 {
     pack(data.solution, buffer, position, comm);
     pack(data.wells, buffer, position, comm);
-    pack(data.groups, buffer, position, comm);
+    pack(data.grp_nwrk, buffer, position, comm);
     pack(data.extra, buffer, position, comm);
 }
 
@@ -1186,14 +1182,12 @@ inline void unpack(data::WellRates& data, std::vector<char>& buffer, int& positi
            buffer, position, comm);
 }
 
-// Ewoms::data::GroupValues
-inline void unpack(data::GroupValues& data, std::vector<char>& buffer, int& position,
+// Ewoms::GroupAndNetworkValues
+inline void unpack(data::GroupAndNetworkValues& data, std::vector<char>& buffer, int& position,
                    Dune::MPIHelper::MPICommunicator comm)
 {
-    // Needs explicit conversion to a supported base type holding the data
-    // to prevent throwing.
-    unpack(static_cast<std::map< std::string, data::GroupData>&>(data),
-           buffer, position, comm);
+    unpack(data.groupData, buffer, position, comm);
+    unpack(data.nodeData, buffer, position, comm);
 }
 
 // Ewoms::RestartValue
@@ -1202,7 +1196,7 @@ inline void unpack(RestartValue& data, std::vector<char>& buffer, int& position,
 {
     unpack(data.solution, buffer, position, comm);
     unpack(data.wells, buffer, position, comm);
-    unpack(data.groups, buffer, position, comm);
+    unpack(data.grp_nwrk, buffer, position, comm);
     unpack(data.extra, buffer, position, comm);
 }
 
@@ -1227,8 +1221,8 @@ inline RestartValue loadParallelRestart(const EclipseIO* eclIO,
 #if HAVE_MPI
     data::Solution sol;
     data::Wells wells;
-    data::GroupValues groups;
-    RestartValue restartValues(sol, wells, groups);
+    data::GroupAndNetworkValues grp_nwrk;
+    RestartValue restartValues(sol, wells, grp_nwrk);
 
     if (eclIO)
     {

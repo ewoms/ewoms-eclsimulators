@@ -27,7 +27,6 @@
 #include <ewoms/eclsimulators/timestepping/adaptivetimestepper.hh>
 #include <ewoms/eclgrids/utility/stopwatch.hh>
 
-#include <ewoms/eclio/exceptions.hh>
 #include <ewoms/eclio/errormacros.hh>
 
 BEGIN_PROPERTIES

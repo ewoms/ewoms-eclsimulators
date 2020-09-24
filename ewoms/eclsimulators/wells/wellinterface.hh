@@ -21,7 +21,6 @@
 
 #include <ewoms/eclio/opmlog/opmlog.hh>
 #include <ewoms/eclio/errormacros.hh>
-#include <ewoms/eclio/exceptions.hh>
 
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/well.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/wellteststate.hh>

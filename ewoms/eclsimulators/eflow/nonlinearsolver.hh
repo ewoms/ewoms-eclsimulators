@@ -22,11 +22,12 @@
 #include <ewoms/eclsimulators/timestepping/simulatorreport.hh>
 #include <ewoms/eclio/utility/parameters/parametergroup.hh>
 #include <ewoms/eclio/errormacros.hh>
-#include <ewoms/eclio/exceptions.hh>
 #include <ewoms/eclsimulators/timestepping/simulatortimerinterface.hh>
 
 #include <ewoms/common/parametersystem.hh>
 #include <ewoms/common/propertysystem.hh>
+#include <ewoms/numerics/utils/basicproperties.hh>
+#include <ewoms/eclio/exceptions.hh>
 
 #include <dune/common/fmatrix.hh>
 #include <dune/istl/bcrsmatrix.hh>

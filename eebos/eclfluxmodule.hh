@@ -36,7 +36,6 @@
 #include <ewoms/common/signum.hh>
 
 #include <ewoms/common/valgrind.hh>
-#include <ewoms/common/exceptions.hh>
 
 #include <dune/common/fvector.hh>
 #include <dune/common/fmatrix.hh>

@@ -17,6 +17,7 @@
 #include <ewoms/eclsimulators/timestepping/timestepcontrolinterface.hh>
 #include <ewoms/eclsimulators/timestepping/timestepcontrol.hh>
 #include <ewoms/eclsimulators/deprecated/props/phaseusagefromdeck.hh>
+#include <ewoms/eclio/exceptions.hh>
 
 BEGIN_PROPERTIES
 

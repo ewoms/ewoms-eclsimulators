@@ -40,8 +40,6 @@
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/simulationconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/simulationconfig/thresholdpressure.hh>
 
-#include <ewoms/common/exceptions.hh>
-
 #include <dune/grid/common/gridenums.hh>
 #include <dune/common/version.hh>
 

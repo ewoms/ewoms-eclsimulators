@@ -21,6 +21,7 @@
 #include <ewoms/eclsimulators/deprecated/props/phaseusagefromdeck.hh>
 
 #include <utility>
+#include <algorithm>
 
 namespace Ewoms {
     template<typename TypeTag>
@@ -49,6 +50,18 @@ namespace Ewoms {
         const auto& cartDims = Ewoms::UgGridHelpers::cartDims(grid);
         setupCartesianToCompressed_(Ewoms::UgGridHelpers::globalCell(grid),
                                     cartDims[0]*cartDims[1]*cartDims[2]);
+
+        is_shut_or_defunct_ = [&eebosSimulator](const Well& well) {
+                if (well.getStatus() == Well::Status::SHUT)
+                    return true;
+                if (eebosSimulator.gridView().comm().size() == 1)
+                    return false;
+                std::pair<std::string, bool> value{well.name(), true}; // false indicate not active!
+                const auto& parallel_wells = eebosSimulator.vanguard().parallelWells();
+                auto candidate = std::lower_bound(parallel_wells.begin(), parallel_wells.end(),
+                                                 value);
+                return candidate == parallel_wells.end() || *candidate != value;
+            };
     }
 
     template<typename TypeTag>
@@ -204,13 +217,9 @@ namespace Ewoms {
         int globalNumWells = 0;
         // Make wells_ecl_ contain only this partition's non-shut wells.
         {
-            const auto& defunct_well_names = eebosSimulator_.vanguard().defunctWellNames();
-            auto is_shut_or_defunct = [&defunct_well_names](const Well& well) {
-                return (well.getStatus() == Well::Status::SHUT) || (defunct_well_names.find(well.name()) != defunct_well_names.end());
-            };
             auto w = schedule().getWells(timeStepIdx);
             globalNumWells = w.size();
-            w.erase(std::remove_if(w.begin(), w.end(), is_shut_or_defunct), w.end());
+            w.erase(std::remove_if(w.begin(), w.end(), is_shut_or_defunct_), w.end());
             wells_ecl_.swap(w);
         }
         initializeWellPerfData();
@@ -513,13 +522,9 @@ namespace Ewoms {
         int globalNumWells = 0;
         // Make wells_ecl_ contain only this partition's non-shut wells.
         {
-            const auto& defunct_well_names = eebosSimulator_.vanguard().defunctWellNames();
-            auto is_shut_or_defunct = [&defunct_well_names](const Well& well) {
-                return (well.getStatus() == Well::Status::SHUT) || (defunct_well_names.find(well.name()) != defunct_well_names.end());
-            };
             auto w = schedule().getWells(report_step);
             globalNumWells = w.size();
-            w.erase(std::remove_if(w.begin(), w.end(), is_shut_or_defunct), w.end());
+            w.erase(std::remove_if(w.begin(), w.end(), is_shut_or_defunct_), w.end());
             wells_ecl_.swap(w);
         }
 
@@ -531,7 +536,7 @@ namespace Ewoms {
             const size_t numCells = Ewoms::UgGridHelpers::numCells(grid());
             const bool handle_ms_well = (param_.use_multisegment_well_ && anyMSWellOpenLocal());
             well_state_.resize(wells_ecl_, schedule(), handle_ms_well, numCells, phaseUsage, well_perf_data_, summaryState, globalNumWells); // Resize for restart step
-            wellsToState(restartValues.wells, restartValues.groups, phaseUsage, handle_ms_well, well_state_);
+            wellsToState(restartValues.wells, restartValues.grp_nwrk, phaseUsage, handle_ms_well, well_state_);
         }
 
         previous_well_state_ = well_state_;
@@ -1503,7 +1508,7 @@ namespace Ewoms {
     void
     BlackoilWellModel<TypeTag>::
     wellsToState( const data::Wells& wells,
-                  const data::GroupValues& groupValues,
+                  const data::GroupAndNetworkValues& grpNwrkValues,
                   const PhaseUsage& phases,
                   const bool handle_ms_well,
                   WellStateFullyImplicitBlackoil& state) const
@@ -1600,9 +1605,9 @@ namespace Ewoms {
             }
         }
 
-        for (const auto& pair : groupValues) {
-            const auto& group = pair.first;
-            const auto& value = pair.second;
+        for (const auto& groupPair : grpNwrkValues.groupData) {
+            const auto& group = groupPair.first;
+            const auto& value = groupPair.second;
             const auto cpc = value.currentControl.currentProdConstraint;
             const auto cgi = value.currentControl.currentGasInjectionConstraint;
             const auto cwi = value.currentControl.currentWaterInjectionConstraint;
@@ -2329,6 +2334,25 @@ namespace Ewoms {
 
             auto well = getWell(wellName);
             well->setWsolvent(wsolvent);
+        }
+    }
+
+    template <typename TypeTag>
+    void
+    BlackoilWellModel<TypeTag>::
+    assignGroupValues(const int                               reportStepIdx,
+                      const Schedule&                         sched,
+                      std::map<std::string, data::GroupData>& gvalues) const
+    {
+        const auto groupGuideRates =
+            this->calculateAllGroupGuiderates(reportStepIdx, sched);
+
+        for (const auto& gname : sched.groupNames(reportStepIdx)) {
+            const auto& grup = sched.getGroup(gname, reportStepIdx);
+
+            auto& gdata = gvalues[gname];
+            this->assignGroupControl(grup, gdata);
+            this->assignGroupGuideRates(grup, groupGuideRates, gdata);
         }
     }
 

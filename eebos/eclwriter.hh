@@ -55,8 +55,6 @@
 #include <ewoms/eclgrids/utility/cartesiantocompressed.hh>
 
 #include <ewoms/common/valgrind.hh>
-#include <ewoms/common/exceptions.hh>
-
 #include <ewoms/eclio/opmlog/opmlog.hh>
 
 #include <list>
@@ -264,14 +262,14 @@ public:
             simulator_.vanguard().externalSetupTime();
 
         const auto localWellData = simulator_.problem().wellModel().wellData();
-        const auto localGroupData = simulator_.problem().wellModel()
-            .groupData(reportStepNum, simulator_.vanguard().schedule());
+        const auto localGroupAndNetworkData = simulator_.problem().wellModel()
+            .groupAndNetworkData(reportStepNum, simulator_.vanguard().schedule());
 
         this->prepareLocalCellData(isSubStep, reportStepNum);
 
         if (collectToIORank_.isParallel())
             collectToIORank_.collect({}, eclOutputModule_.getBlockData(),
-                                     localWellData, localGroupData);
+                                     localWellData, localGroupAndNetworkData);
 
         std::map<std::string, double> miscSummaryData;
         std::map<std::string, std::vector<double>> regionData;
@@ -298,9 +296,9 @@ public:
                 ? this->collectToIORank_.globalWellData()
                 : localWellData;
 
-            const auto& groupData = this->collectToIORank_.isParallel()
-                ? this->collectToIORank_.globalGroupData()
-                : localGroupData;
+            const auto& groupAndNetworkData = this->collectToIORank_.isParallel()
+                ? this->collectToIORank_.globalGroupAndNetworkData()
+                : localGroupAndNetworkData;
 
             const auto& blockData
                 = this->collectToIORank_.isParallel()
@@ -313,7 +311,7 @@ public:
                          eclState,
                          schedule(),
                          wellData,
-                         groupData,
+                         groupAndNetworkData,
                          miscSummaryData,
                          regionData,
                          blockData);
@@ -349,7 +347,8 @@ public:
 
         // output using eclWriter if enabled
         auto localWellData = simulator_.problem().wellModel().wellData();
-        auto localGroupData = simulator_.problem().wellModel().groupData(reportStepNum, simulator_.vanguard().schedule());
+        auto localGroupAndNetworkData = simulator_.problem().wellModel()
+            .groupAndNetworkData(reportStepNum, simulator_.vanguard().schedule());
 
         Ewoms::data::Solution localCellData = {};
         if (! isSubStep) {
@@ -359,15 +358,16 @@ public:
             this->eclOutputModule_.addRftDataToWells(localWellData, reportStepNum);
         }
 
-        if (collectToIORank_.isParallel()) {
-            collectToIORank_.collect(localCellData, eclOutputModule_.getBlockData(), localWellData, localGroupData);
+        if (this->collectToIORank_.isParallel()) {
+            collectToIORank_.collect(localCellData, eclOutputModule_.getBlockData(),
+                                     localWellData, localGroupAndNetworkData);
         }
 
         if (this->collectToIORank_.isIORank()) {
             this->writeOutput(reportStepNum, isSubStep,
                               std::move(localCellData),
                               std::move(localWellData),
-                              std::move(localGroupData));
+                              std::move(localGroupAndNetworkData));
         }
     }
 
@@ -741,11 +741,11 @@ private:
         }
     }
 
-    void writeOutput(const int                  reportStepNum,
-                     const bool                 isSubStep,
-                     ::Ewoms::data::Solution&&    localCellData,
-                     ::Ewoms::data::Wells&&       localWellData,
-                     ::Ewoms::data::GroupValues&& localGroupData)
+    void writeOutput(const int                            reportStepNum,
+                     const bool                           isSubStep,
+                     ::Ewoms::data::Solution&&              localCellData,
+                     ::Ewoms::data::Wells&&                 localWellData,
+                     ::Ewoms::data::GroupAndNetworkValues&& localGroupAndNetworkData)
     {
         const Scalar curTime = simulator_.time() + simulator_.timeStepSize();
         const Scalar nextStepSize = simulator_.problem().nextTimeStepSize();
@@ -758,8 +758,8 @@ private:
             isParallel ? this->collectToIORank_.globalWellData()
                        : std::move(localWellData),
 
-            isParallel ? this->collectToIORank_.globalGroupData()
-                       : std::move(localGroupData)
+            isParallel ? this->collectToIORank_.globalGroupAndNetworkData()
+                       : std::move(localGroupAndNetworkData)
         };
 
         if (simulator_.vanguard().eclState().getSimulationConfig().useThresholdPressure()) {

@@ -29,6 +29,9 @@
 #define HAVE_DYNAMIC_BOOST_TEST 1
 #define BOOST_TEST_DYN_LINK 1
 
+/* Suppress some boost::bind deprecation warnings */
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS 1
+
 /* end private */
 
 /* Define to the version of ewoms-eclsimulators */

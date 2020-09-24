@@ -45,7 +45,6 @@
 #include <ewoms/eclio/parser/eclipsestate/tables/tablemanager.hh>
 
 #include <ewoms/eclsimulators/linalg/istlsolver.hh>
-#include <ewoms/eclio/data/simulationdatacontainer.hh>
 
 #include <dune/istl/owneroverlapcopy.hh>
 #if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)

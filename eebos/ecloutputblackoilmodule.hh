@@ -298,8 +298,7 @@ public:
             for (const auto& well: schedule.getWells(reportStepNum)) {
 
                 // don't bother with wells not on this process
-                const auto& defunctWellNames = simulator_.vanguard().defunctWellNames();
-                if (defunctWellNames.find(well.name()) != defunctWellNames.end()) {
+                if (isDefunctParallelWell(well.name())) {
                     continue;
                 }
 
@@ -324,9 +323,6 @@ public:
             }
         }
 
-        // always allocate memory for temperature
-        temperature_.resize(bufferSize, 0.0);
-
         // field data should be allocated
         // 1) when we want to restart
         // 2) when it is ask for by the user via restartConfig
@@ -345,6 +341,12 @@ public:
         oilPressure_.resize(bufferSize, 0.0);
         rstKeywords["PRES"] = 0;
         rstKeywords["PRESSURE"] = 0;
+
+        // allocate memory for temperature
+        if (enableEnergy || rstKeywords["TEMP"]) {
+            temperature_.resize(bufferSize, 0.0);
+            rstKeywords["TEMP"] = 0;
+        }
 
         if (FluidSystem::phaseIsActive(oilPhaseIdx))
             rstKeywords["SOIL"] = 0;
@@ -536,7 +538,7 @@ public:
                 Ewoms::Valgrind::CheckDefined(oilPressure_[globalDofIdx]);
             }
 
-            if (enableEnergy) {
+            if (temperature_.size() > 0) {
                 temperature_[globalDofIdx] = Ewoms::getValue(fs.temperature(oilPhaseIdx));
                 Ewoms::Valgrind::CheckDefined(temperature_[globalDofIdx]);
             }
@@ -877,8 +879,7 @@ public:
         for (const auto& well: schedule.getWells(reportStepNum)) {
 
             // don't bother with wells not on this process
-            const auto& defunctWellNames = simulator_.vanguard().defunctWellNames();
-            if (defunctWellNames.find(well.name()) != defunctWellNames.end()) {
+            if (isDefunctParallelWell(well.name())) {
                 continue;
             }
 
@@ -932,7 +933,7 @@ public:
             sol.insert("PRESSURE", Ewoms::UnitSystem::measure::pressure, std::move(oilPressure_), Ewoms::data::TargetType::RESTART_SOLUTION);
         }
 
-        if (enableEnergy) {
+        if (temperature_.size() > 0) {
             sol.insert("TEMP", Ewoms::UnitSystem::measure::temperature, std::move(temperature_), Ewoms::data::TargetType::RESTART_SOLUTION);
         }
 
@@ -1294,8 +1295,7 @@ public:
                         for (const auto& wname: schedule.wellNames(reportStepNum)) {
 
                                 // don't bother with wells not on this process
-                                const auto& defunctWellNames = simulator_.vanguard().defunctWellNames();
-                                if (defunctWellNames.find(wname) != defunctWellNames.end()) {
+                                if (isDefunctParallelWell(wname)) {
                                         continue;
                                 }
 
@@ -1392,8 +1392,7 @@ public:
                         for (const auto& wname: schedule.wellNames(reportStepNum)) {
 
                                 // don't bother with wells not on this process
-                                const auto& defunctWellNames = simulator_.vanguard().defunctWellNames();
-                                if (defunctWellNames.find(wname) != defunctWellNames.end()) {
+                                if (isDefunctParallelWell(wname)) {
                                         continue;
                                 }
 
@@ -1521,8 +1520,7 @@ public:
                         for (const auto& wname : schedule.wellNames(reportStepNum))  {
 
                                 // don't bother with wells not on this process
-                                const auto& defunctWellNames = simulator_.vanguard().defunctWellNames();
-                                if (defunctWellNames.find(wname) != defunctWellNames.end()) {
+                                if (isDefunctParallelWell(wname)) {
                                         continue;
                                 }
 
@@ -1662,7 +1660,7 @@ public:
 
         if (oilPressure_.size() > 0 && sol.has("PRESSURE"))
             oilPressure_[elemIdx] = sol.data("PRESSURE")[globalDofIndex];
-        if (enableEnergy && sol.has("TEMP"))
+        if (temperature_.size() > 0 && sol.has("TEMP"))
             temperature_[elemIdx] = sol.data("TEMP")[globalDofIndex];
         if (rs_.size() > 0 && sol.has("RS"))
             rs_[elemIdx] = sol.data("RS")[globalDofIndex];
@@ -1716,7 +1714,7 @@ public:
             }
         }
 
-        if (enableEnergy)
+        if (temperature_.size() > 0)
             fs.setTemperature(temperature_[elemIdx]);
         if (rs_.size() > 0)
            fs.setRs(rs_[elemIdx]);
@@ -1789,6 +1787,17 @@ public:
     { return blockData_; }
 
 private:
+
+    bool isDefunctParallelWell(std::string wname) const
+    {
+        if (simulator_.gridView().comm().size()==1)
+            return false;
+        const auto& parallelWells = simulator_.vanguard().parallelWells();
+        std::pair<std::string,bool> value{wname, true};
+        auto candidate = std::lower_bound(parallelWells.begin(), parallelWells.end(),
+                                          value);
+        return candidate == parallelWells.end() || *candidate != value;
+    }
 
     bool isIORank_() const
     {

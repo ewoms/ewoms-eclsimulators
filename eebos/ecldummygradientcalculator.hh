@@ -30,8 +30,6 @@
 
 #include <ewoms/numerics/discretizations/common/fvbaseproperties.hh>
 
-#include <ewoms/common/exceptions.hh>
-
 #include <dune/common/fvector.hh>
 
 namespace Ewoms {

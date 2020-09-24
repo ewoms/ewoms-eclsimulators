@@ -35,7 +35,6 @@
 #include <ewoms/eclsimulators/linalg/setuppropertytree.hh>
 #include <ewoms/eclsimulators/linalg/flexiblesolver.hh>
 #include <ewoms/eclsimulators/linalg/writesystemmatrixhelper.hh>
-#include <ewoms/eclio/exceptions.hh>
 #include <ewoms/eclsimulators/linalg/parallelistlinformation.hh>
 #include <ewoms/material/fluidsystems/blackoildefaultindextraits.hh>
 

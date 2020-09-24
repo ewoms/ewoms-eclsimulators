@@ -20,7 +20,6 @@
 
 #include <ewoms/eclsimulators/linalg/graphcoloring.hh>
 #include <ewoms/eclsimulators/linalg/preconditionerwithupdate.hh>
-#include <ewoms/eclio/exceptions.hh>
 #include <ewoms/eclio/errormacros.hh>
 #include <dune/common/version.hh>
 #include <dune/istl/preconditioner.hh>

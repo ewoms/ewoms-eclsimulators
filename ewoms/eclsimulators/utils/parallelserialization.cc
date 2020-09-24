@@ -17,6 +17,9 @@
 */
 
 #include <config.h>
+
+#include <ewoms/eclsimulators/utils/parallelserialization.hh>
+
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/dynamicstate.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>

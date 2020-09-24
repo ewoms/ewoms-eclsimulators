@@ -43,7 +43,6 @@
 
 #include <ewoms/eclio/output/data/wells.hh>
 #include <ewoms/eclio/output/data/groups.hh>
-#include <ewoms/common/exceptions.hh>
 
 #include <ewoms/common/propertysystem.hh>
 #include <ewoms/numerics/parallel/threadedentityiterator.hh>
@@ -568,9 +567,9 @@ public:
         return wellDat;
     }
 
-    Ewoms::data::GroupValues
-    groupData(const int /* reportStepIdx */,
-              const Ewoms::Schedule& /* sched */) const
+    Ewoms::data::GroupAndNetworkValues
+    groupAndNetworkData(const int /* reportStepIdx */,
+                        const Ewoms::Schedule& /* sched */) const
     {
         return {};
     }

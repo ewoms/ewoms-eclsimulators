@@ -25,6 +25,9 @@
 
 #include <ewoms/eclio/parser/eclipsestate/schedule/dynamicstate.hh>
 
+#include <ewoms/common/optional.hh>
+#include <ewoms/common/variant.hh>
+
 namespace Ewoms {
 
 /*! \brief Class for (de-)serializing and broadcasting data for MPI runs.
@@ -36,44 +39,58 @@ class EclMpiSerializer
 {
     //! \brief Predicate for detecting pairs.
     template<class T>
-    struct is_pair : std::false_type {};
+    struct is_pair : public std::false_type {};
 
     template<class T1, class T2>
-    struct is_pair<std::pair<T1,T2>> : std::true_type {};
+    struct is_pair<std::pair<T1,T2>> : public std::true_type {};
+
+    //! \brief Predicate for Ewoms::optional.
+    template<class T>
+    struct is_optional : public std::false_type {};
+
+    template<class T1>
+    struct is_optional<Ewoms::optional<T1>> : public std::true_type {};
+
+    //! \brief Predicate for detecting variants.
+    template<class T>
+    struct is_variant : public std::false_type {};
+
+    template<class... Ts>
+    struct is_variant<Ewoms::variant<Ts...>> : public std::true_type {};
 
     //! \brief Predicate for detecting vectors.
     template<class T>
-    struct is_vector : std::false_type {};
+    struct is_vector : public std::false_type {};
 
     template<class T1>
-    struct is_vector<std::vector<T1>> : std::true_type {};
+    struct is_vector<std::vector<T1>> : public std::true_type {};
 
     //! \brief Predicate for smart pointers.
     template<class T>
-    struct is_ptr : std::false_type {};
+    struct is_ptr : public std::false_type {};
 
     template<class T1>
-    struct is_ptr<std::shared_ptr<T1>> : std::true_type {};
+    struct is_ptr<std::shared_ptr<T1>> : public std::true_type {};
 
     template<class T1, class Deleter>
-    struct is_ptr<std::unique_ptr<T1, Deleter>> : std::true_type {};
+    struct is_ptr<std::unique_ptr<T1, Deleter>> : public std::true_type {};
 
     //! \brief Predicate for DynamicState.
     template<class T>
-    struct is_dynamic_state : std::false_type { };
+    struct is_dynamic_state : public std::false_type { };
 
     template<class T1>
-    struct is_dynamic_state<DynamicState<T1>>  : std::true_type { };
+    struct is_dynamic_state<DynamicState<T1>>  : public std::true_type { };
 
     //! \brief Predicate for determining wheter an onbject has a template method called serializeOp().
     template <typename... Ts>
     using void_t = void;
 
     template <typename T, typename = void>
-    struct hasSerializeOp : std::false_type {};
+    struct hasSerializeOp : public std::false_type {};
 
     template <typename T>
-    struct hasSerializeOp<T, void_t<decltype(&T::template serializeOp<EclMpiSerializer>)>> : std::true_type {};
+    struct hasSerializeOp<T, void_t<decltype(&T::template serializeOp<EclMpiSerializer>)>> : public std::true_type {};
 
 public:
     //! \brief Constructor.
@@ -92,6 +109,8 @@ public:
 
         isHandled = isHandled || ptr_(data, is_ptr<T>());
         isHandled = isHandled || pair_(data, is_pair<T>());
+        isHandled = isHandled || variant_(data, is_variant<T>());
+        isHandled = isHandled || optional_(data, is_optional<T>());
         isHandled = isHandled || vector_(data, is_vector<T>());
         isHandled = isHandled || serializeOp_(data, hasSerializeOp<T>());
 
@@ -148,6 +167,57 @@ private:
 
     template<class T>
     bool vector_(T& data, std::false_type)
+    { return false; }
+
+private:
+    //! \brief Handler for Ewoms::optional.
+    //! \tparam T Type for data
+    //! \param data The optional to (de-)serialize
+    template<class T>
+    bool optional_(const Ewoms::optional<T>& data, std::true_type)
+    {
+#if HAVE_MPI
+        if (m_op == Operation::PACKSIZE) {
+            Mpi::packSize(data, comm_);
+        } else if (m_op == Operation::PACK) {
+            Mpi::pack(data, m_buffer, m_position, comm_);
+        } else if (m_op == Operation::UNPACK) {
+            Mpi::unpack(const_cast<Ewoms::optional<T>&>(data),
+                        m_buffer,
+                        m_position,
+                        comm_);
+        }
+#endif
+
+        return true;
+    }
+
+    template<class T>
+    bool optional_(const T&, std::false_type)
+    { return false; }
+
+    //! \brief Handler for Ewoms::variant<> with three types
+    template<class... T>
+    bool variant_(const Ewoms::variant<T...>& data, std::true_type)
+    {
+#if HAVE_MPI
+        if (m_op == Operation::PACKSIZE) {
+            Mpi::packSize(data, comm_);
+        } else if (m_op == Operation::PACK) {
+            Mpi::pack(data, m_buffer, m_position, comm_);
+        } else if (m_op == Operation::UNPACK) {
+            Mpi::unpack(const_cast<Ewoms::variant<T...>&>(data),
+                        m_buffer,
+                        m_position,
+                        comm_);
+        }
+#endif
+
+        return true;
+    }
+
+    template<class T>
+    bool variant_(const T&, std::false_type)
     { return false; }
 
 public:
@@ -290,10 +360,21 @@ public:
         if (comm_.rank() == 0) {
             pack(data);
             m_packSize = m_position;
-            comm_.broadcast(&m_packSize, 1, 0);
-            comm_.broadcast(m_buffer.data(), m_position, 0);
+            try {
+                pack(data);
+                m_packSize = m_position;
+                comm_.broadcast(&m_packSize, 1, 0);
+                comm_.broadcast(m_buffer.data(), m_position, 0);
+            } catch (...) {
+                m_packSize = std::numeric_limits<size_t>::max();
+                comm_.broadcast(&m_packSize, 1, 0);
+                throw;
+            }
         } else {
             comm_.broadcast(&m_packSize, 1, 0);
+            if (m_packSize == std::numeric_limits<size_t>::max()) {
+                throw std::runtime_error("Error detected in parallel serialization");
+            }
             m_buffer.resize(m_packSize);
             comm_.broadcast(m_buffer.data(), m_packSize, 0);
             unpack(data);
