@@ -16,7 +16,7 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <ewoms/eclio/utility/numeric/rootfinders.hh>
+#include <ewoms/common/rootfinders.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/wellinjectionproperties.hh>
 #include <ewoms/eclsimulators/utils/deferredloggingerrorhelpers.hh>
 #include <ewoms/eclsimulators/linalg/matrixutils.hh>
