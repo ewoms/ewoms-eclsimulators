@@ -847,7 +847,7 @@ public:
 
         const bool invalidateFromHyst = updateHysteresis_();
         const bool invalidateFromMaxOilSat = updateMaxOilSaturation_();
-        const bool doInvalidate = invalidateFromHyst || invalidateFromMaxOilSat;
+        const bool doUpdateIq = invalidateFromHyst || invalidateFromMaxOilSat;
 
         if (GET_PROP_VALUE(TypeTag, EnablePolymer))
             updateMaxPolymerAdsorption_();
@@ -867,9 +867,8 @@ public:
             // if TUNING is enabled, also limit the time step size after a tuning event to TSINIT
             dt = std::min(dt, initialTimeStepSize_);
         simulator.setTimeStepSize(dt);
-
-        if (doInvalidate)
-            this->model().invalidateIntensiveQuantitiesCache(/*timeIdx=*/0);
+        if (doUpdateIq)
+            this->model().updateIntensiveQuantitiesCache(/*timeIdx=*/0);
     }
 
     /*!
@@ -912,7 +911,7 @@ public:
         invalidateIntensiveQuantities = invalidateFromMaxWaterSat || invalidateFromMinPressure;
 
         if (invalidateIntensiveQuantities)
-            this->model().invalidateIntensiveQuantitiesCache(/*timeIdx=*/0);
+            this->model().updateIntensiveQuantitiesCache(/*timeIdx=*/0);
 
         wellModel_.beginTimeStep();
         if (enableAquifers_)
@@ -2880,13 +2879,13 @@ private:
 
                     switch (bcface.component) {
                     case BCComponent::OIL:
-                        compIdx = oilCompIdx;
+                        compIdx = Indices::canonicalToActiveComponentIndex(oilCompIdx);
                         break;
                     case BCComponent::GAS:
-                        compIdx = gasCompIdx;
+                        compIdx = Indices::canonicalToActiveComponentIndex(gasCompIdx);
                         break;
                     case BCComponent::WATER:
-                        compIdx = waterCompIdx;
+                        compIdx = Indices::canonicalToActiveComponentIndex(waterCompIdx);
                         break;
                     case BCComponent::SOLVENT:
                         if (!enableSolvent)

@@ -84,7 +84,9 @@ SET_BOOL_PROP(EclEFlowProblem, EnableFoam, false);
 SET_BOOL_PROP(EclEFlowProblem, EnableBrine, false);
 
 SET_TYPE_PROP(EclEFlowProblem, EclWellModel, Ewoms::BlackoilWellModel<TypeTag>);
+#if DUNE_VERSION_NEWER(DUNE_ISTL, 2,6)
 SET_TAG_PROP(EclEFlowProblem, LinearSolverSplice, EFlowIstlSolver);
+#endif
 
 END_PROPERTIES
 
@@ -134,7 +136,6 @@ namespace Ewoms {
         typedef typename SparseMatrixAdapter::IstlMatrix Mat;
         typedef Dune::BlockVector<VectorBlockType>      BVector;
 
-        typedef ISTLSolver<TypeTag> ISTLSolverType;
         //typedef typename SolutionVector :: value_type            PrimaryVariables ;
 
         // ---------  Public methods  ---------
@@ -498,8 +499,8 @@ namespace Ewoms {
                                                     // oil model do not care about the
                                                     // residual
 
-            // if the solution is updated, the intensive quantities need to be recalculated
-            eebosSimulator_.model().invalidateIntensiveQuantitiesCache(/*timeIdx=*/0);
+            // if the solution is updated, the cached intensive quantities need to be recalculated
+            eebosSimulator_.model().updateIntensiveQuantitiesCache(/*timeIdx=*/0);
         }
 
         /// Return true if output to cout is wanted.

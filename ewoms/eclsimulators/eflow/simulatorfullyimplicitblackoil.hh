@@ -163,7 +163,7 @@ public:
 
     bool runStep(SimulatorTimer& timer)
     {
-        if (schedule().exitStatus().has_value()) {
+        if (static_cast<bool>(schedule().exitStatus())) {
             if (terminalOutput_) {
                 OpmLog::info("Stopping simulation since EXIT was triggered by an action keyword.");
             }

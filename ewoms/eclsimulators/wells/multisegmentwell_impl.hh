@@ -1995,12 +1995,26 @@ namespace Ewoms
         resWell_[seg][SPres] -= accelerationPressureLoss.value();
         duneD_[seg][seg][SPres][SPres] -= accelerationPressureLoss.derivative(SPres + numEq);
         duneD_[seg][seg][SPres][GTotal] -= accelerationPressureLoss.derivative(GTotal + numEq);
+
+        // tell the compilers to not complain about possibly
+        // uninitialized warnings if a given phase is disabled
+        // (everything which is accessed at runtime is properly
+        // initialized, there is just no way for a compiler that does
+        // not pass the Turing test to verify this at compile time...)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wunknown-warning-option"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+
         if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
-            duneD_[seg][seg_upwind][SPres][WFrac] -= accelerationPressureLoss.derivative(WFrac + numEq);
+          duneD_[seg][seg_upwind][SPres][WFrac] -= accelerationPressureLoss.derivative(WFrac + numEq);
         }
         if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
             duneD_[seg][seg_upwind][SPres][GFrac] -= accelerationPressureLoss.derivative(GFrac + numEq);
         }
+
+#pragma GCC diagnostic pop
+
     }
 
     template <typename TypeTag>

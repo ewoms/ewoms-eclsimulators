@@ -23,6 +23,7 @@
 #include "readdeck.hh"
 
 #include <ewoms/common/string.hh>
+#include <ewoms/eclio/utility/opminputerror.hh>
 
 #include <ewoms/eclio/io/ecliodata.hh>
 
@@ -38,6 +39,8 @@
 #include <ewoms/eclsimulators/utils/paralleleclipsestate.hh>
 #include <ewoms/eclsimulators/utils/parallelserialization.hh>
 
+#include <ewoms/common/fmt/format.h>
+
 #include <cstdlib>
 
 namespace Ewoms
@@ -50,7 +53,7 @@ void ensureOutputDirExists_(const std::string& cmdline_output_dir)
             Ewoms::filesystem::create_directories(cmdline_output_dir);
         }
         catch (...) {
-            throw std::runtime_error("Creation of output directory '" + cmdline_output_dir + "' failed\n");
+            throw std::runtime_error(fmt::format("Creation of output directory '{}' failed\n", cmdline_output_dir));
         }
     }
 }
@@ -222,9 +225,13 @@ void readDeck(int rank, std::string& deckFilename, std::unique_ptr<Ewoms::Deck>&
 
             Ewoms::checkConsistentArrayDimensions(*eclipseState, *schedule, *parseContext, *errorGuard);
         }
-        catch(const std::exception& e)
+        catch(const OpmInputError& input_error) {
+            failureMessage = input_error.what();
+            parseSuccess = 0;
+        }
+        catch(const std::exception& std_error)
         {
-            failureMessage = e.what();
+            failureMessage = std_error.what();
             parseSuccess = 0;
         }
     }
@@ -242,9 +249,11 @@ void readDeck(int rank, std::string& deckFilename, std::unique_ptr<Ewoms::Deck>&
     {
         Ewoms::eclStateBroadcast(*eclipseState, *schedule, *summaryConfig);
     }
-    catch(const std::exception& e)
+    catch(const std::exception& broadcast_error)
     {
-        failureMessage = e.what();
+        failureMessage = broadcast_error.what();
+        OpmLog::error(fmt::format("Distributing properties to all processes failed\n"
+                                  "Internal error message: {}", broadcast_error.what()));
         parseSuccess = 0;
     }
 
@@ -252,11 +261,9 @@ void readDeck(int rank, std::string& deckFilename, std::unique_ptr<Ewoms::Deck>&
 
     if (*errorGuard) { // errors encountered
         parseSuccess = 0;
+        errorGuard->dump();
+        errorGuard->clear();
     }
-
-    // print errors and warnings!
-    errorGuard->dump();
-    errorGuard->clear();
 
     auto comm = Dune::MPIHelper::getCollectiveCommunication();
     parseSuccess = comm.min(parseSuccess);
@@ -265,7 +272,7 @@ void readDeck(int rank, std::string& deckFilename, std::unique_ptr<Ewoms::Deck>&
     {
         if (rank == 0)
         {
-            OpmLog::error(std::string("Unrecoverable errors were encountered while loading input: ")+failureMessage);
+            OpmLog::error("Unrecoverable errors were encountered while loading input");
         }
 #if HAVE_MPI
         MPI_Finalize();
