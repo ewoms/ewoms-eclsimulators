@@ -17,6 +17,8 @@
 */
 #include "config.h"
 
+#include <ewoms/common/fmt/format.h>
+
 #include <ewoms/eclsimulators/eflow/missingfeatures.hh>
 
 #include <ewoms/eclio/opmlog/opmlog.hh>
@@ -63,13 +65,16 @@ std::string optionToString_(std::enable_if_t<!std::is_arithmetic<T>::value, T>& 
         for (it = itlow; it != itup; ++it) {
             const auto& record = keyword.getRecord(0);
             if (record.getItem(it->second.item).template get<T>(0) != it->second.item_value) {
-                const auto& location = keyword.location();
-                std::string val = optionToString_<decltype(it->second.item_value)>(it->second.item_value);
+                std::string val;
+                if constexpr (std::is_arithmetic<T>::value)
+                    val = std::to_string(it->second.item_value);
+                else
+                    val = it->second.item_value;
 
-                std::string msg = "For keyword '" + it->first + "' only value " + val
-                    + " in item " + it->second.item + " is supported by eflow.\n"
-                    + "In file " + location.filename + ", line " + std::to_string(location.lineno) + "\n";
-                parseContext.handleError(ParseContext::SIMULATOR_KEYWORD_ITEM_NOT_SUPPORTED, msg, errorGuard);
+                std::string msg_fmt = fmt::format("Unsupported value for {{keyword}}\n"
+                                                  "In {{file}} line {{line}}\n"
+                                                  "Only the value {} in item {} of {{keyword}} is supported by eflow", val, it->second.item);
+                parseContext.handleError(ParseContext::SIMULATOR_KEYWORD_ITEM_NOT_SUPPORTED, msg_fmt, keyword.location(), errorGuard);
             }
         }
     }
@@ -879,13 +884,12 @@ std::string optionToString_(std::enable_if_t<!std::is_arithmetic<T>::value, T>& 
         // check deck and keyword for eflow and parser.
         for (size_t idx = 0; idx < deck.size(); ++idx) {
             const auto& keyword = deck.getKeyword(idx);
-            const auto& location = keyword.location();
             std::unordered_set<std::string>::const_iterator it;
             it = unsupported_keywords.find(keyword.name());
             if (it != unsupported_keywords.end()) {
-                std::string msg = "Keyword '" + keyword.name() + "' is not supported by eflow.\n"
-                    + "In file " + location.filename + ", line " + std::to_string(location.lineno) + "\n";
-                parseContext.handleError(ParseContext::SIMULATOR_KEYWORD_NOT_SUPPORTED, msg, errorGuard);
+                std::string msg_fmt = "Keyword {keyword} is not supported by eflow.\n"
+                                      "In {file} line {line}.";
+                parseContext.handleError(ParseContext::SIMULATOR_KEYWORD_NOT_SUPPORTED, msg_fmt, keyword.location(), errorGuard);
             }
             checkOptions<std::string>(keyword, string_options, parseContext, errorGuard);
             checkOptions<int>(keyword, int_options, parseContext, errorGuard);

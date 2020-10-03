@@ -112,6 +112,14 @@ namespace Ewoms
 
         virtual void initPrimaryVariablesEvaluation() const override;
 
+        void maybeDoGasLiftOptimization (
+            const WellState&,
+            const Simulator&,
+            DeferredLogger&
+        ) const override {
+            // Not implemented yet
+        }
+
         virtual void assembleWellEq(const Simulator& eebosSimulator,
                                     const std::vector<Scalar>& B_avg,
                                     const double dt,

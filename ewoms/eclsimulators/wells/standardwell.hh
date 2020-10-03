@@ -21,6 +21,7 @@
 
 #include <ewoms/eclsimulators/wells/rateconverter.hh>
 #include <ewoms/eclsimulators/wells/wellinterface.hh>
+#include <ewoms/eclsimulators/wells/gasliftruntime.hh>
 
 #include <ewoms/numerics/models/blackoil/blackoilpolymermodules.hh>
 #include <ewoms/numerics/models/blackoil/blackoilsolventmodules.hh>
@@ -28,11 +29,13 @@
 #include <ewoms/numerics/models/blackoil/blackoilbrinemodules.hh>
 
 #include <ewoms/common/densead/dynamicevaluation.hh>
-#include <ewoms/common/optional.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/scheduletypes.hh>
 
 #include <dune/common/dynvector.hh>
 #include <dune/common/dynmatrix.hh>
+
+#include <optional>
+#include <ewoms/common/fmt/format.h>
 
 namespace Ewoms
 {
@@ -57,6 +60,7 @@ namespace Ewoms
         using typename Base::RateConverterType;
         using typename Base::SparseMatrixAdapter;
         using typename Base::FluidState;
+        using GasLiftHandler = Ewoms::GasLiftRuntime<TypeTag>;
 
         using Base::numEq;
 
@@ -222,11 +226,70 @@ namespace Ewoms
             return param_.matrix_add_well_contributions_;
         }
 
+        bool doGasLiftOptimize(
+            const WellState& well_state,
+            const Simulator& eebosSimulator,
+            DeferredLogger& deferred_logger
+        ) const;
+
+        void maybeDoGasLiftOptimization(
+            const WellState& well_state,
+            const Simulator& eebosSimulator,
+            DeferredLogger& deferred_logger
+        ) const override;
+
+        bool checkGliftNewtonIterationIdxOk(
+            const Simulator& eebosSimulator,
+            DeferredLogger& deferred_logger
+        ) const;
+
+        void gliftDebug(
+            const std::string &msg,
+            Ewoms::DeferredLogger& deferred_logger) const;
+
+        void gasLiftOptimizeProduction(
+            const Simulator& eebosSimulator,
+            const SummaryState& summaryState,
+            DeferredLogger& deferredLogger,
+            std::vector<double>& potentials,
+            const WellState& well_state);
+
+        /* returns BHP */
+        double computeWellRatesAndBhpWithThpAlqProd(const Simulator &eebos_simulator,
+                               const SummaryState &summary_state,
+                               DeferredLogger &deferred_logger,
+                               std::vector<double> &potentials,
+                               double alq) const;
+
+        void computeWellRatesWithThpAlqProd(
+            const Simulator &eebos_simulator,
+            const SummaryState &summary_state,
+            DeferredLogger &deferred_logger,
+            std::vector<double> &potentials,
+            double alq) const;
+
+        // NOTE: Cannot be protected since it is used by GasLiftRuntime
+        std::optional<double> computeBhpAtThpLimitProdWithAlq(
+            const Simulator& eebos_simulator,
+            const SummaryState& summary_state,
+            DeferredLogger& deferred_logger,
+            double alq_value) const;
+
+        // NOTE: Cannot be protected since it is used by GasLiftRuntime
+        void computeWellRatesWithBhp(
+            const Simulator& eebosSimulator,
+            const double& bhp,
+            std::vector<double>& well_flux,
+            Ewoms::DeferredLogger& deferred_logger) const;
+
+        // NOTE: These cannot be protected since they are used by GasLiftRuntime
+        using Base::phaseUsage;
+        using Base::vfp_properties_;
+
     protected:
 
         // protected functions from the Base class
         using Base::getAllowCrossFlow;
-        using Base::phaseUsage;
         using Base::eflowPhaseToEebosCompIdx;
         using Base::eebosCompIdxToEFlowCompIdx;
         using Base::wsalt;
@@ -240,7 +303,6 @@ namespace Ewoms
         // protected member variables from the Base class
         using Base::current_step_;
         using Base::well_ecl_;
-        using Base::vfp_properties_;
         using Base::gravity_;
         using Base::param_;
         using Base::well_efficiency_factor_;
@@ -302,6 +364,8 @@ namespace Ewoms
         mutable std::vector<double> ipr_b_;
 
         bool changed_to_stopped_this_step_ = false;
+        // Enable GLIFT debug mode. This will enable output of logging messages.
+        bool glift_debug = false;
 
         const EvalWell& getBhp() const;
 
@@ -369,24 +433,21 @@ namespace Ewoms
                              double& perf_vap_oil_rate,
                              Ewoms::DeferredLogger& deferred_logger) const;
 
-        void computeWellRatesWithBhp(const Simulator& eebosSimulator,
-                                             const double& bhp,
-                                             std::vector<double>& well_flux,
-                                             Ewoms::DeferredLogger& deferred_logger) const;
-
         void computeWellRatesWithBhpPotential(const Simulator& eebosSimulator,
                                               const std::vector<Scalar>& B_avg,
                                               const double& bhp,
                                               std::vector<double>& well_flux,
                                               Ewoms::DeferredLogger& deferred_logger);
 
-        std::vector<double> computeWellPotentialWithTHP(const Simulator& eebosSimulator,
-                                                        Ewoms::DeferredLogger& deferred_logger) const;
+        std::vector<double> computeWellPotentialWithTHP(
+            const Simulator& eebosSimulator,
+            Ewoms::DeferredLogger& deferred_logger,
+            const WellState &well_state) const;
 
         template <class ValueType>
-        ValueType calculateBhpFromThp(const std::vector<ValueType>& rates, const Well& well, const SummaryState& summaryState, Ewoms::DeferredLogger& deferred_logger) const;
+        ValueType calculateBhpFromThp(const WellState& well_state, const std::vector<ValueType>& rates, const Well& well, const SummaryState& summaryState, Ewoms::DeferredLogger& deferred_logger) const;
 
-        double calculateThpFromBhp(const std::vector<double>& rates, const double bhp, Ewoms::DeferredLogger& deferred_logger) const;
+        double calculateThpFromBhp(const WellState &well_state, const std::vector<double>& rates, const double bhp, Ewoms::DeferredLogger& deferred_logger) const;
 
         // get the mobility for specific perforation
         void getMobility(const Simulator& eebosSimulator,
@@ -408,6 +469,8 @@ namespace Ewoms
         void updateWellStateFromPrimaryVariables(WellState& well_state, Ewoms::DeferredLogger& deferred_logger) const;
 
         void updateThp(WellState& well_state, Ewoms::DeferredLogger& deferred_logger) const;
+
+        double getALQ(const WellState& well_state) const;
 
         void assembleControlEq(const WellState& well_state,
                                const Ewoms::Schedule& schedule,
@@ -440,10 +503,10 @@ namespace Ewoms
                                    Ewoms::DeferredLogger& deferred_logger);
 
         // check whether the well is operable under BHP limit with current reservoir condition
-        void checkOperabilityUnderBHPLimitProducer(const Simulator& eebos_simulator, Ewoms::DeferredLogger& deferred_logger);
+        void checkOperabilityUnderBHPLimitProducer(const WellState& well_state, const Simulator& eebos_simulator, Ewoms::DeferredLogger& deferred_logger);
 
         // check whether the well is operable under THP limit with current reservoir condition
-        void checkOperabilityUnderTHPLimitProducer(const Simulator& eebos_simulator, Ewoms::DeferredLogger& deferred_logger);
+        void checkOperabilityUnderTHPLimitProducer(const Simulator& eebos_simulator, const WellState& well_state, Ewoms::DeferredLogger& deferred_logger);
 
         // for a well, when all drawdown are in the wrong direction, then this well will not
         // be able to produce/inject .
@@ -523,13 +586,14 @@ namespace Ewoms
                                         const int perf,
                                         DeferredLogger& deferred_logger);
 
-        Ewoms::optional<double> computeBhpAtThpLimitProd(const Simulator& eebos_simulator,
-                                                         const SummaryState& summary_state,
-                                                         DeferredLogger& deferred_logger) const;
+        std::optional<double> computeBhpAtThpLimitProd(const WellState& well_state,
+                                                       const Simulator& eebos_simulator,
+                                                       const SummaryState& summary_state,
+                                                       DeferredLogger& deferred_logger) const;
 
-        Ewoms::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
-                                                        const SummaryState& summary_state,
-                                                        DeferredLogger& deferred_logger) const;
+        std::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
+                                                      const SummaryState& summary_state,
+                                                      DeferredLogger& deferred_logger) const;
 
     };
 

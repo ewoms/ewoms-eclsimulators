@@ -22,6 +22,7 @@
 
 #include <utility>
 #include <algorithm>
+#include <ewoms/common/fmt/format.h>
 
 namespace Ewoms {
     template<typename TypeTag>
@@ -318,7 +319,7 @@ namespace Ewoms {
         Ewoms::DeferredLogger local_deferredLogger;
 
         well_state_ = previous_well_state_;
-
+        well_state_.disableGliftOptimization();
         const int reportStepIdx = eebosSimulator_.episodeIndex();
         const double simulationTime = eebosSimulator_.time();
 
@@ -381,6 +382,21 @@ namespace Ewoms {
         //compute well guideRates
         const auto& comm = eebosSimulator_.vanguard().grid().comm();
         WellGroupHelpers::updateGuideRatesForWells(schedule(), phase_usage_, reportStepIdx, simulationTime, well_state_, comm, guideRate_.get());
+        logAndCheckForExceptionsAndThrow(local_deferredLogger,
+            exception_thrown, "beginTimeStep() failed.", terminal_output_);
+
+    }
+
+    template<typename TypeTag>
+    void
+    BlackoilWellModel<TypeTag>::gliftDebug(
+        const std::string &msg, Ewoms::DeferredLogger &deferred_logger) const
+    {
+        if (this->glift_debug) {
+            const std::string message = fmt::format(
+                "  GLIFT (DEBUG) : BlackoilWellModel : {}", msg);
+            deferred_logger.info(message);
+        }
     }
 
     template<typename TypeTag>
@@ -781,6 +797,12 @@ namespace Ewoms {
              const double dt)
     {
 
+        Ewoms::DeferredLogger local_deferredLogger;
+        if (this->glift_debug) {
+            const std::string msg = fmt::format(
+                "assemble() : iteration {}" , iterationIdx);
+            gliftDebug(msg, local_deferredLogger);
+        }
         last_report_ = SimulatorReportSingle();
         Dune::Timer perfTimer;
         perfTimer.start();
@@ -788,8 +810,6 @@ namespace Ewoms {
         if ( ! wellsActive() ) {
             return;
         }
-
-        Ewoms::DeferredLogger local_deferredLogger;
 
         updatePerforationIntensiveQuantities();
 
@@ -822,8 +842,10 @@ namespace Ewoms {
                 // basically, this is a more updated state from the solveWellEq based on fixed
                 // reservoir state, will tihs be a better place to inialize the explict information?
             }
-
+            gliftDebug("assemble() : running assembleWellEq()..", local_deferredLogger);
+            well_state_.enableGliftOptimization();
             assembleWellEq(B_avg, dt, local_deferredLogger);
+            well_state_.disableGliftOptimization();
 
         } catch (std::exception& e) {
             exception_thrown = 1;
@@ -840,6 +862,8 @@ namespace Ewoms {
     assembleWellEq(const std::vector<Scalar>& B_avg, const double dt, Ewoms::DeferredLogger& deferred_logger)
     {
         for (auto& well : well_container_) {
+            well->maybeDoGasLiftOptimization(
+                 well_state_, eebosSimulator_, deferred_logger);
             well->assembleWellEq(eebosSimulator_, B_avg, dt, well_state_, deferred_logger);
         }
     }
@@ -882,6 +906,8 @@ namespace Ewoms {
     {
         // prepare for StandardWells
         wellContribs.setBlockSize(StandardWell<TypeTag>::numEq, StandardWell<TypeTag>::numStaticWellEq);
+
+#if HAVE_CUDA
         for(unsigned int i = 0; i < well_container_.size(); i++){
             auto& well = well_container_[i];
             std::shared_ptr<StandardWell<TypeTag> > derived = std::dynamic_pointer_cast<StandardWell<TypeTag> >(well);
@@ -894,6 +920,7 @@ namespace Ewoms {
 
         // allocate memory for data from StandardWells
         wellContribs.alloc();
+#endif
 
         for(unsigned int i = 0; i < well_container_.size(); i++){
             auto& well = well_container_[i];

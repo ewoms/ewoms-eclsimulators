@@ -772,7 +772,7 @@ namespace Ewoms
             // Setup function for evaluation of BHP from THP (used only if needed).
             auto bhp_from_thp = [&]() {
                 const auto rates = getRates();
-                return calculateBhpFromThp(rates, well, summaryState, deferred_logger);
+                return calculateBhpFromThp(well_state, rates, well, summaryState, deferred_logger);
             };
             // Call generic implementation.
             const auto& inj_controls = well.injectionControls(summaryState);
@@ -782,7 +782,7 @@ namespace Ewoms
             const auto rates = getRates();
             // Setup function for evaluation of BHP from THP (used only if needed).
             auto bhp_from_thp = [&]() {
-                return calculateBhpFromThp(rates, well, summaryState, deferred_logger);
+                 return calculateBhpFromThp(well_state, rates, well, summaryState, deferred_logger);
             };
             // Call generic implementation.
             const auto& prod_controls = well.productionControls(summaryState);
@@ -1153,7 +1153,7 @@ namespace Ewoms
 
         const double bhp = well_state.bhp()[index_of_well_];
 
-        well_state.thp()[index_of_well_] = calculateThpFromBhp(rates, bhp, deferred_logger);
+        well_state.thp()[index_of_well_] = calculateThpFromBhp(well_state, rates, bhp, deferred_logger);
 
     }
 
@@ -1230,7 +1230,7 @@ namespace Ewoms
                 for (int p = 0; p<np; ++p) {
                     rates[p] = well_state.wellRates()[well_index*np + p];
                 }
-                double bhp = calculateBhpFromThp(rates, well, summaryState, deferred_logger);
+                double bhp = calculateBhpFromThp(well_state, rates, well, summaryState, deferred_logger);
                 well_state.bhp()[well_index] = bhp;
                 break;
             }
@@ -1356,7 +1356,10 @@ namespace Ewoms
             case Well::ProducerCMode::THP:
             {
                 well_state.thp()[well_index] = controls.thp_limit;
-                auto bhp = computeBhpAtThpLimitProd(eebos_simulator, summaryState, deferred_logger);
+                gliftDebug(
+                    "computing BHP from THP to update well state",
+                    deferred_logger);
+                auto bhp = computeBhpAtThpLimitProd(well_state, eebos_simulator, summaryState, deferred_logger);
                 if (bhp) {
                     well_state.bhp()[well_index] = *bhp;
                 } else {
@@ -1530,7 +1533,7 @@ namespace Ewoms
     void
     StandardWell<TypeTag>::
     updateWellOperability(const Simulator& eebos_simulator,
-                          const WellState& /* well_state */,
+                          const WellState& well_state,
                           Ewoms::DeferredLogger& deferred_logger)
     {
         this->operability_status_.reset();
@@ -1538,20 +1541,20 @@ namespace Ewoms
         updateIPR(eebos_simulator, deferred_logger);
 
         // checking the BHP limit related
-        checkOperabilityUnderBHPLimitProducer(eebos_simulator, deferred_logger);
+        checkOperabilityUnderBHPLimitProducer(well_state, eebos_simulator, deferred_logger);
 
         const auto& summaryState = eebos_simulator.vanguard().summaryState();
 
         // checking whether the well can operate under the THP constraints.
         if (this->wellHasTHPConstraints(summaryState)) {
-            checkOperabilityUnderTHPLimitProducer(eebos_simulator, deferred_logger);
+            checkOperabilityUnderTHPLimitProducer(eebos_simulator, well_state, deferred_logger);
         }
     }
 
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    checkOperabilityUnderBHPLimitProducer(const Simulator& eebos_simulator, Ewoms::DeferredLogger& deferred_logger)
+    checkOperabilityUnderBHPLimitProducer(const WellState& well_state, const Simulator& eebos_simulator, Ewoms::DeferredLogger& deferred_logger)
     {
         const auto& summaryState = eebos_simulator.vanguard().summaryState();
         const double bhp_limit = mostStrictBhpFromBhpLimits(summaryState);
@@ -1578,7 +1581,7 @@ namespace Ewoms
                 std::vector<double> well_rates_bhp_limit;
                 computeWellRatesWithBhp(eebos_simulator, bhp_limit, well_rates_bhp_limit, deferred_logger);
 
-                const double thp = calculateThpFromBhp(well_rates_bhp_limit, bhp_limit, deferred_logger);
+                const double thp = calculateThpFromBhp(well_state, well_rates_bhp_limit, bhp_limit, deferred_logger);
                 const double thp_limit = this->getTHPConstraint(summaryState);
 
                 if (thp < thp_limit) {
@@ -1601,10 +1604,10 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    checkOperabilityUnderTHPLimitProducer(const Simulator& eebos_simulator, Ewoms::DeferredLogger& deferred_logger)
+    checkOperabilityUnderTHPLimitProducer(const Simulator& eebos_simulator, const WellState& well_state, Ewoms::DeferredLogger& deferred_logger)
     {
         const auto& summaryState = eebos_simulator.vanguard().summaryState();
-        const auto obtain_bhp = computeBhpAtThpLimitProd(eebos_simulator, summaryState, deferred_logger);
+        const auto obtain_bhp = computeBhpAtThpLimitProd(well_state, eebos_simulator, summaryState, deferred_logger);
 
         if (obtain_bhp) {
             this->operability_status_.can_obtain_bhp_with_thp_limit = true;
@@ -2334,43 +2337,212 @@ namespace Ewoms
     std::vector<double>
     StandardWell<TypeTag>::
     computeWellPotentialWithTHP(const Simulator& eebos_simulator,
-                                Ewoms::DeferredLogger& deferred_logger) const
+                               Ewoms::DeferredLogger& deferred_logger,
+                               const WellState &well_state) const
     {
         std::vector<double> potentials(number_of_phases_, 0.0);
         const auto& summary_state = eebos_simulator.vanguard().summaryState();
 
         const auto& well = well_ecl_;
         if (well.isInjector()){
+            const auto& controls = well_ecl_.injectionControls(summary_state);
             auto bhp_at_thp_limit = computeBhpAtThpLimitInj(eebos_simulator, summary_state, deferred_logger);
             if (bhp_at_thp_limit) {
-                const auto& controls = well_ecl_.injectionControls(summary_state);
                 const double bhp = std::min(*bhp_at_thp_limit, controls.bhp_limit);
                 computeWellRatesWithBhp(eebos_simulator, bhp, potentials, deferred_logger);
             } else {
                 deferred_logger.warning("FAILURE_GETTING_CONVERGED_POTENTIAL",
                                         "Failed in getting converged thp based potential calculation for well "
                                         + name() + ". Instead the bhp based value is used");
-                const auto& controls = well_ecl_.injectionControls(summary_state);
                 const double bhp = controls.bhp_limit;
                 computeWellRatesWithBhp(eebos_simulator, bhp, potentials, deferred_logger);
             }
         } else {
-            auto bhp_at_thp_limit = computeBhpAtThpLimitProd(eebos_simulator, summary_state, deferred_logger);
-            if (bhp_at_thp_limit) {
-                const auto& controls = well_ecl_.productionControls(summary_state);
-                const double bhp = std::max(*bhp_at_thp_limit, controls.bhp_limit);
-                computeWellRatesWithBhp(eebos_simulator, bhp, potentials, deferred_logger);
-            } else {
-                deferred_logger.warning("FAILURE_GETTING_CONVERGED_POTENTIAL",
-                                        "Failed in getting converged thp based potential calculation for well "
-                                        + name() + ". Instead the bhp based value is used");
-                const auto& controls = well_ecl_.productionControls(summary_state);
-                const double bhp = controls.bhp_limit;
-                computeWellRatesWithBhp(eebos_simulator, bhp, potentials, deferred_logger);
-            }
+            computeWellRatesWithThpAlqProd(
+                eebos_simulator, summary_state,
+                deferred_logger, potentials, getALQ(well_state)
+            );
         }
 
         return potentials;
+    }
+
+    template<typename TypeTag>
+    double
+    StandardWell<TypeTag>::
+    getALQ(const WellState &well_state) const
+    {
+        const auto& well = well_ecl_;
+        const std::string &well_name = well.name();
+        return well_state.getALQ(well_name);
+    }
+
+    /* At this point we know that the well does not have BHP control mode and
+       that it does have THP constraints, see computeWellPotentials().
+     * TODO: Currently we limit the application of gas lift optimization to wells
+     *    operating under THP control mode, does it make sense to
+     *    extend it to other modes?
+     */
+    template<typename TypeTag>
+    bool
+    StandardWell<TypeTag>::
+    doGasLiftOptimize(const WellState &well_state, const Simulator &eebos_simulator,
+                      Ewoms::DeferredLogger& deferred_logger) const
+    {
+
+        gliftDebug("checking if GLIFT should be done..", deferred_logger);
+        if (!well_state.gliftOptimizationEnabled()) {
+            gliftDebug("Optimization disabled in WellState", deferred_logger);
+            return false;
+        }
+        const int well_index = index_of_well_;
+        const Well::ProducerCMode& control_mode
+            = well_state.currentProductionControls()[well_index];
+        if (control_mode != Well::ProducerCMode::THP ) {
+            gliftDebug("Not THP control", deferred_logger);
+            return false;
+        }
+        if (!checkGliftNewtonIterationIdxOk(eebos_simulator, deferred_logger)) {
+            return false;
+        }
+        const int report_step_idx = eebos_simulator.episodeIndex();
+        const Ewoms::Schedule& schedule = eebos_simulator.vanguard().schedule();
+        const GasLiftOpt& glo = schedule.glo(report_step_idx);
+        auto increment = glo.gaslift_increment();
+        // NOTE: According to the manual: LIFTOPT, item 1, :
+        //   "Increment size for lift gas injection rate. Lift gas is
+        //   allocated to individual wells in whole numbers of the increment
+        //   size.  If gas lift optimization is no longer required, it can be
+        //   turned off by entering a zero or negative number."
+        if (increment <= 0) {
+            if (this->glift_debug) {
+                const std::string msg = fmt::format(
+                    "Gas Lift switched off in LIFTOPT item 1 due to non-positive "
+                    "value: {}", increment);
+                gliftDebug(msg, deferred_logger);
+            }
+            return false;
+        }
+        else {
+            return true;
+        }
+    }
+
+    template<typename TypeTag>
+    bool
+    StandardWell<TypeTag>::
+    checkGliftNewtonIterationIdxOk(
+            const Simulator& eebos_simulator,
+            DeferredLogger& deferred_logger ) const
+    {
+        const int report_step_idx = eebos_simulator.episodeIndex();
+        const Ewoms::Schedule& schedule = eebos_simulator.vanguard().schedule();
+        const GasLiftOpt& glo = schedule.glo(report_step_idx);
+        const int iteration_idx = eebos_simulator.model().newtonMethod().numIterations();
+        if (glo.all_newton()) {
+            const int nupcol = schedule.getNupcol(report_step_idx);
+            if (this->glift_debug) {
+                const std::string msg = fmt::format(
+                    "LIFTOPT item4 == YES, it = {}, nupcol = {} -->  GLIFT optimize = {}",
+                    iteration_idx,
+                    nupcol,
+                    ((iteration_idx <= nupcol) ? "TRUE" : "FALSE"));
+                gliftDebug(msg, deferred_logger);
+            }
+            return iteration_idx <= nupcol;
+        }
+        else {
+            if (this->glift_debug) {
+                const std::string msg = fmt::format(
+                    "LIFTOPT item4 == NO, it = {} --> GLIFT optimize = {}",
+                    iteration_idx, ((iteration_idx == 1) ? "TRUE" : "FALSE"));
+                gliftDebug(msg, deferred_logger);
+            }
+            return iteration_idx == 1;
+        }
+    }
+
+    template<typename TypeTag>
+    void
+    StandardWell<TypeTag>::
+    gliftDebug(
+        const std::string &msg, DeferredLogger& deferred_logger) const
+    {
+        if (this->glift_debug) {
+            const std::string message = fmt::format(
+                "  GLIFT (DEBUG) : Well {} : {}", this->name(), msg);
+            deferred_logger.info(message);
+        }
+    }
+
+    template<typename TypeTag>
+    double
+    StandardWell<TypeTag>::
+    computeWellRatesAndBhpWithThpAlqProd(const Simulator &eebos_simulator,
+                               const SummaryState &summary_state,
+                               DeferredLogger &deferred_logger,
+                               std::vector<double> &potentials,
+                               double alq) const
+    {
+        double bhp;
+        auto bhp_at_thp_limit = computeBhpAtThpLimitProdWithAlq(
+                              eebos_simulator, summary_state, deferred_logger, alq);
+        if (bhp_at_thp_limit) {
+            const auto& controls = well_ecl_.productionControls(summary_state);
+            bhp = std::max(*bhp_at_thp_limit, controls.bhp_limit);
+            computeWellRatesWithBhp(eebos_simulator, bhp, potentials, deferred_logger);
+        }
+        else {
+            deferred_logger.warning("FAILURE_GETTING_CONVERGED_POTENTIAL",
+                "Failed in getting converged thp based potential calculation for well "
+                + name() + ". Instead the bhp based value is used");
+            const auto& controls = well_ecl_.productionControls(summary_state);
+            bhp = controls.bhp_limit;
+            computeWellRatesWithBhp(eebos_simulator, bhp, potentials, deferred_logger);
+        }
+        return bhp;
+    }
+
+    template<typename TypeTag>
+    void
+    StandardWell<TypeTag>::
+    computeWellRatesWithThpAlqProd(const Simulator &eebos_simulator,
+                               const SummaryState &summary_state,
+                               DeferredLogger &deferred_logger,
+                               std::vector<double> &potentials,
+                               double alq) const
+    {
+        /*double bhp =*/ computeWellRatesAndBhpWithThpAlqProd(
+                        eebos_simulator, summary_state,
+                        deferred_logger, potentials, alq
+                );
+    }
+
+    template<typename TypeTag>
+    void
+    StandardWell<TypeTag>::
+    maybeDoGasLiftOptimization(
+                          const WellState& well_state,
+                          const Simulator& eebos_simulator,
+                          Ewoms::DeferredLogger& deferred_logger) const
+    {
+        const auto& well = well_ecl_;
+        if (well.isProducer()) {
+            const auto& summary_state = eebos_simulator.vanguard().summaryState();
+            const Well::ProducerCMode& current_control
+                = well_state.currentProductionControls()[this->index_of_well_];
+            if ( this->Base::wellHasTHPConstraints(summary_state)
+                && current_control != Well::ProducerCMode::BHP ) {
+                std::vector<double> potentials = well_state.wellPotentials();
+                if (doGasLiftOptimize(well_state, eebos_simulator, deferred_logger)) {
+                    const auto& controls = well.productionControls(summary_state);
+                    GasLiftHandler glift {
+                        *this, eebos_simulator, summary_state,
+                        deferred_logger, potentials, well_state, controls };
+                    glift.runOptimize();
+                }
+            }
+        }
     }
 
     template<typename TypeTag>
@@ -2404,7 +2576,7 @@ namespace Ewoms
             well.computeWellRatesWithBhpPotential(eebosSimulator, B_avg, bhp, well_potentials, deferred_logger);
         } else {
             // the well has a THP related constraint
-            well_potentials = well.computeWellPotentialWithTHP(eebosSimulator, deferred_logger);
+            well_potentials = well.computeWellPotentialWithTHP(eebosSimulator, deferred_logger, well_state);
         }
     }
 
@@ -2520,7 +2692,8 @@ namespace Ewoms
     template<class ValueType>
     ValueType
     StandardWell<TypeTag>::
-    calculateBhpFromThp(const std::vector<ValueType>& rates,
+    calculateBhpFromThp(const WellState &well_state,
+                        const std::vector<ValueType>& rates,
                         const Well& well,
                         const SummaryState& summaryState,
                         Ewoms::DeferredLogger& deferred_logger) const
@@ -2552,7 +2725,7 @@ namespace Ewoms
              const auto& controls = well.productionControls(summaryState);
              const double vfp_ref_depth = vfp_properties_->getProd()->getTable(controls.vfp_table_number)->getDatumDepth();
              const double dp = wellhelpers::computeHydrostaticCorrection(ref_depth_, vfp_ref_depth, rho, gravity_);
-             return vfp_properties_->getProd()->bhp(controls.vfp_table_number, aqua, liquid, vapour, controls.thp_limit, controls.alq_value) - dp;
+             return vfp_properties_->getProd()->bhp(controls.vfp_table_number, aqua, liquid, vapour, controls.thp_limit, getALQ(well_state)) - dp;
          }
          else {
              EWOMS_DEFLOG_THROW(std::logic_error, "Expected INJECTOR or PRODUCER well", deferred_logger);
@@ -2563,7 +2736,7 @@ namespace Ewoms
     template<typename TypeTag>
     double
     StandardWell<TypeTag>::
-    calculateThpFromBhp(const std::vector<double>& rates,
+    calculateThpFromBhp(const WellState &well_state, const std::vector<double>& rates,
                         const double bhp,
                         Ewoms::DeferredLogger& deferred_logger) const
     {
@@ -2586,7 +2759,7 @@ namespace Ewoms
         }
         else if (this->isProducer()) {
             const int table_id = well_ecl_.vfp_table_number();
-            const double alq = well_ecl_.alq_value();
+            const double alq = getALQ(well_state);
             const double vfp_ref_depth = vfp_properties_->getProd()->getTable(table_id)->getDatumDepth();
             const double dp = wellhelpers::computeHydrostaticCorrection(ref_depth_, vfp_ref_depth, rho, gravity_);
 
@@ -3155,9 +3328,22 @@ namespace Ewoms
     template<typename TypeTag>
     Ewoms::optional<double>
     StandardWell<TypeTag>::
-    computeBhpAtThpLimitProd(const Simulator& eebos_simulator,
+    computeBhpAtThpLimitProd(const WellState& well_state,
+                             const Simulator& eebos_simulator,
                              const SummaryState& summary_state,
                              DeferredLogger& deferred_logger) const
+    {
+        return computeBhpAtThpLimitProdWithAlq(
+            eebos_simulator, summary_state, deferred_logger, getALQ(well_state));
+    }
+
+    template<typename TypeTag>
+    std::optional<double>
+    StandardWell<TypeTag>::
+    computeBhpAtThpLimitProdWithAlq(const Simulator& eebos_simulator,
+                             const SummaryState& summary_state,
+                                   DeferredLogger& deferred_logger,
+                                   double alq_value) const
     {
         // Given a VFP function returning bhp as a function of phase
         // rates and thp:
@@ -3204,10 +3390,10 @@ namespace Ewoms
         const double vfp_ref_depth = table.getDatumDepth();
         const double rho = perf_densities_[0]; // Use the density at the top perforation.
         const double dp = wellhelpers::computeHydrostaticCorrection(ref_depth_, vfp_ref_depth, rho, gravity_);
-        auto fbhp = [this, &controls, dp](const std::vector<double>& rates) {
+        auto fbhp = [this, &controls, dp, alq_value](const std::vector<double>& rates) {
             assert(rates.size() == 3);
             return this->vfp_properties_->getProd()
-            ->bhp(controls.vfp_table_number, rates[Water], rates[Oil], rates[Gas], controls.thp_limit, controls.alq_value) - dp;
+            ->bhp(controls.vfp_table_number, rates[Water], rates[Oil], rates[Gas], controls.thp_limit, alq_value) - dp;
         };
 
         // Make the flo() function.

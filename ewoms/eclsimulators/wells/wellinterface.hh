@@ -21,6 +21,7 @@
 
 #include <ewoms/eclio/opmlog/opmlog.hh>
 #include <ewoms/eclio/errormacros.hh>
+#include <ewoms/eclio/exceptions.hh>
 
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/well.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/wellteststate.hh>
@@ -160,6 +161,12 @@ namespace Ewoms
                                     WellState& well_state,
                                     Ewoms::DeferredLogger& deferred_logger
                                     ) = 0;
+
+        virtual void maybeDoGasLiftOptimization (
+            const WellState& well_state,
+            const Simulator& eebosSimulator,
+            DeferredLogger& deferred_logger
+        ) const = 0;
 
         void updateWellTestState(const WellState& well_state,
                                  const double& simulationTime,
