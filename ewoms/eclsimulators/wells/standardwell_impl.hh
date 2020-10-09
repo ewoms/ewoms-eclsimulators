@@ -3338,7 +3338,7 @@ namespace Ewoms
     }
 
     template<typename TypeTag>
-    std::optional<double>
+    Ewoms::optional<double>
     StandardWell<TypeTag>::
     computeBhpAtThpLimitProdWithAlq(const Simulator& eebos_simulator,
                              const SummaryState& summary_state,

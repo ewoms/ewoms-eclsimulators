@@ -24,7 +24,7 @@
 #include <ewoms/eclsimulators/wells/wellstatefullyimplicitblackoil.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/gasliftopt.hh>
 
-#include <optional>
+#include <ewoms/common/optional.hh>
 #include <string>
 
 template<typename TypeTag>

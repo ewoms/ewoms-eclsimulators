@@ -41,9 +41,9 @@ namespace Ewoms {
 #include <iostream>
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
+#include <ewoms/common/optional.hh>
 #include <ewoms/common/fmt/format.h>
 
 namespace Ewoms

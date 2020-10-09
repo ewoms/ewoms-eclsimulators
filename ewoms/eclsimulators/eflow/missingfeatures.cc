@@ -55,6 +55,14 @@ template <class T>
 std::string optionToString_(std::enable_if_t<!std::is_arithmetic<T>::value, T>& val)
 { return val; }
 
+  template <class T>
+  std::enable_if_t<std::is_arithmetic<T>::value, std::string> arithmeticToString(const T& v)
+  { return std::to_string(v); }
+
+  template <class T>
+  std::enable_if_t<!std::is_arithmetic<T>::value, std::string> arithmeticToString(const T& v)
+  { return v; }
+
     template <typename T>
     void checkOptions(const DeckKeyword& keyword, std::multimap<std::string , PartiallySupported<T> >& map, const ParseContext& parseContext, ErrorGuard& errorGuard)
     {
@@ -65,12 +73,7 @@ std::string optionToString_(std::enable_if_t<!std::is_arithmetic<T>::value, T>& 
         for (it = itlow; it != itup; ++it) {
             const auto& record = keyword.getRecord(0);
             if (record.getItem(it->second.item).template get<T>(0) != it->second.item_value) {
-                std::string val;
-                if constexpr (std::is_arithmetic<T>::value)
-                    val = std::to_string(it->second.item_value);
-                else
-                    val = it->second.item_value;
-
+                std::string val = arithmeticToString<T>(it->second.item_value);
                 std::string msg_fmt = fmt::format("Unsupported value for {{keyword}}\n"
                                                   "In {{file}} line {{line}}\n"
                                                   "Only the value {} in item {} of {{keyword}} is supported by eflow", val, it->second.item);

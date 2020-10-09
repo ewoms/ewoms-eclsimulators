@@ -34,7 +34,7 @@
 #include <dune/common/dynvector.hh>
 #include <dune/common/dynmatrix.hh>
 
-#include <optional>
+#include <ewoms/common/optional.hh>
 #include <ewoms/common/fmt/format.h>
 
 namespace Ewoms
@@ -269,7 +269,7 @@ namespace Ewoms
             double alq) const;
 
         // NOTE: Cannot be protected since it is used by GasLiftRuntime
-        std::optional<double> computeBhpAtThpLimitProdWithAlq(
+        Ewoms::optional<double> computeBhpAtThpLimitProdWithAlq(
             const Simulator& eebos_simulator,
             const SummaryState& summary_state,
             DeferredLogger& deferred_logger,
@@ -586,12 +586,12 @@ namespace Ewoms
                                         const int perf,
                                         DeferredLogger& deferred_logger);
 
-        std::optional<double> computeBhpAtThpLimitProd(const WellState& well_state,
+        Ewoms::optional<double> computeBhpAtThpLimitProd(const WellState& well_state,
                                                        const Simulator& eebos_simulator,
                                                        const SummaryState& summary_state,
                                                        DeferredLogger& deferred_logger) const;
 
-        std::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
+        Ewoms::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
                                                       const SummaryState& summary_state,
                                                       DeferredLogger& deferred_logger) const;
 
