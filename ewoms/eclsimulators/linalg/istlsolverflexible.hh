@@ -16,7 +16,13 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EWOMS_ISTLSOLVEREEBOSFLEXIBLE_HH
+#include <dune/common/version.hh>
+
+#if !DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
+
+# warning "The flexible EFlow ISTL linear solver backend requires Dune 2.6 or newer"
+
+#elif defined EWOMS_ISTLSOLVEREEBOSFLEXIBLE_HH
 #define EWOMS_ISTLSOLVEREEBOSFLEXIBLE_HH
 
 #include <ewoms/eclsimulators/linalg/findoverlaprowsandcolumns.hh>

@@ -31,6 +31,13 @@
 
 #include "eebos_thermal.hh"
 
+#include <ewoms/material/fluidsystems/blackoilfluidsystem.hh>
+
+namespace Ewoms {
+namespace CO2DefaultTables {
+#include <ewoms/material/components/co2tables.inc.cc>
+}}
+
 int main(int argc, char** argv)
 {
     return Ewoms::eebosThermalMain(argc, argv);

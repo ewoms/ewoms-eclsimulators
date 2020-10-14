@@ -46,9 +46,14 @@ public:
 
 END_PROPERTIES
 
+namespace Ewoms {
+namespace CO2DefaultTables {
+#include <ewoms/material/components/co2tables.inc.cc>
+}}
+
 int main(int argc, char** argv)
 {
     using TypeTag = TTAG(EclEFlowProblemSimple);
-    auto mainObject = Ewoms::Main(argc, argv);
+    auto mainObject = Ewoms::EFlowNihMain(argc, argv);
     return mainObject.runStatic<TypeTag>();
 }

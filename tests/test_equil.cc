@@ -74,6 +74,11 @@ BEGIN_PROPERTIES
 NEW_TYPE_TAG(TestEquilTypeTag, INHERITS_FROM(BlackOilModel, EclBaseProblem));
 END_PROPERTIES
 
+namespace Ewoms {
+namespace CO2DefaultTables {
+#include <ewoms/material/components/co2tables.inc.cc>
+}}
+
 template <class TypeTag>
 std::unique_ptr<GET_PROP_TYPE(TypeTag, Simulator)>
 initSimulator(const char *filename)

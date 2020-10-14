@@ -39,7 +39,6 @@
 #include <iostream>
 
 
-
 template <int bz>
 Dune::BlockVector<Dune::FieldVector<double, bz>>
 testSolver(const boost::property_tree::ptree& prm, const std::string& matrix_filename, const std::string& rhs_filename)

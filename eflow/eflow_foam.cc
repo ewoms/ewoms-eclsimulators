@@ -42,13 +42,13 @@ SET_BOOL_PROP(EclEFlowFoamProblem, EnableFoam, true);
 END_PROPERTIES
 
 namespace Ewoms {
-void eflowFoamSetDeck(double setupTime, Deck *deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig)
+void eflowFoamSetDeck(double setupTime, Deck& deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig)
 {
     using TypeTag = TTAG(EclEFlowFoamProblem);
     using Vanguard = GET_PROP_TYPE(TypeTag, Vanguard);
 
     Vanguard::setExternalSetupTime(setupTime);
-    Vanguard::setExternalDeck(deck);
+    Vanguard::setExternalDeck(&deck);
     Vanguard::setExternalEclState(&eclState);
     Vanguard::setExternalSchedule(&schedule);
     Vanguard::setExternalSummaryConfig(&summaryConfig);

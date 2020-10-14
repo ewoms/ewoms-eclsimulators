@@ -31,6 +31,13 @@
 
 #include "eebos_brine.hh"
 
+#include <ewoms/material/fluidsystems/blackoilfluidsystem.hh>
+
+namespace Ewoms {
+namespace CO2DefaultTables {
+#include <ewoms/material/components/co2tables.inc.cc>
+}}
+
 int main(int argc, char** argv)
 {
     return Ewoms::eebosBrineMain(argc, argv);

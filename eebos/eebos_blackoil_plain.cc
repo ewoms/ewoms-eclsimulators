@@ -44,6 +44,11 @@ NEW_TYPE_TAG(EebosPlainTypeTag, INHERITS_FROM(BlackOilModel, EclBaseProblem));
 
 END_PROPERTIES
 
+namespace Ewoms {
+namespace CO2DefaultTables {
+#include <ewoms/material/components/co2tables.inc.cc>
+}}
+
 int main(int argc, char **argv)
 {
     using ProblemTypeTag = TTAG(EebosPlainTypeTag);

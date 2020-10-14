@@ -49,6 +49,11 @@
 #include <dune/common/parallel/mpihelper.hh>
 #endif
 
+namespace Ewoms {
+namespace CO2DefaultTables {
+#include <ewoms/material/components/co2tables.inc.cc>
+}}
+
 using StandardWell = Ewoms::StandardWell<TTAG(EclEFlowProblem)>;
 
 struct SetupTest {

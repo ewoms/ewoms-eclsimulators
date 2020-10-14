@@ -27,11 +27,11 @@
  *
  * eebos first parses the input data set before selecting the variant which should run it
  * so it does not require the user to select the correct binary. On the flipside, only
- * the most common options can be supported by the simulator to avoid a combinatorial
- * explosion of combinations and even then compiling the simulator takes mighty
- * long. (I.e., consider using the a specialized binary for development.) The options
- * available by default are standard blackoil, twophase oil-water, twophase gas-oil,
- * solvent, polymer, foam and thermal.
+ * the most common extensions of the blackoil modelo can be supported by the simulator to
+ * avoid a combinatorial explosion of combinations and even then compiling the simulator
+ * takes mighty long. (I.e., consider using the a specialized binary for development.)
+ * The options available by default are standard blackoil, twophase oil-water, twophase
+ * gas-oil, solvent, polymer, foam and thermal.
  */
 #include "config.h"
 
@@ -46,16 +46,23 @@
 
 #include <ewoms/common/propertysystem.hh>
 
-#include <dune/common/parallel/mpihelper.hh>
-#include <dune/common/timer.hh>
+#include <ewoms/material/fluidsystems/blackoilfluidsystem.hh>
 
 #include <ewoms/eclio/parser/parser.hh>
 #include <ewoms/eclio/parser/parsecontext.hh>
 #include <ewoms/eclio/parser/errorguard.hh>
 #include <ewoms/eclio/parser/deck/deck.hh>
 
+#include <dune/common/parallel/mpihelper.hh>
+#include <dune/common/timer.hh>
+
 #include <string>
 #include <memory>
+
+namespace Ewoms {
+namespace CO2DefaultTables {
+#include <ewoms/material/components/co2tables.inc.cc>
+}}
 
 int main(int argc, char **argv)
 {

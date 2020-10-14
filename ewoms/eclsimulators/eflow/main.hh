@@ -69,13 +69,13 @@ END_PROPERTIES
 
 namespace Ewoms {
   template <class TypeTag>
-  void eflowSetDeck(std::unique_ptr<Deck> deck, std::unique_ptr<EclipseState> eclState, std::unique_ptr<Schedule> schedule, std::unique_ptr<SummaryConfig> summaryConfig)
+  void eflowSetDeck(Deck& deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig)
   {
     using Vanguard = GET_PROP_TYPE(TypeTag, Vanguard);
-    Vanguard::setExternalDeck(std::move(deck));
-    Vanguard::setExternalEclState(std::move(eclState));
-    Vanguard::setExternalSchedule(std::move(schedule));
-    Vanguard::setExternalSummaryConfig(std::move(summaryConfig));
+    Vanguard::setExternalDeck(&deck);
+    Vanguard::setExternalEclState(&eclState);
+    Vanguard::setExternalSchedule(&schedule);
+    Vanguard::setExternalSummaryConfig(&summaryConfig);
   }
 
 // ----------------- Main program -----------------
@@ -91,8 +91,8 @@ namespace Ewoms {
 # else
     Dune::MPIHelper::instance(argc, argv);
 # endif
-    Ewoms::EFlowMain<TypeTag> mainfunc;
-    return mainfunc.execute(argc, argv, outputCout, outputFiles);
+    Ewoms::EFlowMain<TypeTag> mainfunc(argc, argv, outputCout, outputFiles);
+    return mainfunc.execute();
   }
 }
 
@@ -176,7 +176,7 @@ namespace Ewoms
                 // case. E.g. check that number of phases == 3
                 Ewoms::eflowBlackoilSetDeck(
                     setupTime_,
-                    deck_.get(),
+                    *deck_,
                     *eclipseState_,
                     *schedule_,
                     *summaryConfig_);
@@ -203,13 +203,13 @@ namespace Ewoms
             else if( phases.size() == 2 ) {
                 // oil-gas
                 if (phases.active( Ewoms::Phase::GAS )) {
-                    Ewoms::eflowGasOilSetDeck(setupTime_, deck_.get(), *eclipseState_,
+                    Ewoms::eflowGasOilSetDeck(setupTime_, *deck_, *eclipseState_,
                                                *schedule_, *summaryConfig_);
                     return Ewoms::eflowGasOilMain(argc_, argv_, outputCout_, outputFiles_);
                 }
                 // oil-water
                 else if ( phases.active( Ewoms::Phase::WATER ) ) {
-                    Ewoms::eflowOilWaterSetDeck(setupTime_, deck_.get(), *eclipseState_, *schedule_, *summaryConfig_);
+                    Ewoms::eflowOilWaterSetDeck(setupTime_, *deck_, *eclipseState_, *schedule_, *summaryConfig_);
                     return Ewoms::eflowOilWaterMain(argc_, argv_, outputCout_, outputFiles_);
                 }
                 else {
@@ -236,13 +236,13 @@ namespace Ewoms
                 }
 
                 if ( phases.size() == 3 ) { // oil water polymer case
-                    Ewoms::eflowOilWaterPolymerSetDeck(setupTime_, deck_.get(),
+                    Ewoms::eflowOilWaterPolymerSetDeck(setupTime_, *deck_,
                                                         *eclipseState_,
                                                         *schedule_,
                                                         *summaryConfig_);
                     return Ewoms::eflowOilWaterPolymerMain(argc_, argv_, outputCout_, outputFiles_);
                 } else {
-                    Ewoms::eflowPolymerSetDeck(setupTime_, deck_.get(),
+                    Ewoms::eflowPolymerSetDeck(setupTime_, *deck_,
                                                 *eclipseState_,
                                                 *schedule_,
                                                 *summaryConfig_);
@@ -251,7 +251,7 @@ namespace Ewoms
             }
             // Foam case
             else if ( phases.active( Ewoms::Phase::FOAM ) ) {
-                Ewoms::eflowFoamSetDeck(setupTime_, deck_.get(),
+                Ewoms::eflowFoamSetDeck(setupTime_, *deck_,
                                          *eclipseState_,
                                          *schedule_,
                                          *summaryConfig_);
@@ -266,13 +266,13 @@ namespace Ewoms
                     return EXIT_FAILURE;
                 }
                 if ( phases.size() == 3 ) { // oil water brine case
-                    Ewoms::eflowOilWaterBrineSetDeck(setupTime_, deck_.get(),
+                    Ewoms::eflowOilWaterBrineSetDeck(setupTime_, *deck_,
                                                       *eclipseState_,
                                                       *schedule_,
                                                       *summaryConfig_);
                     return Ewoms::eflowOilWaterBrineMain(argc_, argv_, outputCout_, outputFiles_);
                 } else {
-                    Ewoms::eflowBrineSetDeck(setupTime_, deck_.get(),
+                    Ewoms::eflowBrineSetDeck(setupTime_, *deck_,
                                               *eclipseState_,
                                               *schedule_,
                                               *summaryConfig_);
@@ -281,7 +281,7 @@ namespace Ewoms
             }
             // Solvent case
             else if ( phases.active( Ewoms::Phase::SOLVENT ) ) {
-                Ewoms::eflowSolventSetDeck(setupTime_, deck_.get(),
+                Ewoms::eflowSolventSetDeck(setupTime_, *deck_,
                                             *eclipseState_,
                                             *schedule_,
                                             *summaryConfig_);
@@ -289,7 +289,7 @@ namespace Ewoms
             }
             // Energy case
             else if (eclipseState_->getSimulationConfig().isThermal()) {
-                Ewoms::eflowEnergySetDeck(setupTime_, deck_.get(),
+                Ewoms::eflowEnergySetDeck(setupTime_, *deck_,
                                            *eclipseState_,
                                            *schedule_,
                                            *summaryConfig_);
@@ -298,7 +298,7 @@ namespace Ewoms
 #endif // FLOW_BLACKOIL_ONLY
             // Blackoil case
             else if( phases.size() == 3 ) {
-                Ewoms::eflowBlackoilSetDeck(setupTime_, deck_.get(),
+                Ewoms::eflowBlackoilSetDeck(setupTime_, *deck_,
                                              *eclipseState_,
                                              *schedule_,
                                              *summaryConfig_);
@@ -314,10 +314,10 @@ namespace Ewoms
         template <class TypeTag>
         int dispatchStatic_()
         {
-            Ewoms::eflowSetDeck<TypeTag>(deck_.get(),
-                                          *eclipseState_,
-                                          *schedule_,
-                                          *summaryConfig_);
+            Ewoms::eflowSetDeck<TypeTag>(*deck_,
+                                         *eclipseState_,
+                                         *schedule_,
+                                         *summaryConfig_);
             return Ewoms::eflowMain<TypeTag>(argc_, argv_, outputCout_, outputFiles_);
         }
 

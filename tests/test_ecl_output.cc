@@ -81,6 +81,11 @@ SET_BOOL_PROP(TestEclOutputTypeTag, EnableAsyncEclOutput, false);
 
 END_PROPERTIES
 
+namespace Ewoms {
+namespace CO2DefaultTables {
+#include <ewoms/material/components/co2tables.inc.cc>
+}}
+
 namespace {
 std::unique_ptr<Ewoms::EclIO::ESmry> readsum(const std::string& base)
 {

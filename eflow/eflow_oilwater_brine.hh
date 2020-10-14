@@ -23,7 +23,7 @@
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 
 namespace Ewoms {
-void eflowOilWaterBrineSetDeck(double setupTime, Deck* deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig);
+void eflowOilWaterBrineSetDeck(double setupTime, Deck& deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig);
 int eflowOilWaterBrineMain(int argc, char** argv, bool outputCout, bool outputFiles);
 }
 

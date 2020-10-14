@@ -16,6 +16,20 @@
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "config.h"
+#include <dune/common/version.hh>
+
+#if !DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
+
+# warning "The CPR variant of eflow requires Dune 2.6 or newer"
+
+#include <cstdlib>
+
+int main(int, char**)
+{
+  return EXIT_FAILURE;
+}
+
+#else
 
 #include <ewoms/eclsimulators/eflow/main.hh>
 #include  <ewoms/eclsimulators/linalg/istlsolverflexible.hh>
@@ -57,9 +71,16 @@ SET_BOOL_PROP(EclEFlowProblemSimple, EnableIntensiveQuantityCache, true);
 
 END_PROPERTIES
 
+namespace Ewoms {
+namespace CO2DefaultTables {
+#include <ewoms/material/components/co2tables.inc.cc>
+}}
+
 int main(int argc, char** argv)
 {
     using TypeTag = TTAG(EclEFlowProblemSimple);
     auto mainObject = Ewoms::EFlowNihMain(argc, argv);
     return mainObject.runStatic<TypeTag>();
 }
+
+#endif

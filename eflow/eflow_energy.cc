@@ -42,13 +42,13 @@ SET_BOOL_PROP(EclEFlowEnergyProblem, EnableEnergy, true);
 END_PROPERTIES
 
 namespace Ewoms {
-void eflowEnergySetDeck(double setupTime, Deck *deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig)
+void eflowEnergySetDeck(double setupTime, Deck& deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig)
 {
     using TypeTag = TTAG(EclEFlowEnergyProblem);
     using Vanguard = GET_PROP_TYPE(TypeTag, Vanguard);
 
     Vanguard::setExternalSetupTime(setupTime);
-    Vanguard::setExternalDeck(deck);
+    Vanguard::setExternalDeck(&deck);
     Vanguard::setExternalEclState(&eclState);
     Vanguard::setExternalSchedule(&schedule);
     Vanguard::setExternalSummaryConfig(&summaryConfig);

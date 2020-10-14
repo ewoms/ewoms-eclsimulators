@@ -31,6 +31,13 @@
 
 #include "eebos_gasoil.hh"
 
+#include <ewoms/material/fluidsystems/blackoilfluidsystem.hh>
+
+namespace Ewoms {
+namespace CO2DefaultTables {
+#include <ewoms/material/components/co2tables.inc.cc>
+}}
+
 int main(int argc, char** argv)
 {
     return Ewoms::eebosGasOilMain(argc, argv);

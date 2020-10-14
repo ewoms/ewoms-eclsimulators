@@ -20,6 +20,11 @@
 
 #include <ewoms/eclsimulators/eflow/main.hh>
 
+namespace Ewoms {
+namespace CO2DefaultTables {
+#include <ewoms/material/components/co2tables.inc.cc>
+}}
+
 int main(int argc, char** argv)
 {
     auto mainObject = Ewoms::EFlowNihMain(argc, argv);

@@ -51,6 +51,11 @@ SET_SCALAR_PROP(EebosAmgTypeTag, LinearSolverTolerance, 0.05);
 
 END_PROPERTIES
 
+namespace Ewoms {
+namespace CO2DefaultTables {
+#include <ewoms/material/components/co2tables.inc.cc>
+}}
+
 int main(int argc, char **argv)
 {
     typedef TTAG(EebosAmgTypeTag) ProblemTypeTag;

@@ -23,7 +23,7 @@
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 
 namespace Ewoms {
-void eflowSolventSetDeck(double setupTime, Deck *deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig);
+void eflowSolventSetDeck(double setupTime, Deck& deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig);
 int eflowSolventMain(int argc, char** argv, bool outoutCout, bool outputFiles);
 }
 
