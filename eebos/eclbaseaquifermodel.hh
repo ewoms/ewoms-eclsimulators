@@ -156,6 +156,9 @@ public:
     void deserialize(Restarter& res EWOMS_UNUSED)
     { }
 
+    Ewoms::data::Aquifers aquiferData() const
+    { return Ewoms::data::Aquifers{}; }
+
 protected:
     Simulator& simulator_;
 };

@@ -232,7 +232,7 @@ namespace Ewoms
             DeferredLogger& deferred_logger
         ) const;
 
-        void maybeDoGasLiftOptimization(
+        virtual void maybeDoGasLiftOptimization (
             const WellState& well_state,
             const Simulator& eebosSimulator,
             DeferredLogger& deferred_logger

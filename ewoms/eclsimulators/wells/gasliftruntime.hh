@@ -50,7 +50,7 @@ namespace Ewoms
 {
     template<class TypeTag>
     class GasLiftRuntime {
-        typedef typename GET_PROP_TYPE(TypeTag, Simulator) Simulator;
+        using Simulator = GET_PROP_TYPE(TypeTag, Simulator);
         using WellState = WellStateFullyImplicitBlackoil;
         using StdWell = Ewoms::StandardWell<TypeTag>;
         // TODO: same definition with WellInterface, and

@@ -16,11 +16,6 @@
 */
 #include "config.h"
 
-#if HAVE_DUNE_FEM
-#warning "eflow is incompatible with dune-fem. Disabling."
-#undef HAVE_DUNE_FEM
-#endif // HAVE_DUNE_FEM
-
 #include <eflow/eflow_solvent.hh>
 
 #include <ewoms/common/resetlocale.hh>

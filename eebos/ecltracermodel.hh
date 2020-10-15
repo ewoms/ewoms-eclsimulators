@@ -31,6 +31,7 @@
 #include <ewoms/eclio/parser/eclipsestate/tables/tracervdtable.hh>
 
 #include <ewoms/numerics/models/blackoil/blackoilmodel.hh>
+#include <ewoms/eclio/opmlog/opmlog.hh>
 
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/well.hh>
 
@@ -99,9 +100,10 @@ public:
 
         if (!EWOMS_GET_PARAM(TypeTag, bool, EnableTracerModel)) {
             if (simulator_.gridView().comm().rank() == 0) {
-                std::cout << "Warning: Tracer model is disabled but the deck contains the TRACERS keyword\n"
-                          << "The tracer model must be explictly activated using --enable-tracer-model=true\n"
-                          << std::flush;
+                OpmLog::warning("Keyword TRACERS has only experimental support, and is hence ignored.\n"
+                                "The experimental tracer model can still be used, but must be set explicitely.\n"
+                                "To use tracers, set the command line option: --enable-tracer-model=true"
+                                "\n");
             }
             return; // Tracer transport must be enabled by the user
         }

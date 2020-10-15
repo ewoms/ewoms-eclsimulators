@@ -36,6 +36,8 @@
 #include <ewoms/eclio/parser/eclipsestate/checkdeck.hh>
 #include <ewoms/common/string.hh>
 
+#include <ewoms/common/fmt/format.h>
+
 #if HAVE_DUNE_FEM
 #include <dune/fem/misc/mpimanager.hh>
 #else
@@ -511,13 +513,9 @@ namespace Ewoms
             if (this->output_cout_) {
                 std::ostringstream ss;
                 ss << "\n\n================    End of simulation     ===============\n\n";
-                ss << "Number of MPI processes: " << std::setw(6) << mpi_size_ << "\n";
-#if _OPENMP
-                int threads = omp_get_max_threads();
-#else
-                int threads = 1;
-#endif
-                ss << "Threads per MPI process:  " << std::setw(5) << threads << "\n";
+                ss << fmt::format("Number of MPI processes: {:9}\n", mpi_size_ );
+                int threads = std::max<int>(eebosSimulator_->taskletRunner().numWorkerThreads(), 1);
+                ss << fmt::format("Threads per MPI process: {:9}\n", threads);
                 report.reportFullyImplicit(ss);
                 OpmLog::info(ss.str());
                 const std::string dir = eclState().getIOConfig().getOutputDir();

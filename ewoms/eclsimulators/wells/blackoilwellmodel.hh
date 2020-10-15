@@ -292,9 +292,9 @@ namespace Ewoms {
             bool has_polymer_;
             std::vector<int> pvt_region_idx_;
             PhaseUsage phase_usage_;
-            size_t global_nc_;
+            size_t global_num_cells_;
             // the number of the cells in the local grid
-            size_t number_of_cells_;
+            size_t local_num_cells_;
             double gravity_;
             std::vector<double> depth_;
             bool initial_step_;
@@ -324,6 +324,12 @@ namespace Ewoms {
                 const std::string &msg,
                 Ewoms::DeferredLogger& deferred_logger) const;
 
+            /// \brief Get the wells of our partition that are not shut.
+            /// \param timeStepIdx The index of the time step.
+            /// \param[out] globalNumWells the number of wells globally.
+            std::vector< Well > getLocalNonshutWells(const int timeStepIdx,
+                                                     int& globalNumWells) const;
+
             // compute the well fluxes and assemble them in to the reservoir equations as source terms
             // and in the well equations.
             void assemble(const int iterationIdx,
@@ -346,7 +352,7 @@ namespace Ewoms {
             // setting the well_solutions_ based on well_state.
             void updatePrimaryVariables(Ewoms::DeferredLogger& deferred_logger);
 
-            void setupCartesianToCompressed_(const int* global_cell, int number_of_cells);
+            void setupCartesianToCompressed_(const int* global_cell, int local_num__cells);
 
             void computeRepRadiusPerfLength(const Grid& grid, Ewoms::DeferredLogger& deferred_logger);
 

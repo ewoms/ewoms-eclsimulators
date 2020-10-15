@@ -28,13 +28,6 @@
 #ifndef EEBOS_HH
 #define EEBOS_HH
 
-#if HAVE_DUNE_FEM
-#warning "eebos is not compatible with dune-fem. Disabling."
-#undef HAVE_DUNE_FEM
-#elif defined(HAVE_DUNE_FEM)
-#undef HAVE_DUNE_FEM
-#endif
-
 #include "eclproblem.hh"
 #include "eclbicgstabbackend.hh"
 

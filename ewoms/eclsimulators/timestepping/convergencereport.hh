@@ -157,7 +157,7 @@ namespace Ewoms
                 return s1 < s2 ? s2 : s1;
             };
             auto s = Severity::None;
-            for (const auto f : res_failures_) {
+            for (const auto& f : res_failures_) {
                 s = smax(s, f.severity());
             }
             for (const auto& f : well_failures_) {

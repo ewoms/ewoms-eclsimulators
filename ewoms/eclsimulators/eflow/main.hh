@@ -76,7 +76,7 @@ namespace Ewoms {
     Vanguard::setExternalEclState(&eclState);
     Vanguard::setExternalSchedule(&schedule);
     Vanguard::setExternalSummaryConfig(&summaryConfig);
-  }
+}
 
 // ----------------- Main program -----------------
   template <class TypeTag>
@@ -315,9 +315,9 @@ namespace Ewoms
         int dispatchStatic_()
         {
             Ewoms::eflowSetDeck<TypeTag>(*deck_,
-                                         *eclipseState_,
-                                         *schedule_,
-                                         *summaryConfig_);
+                                          *eclipseState_,
+                                          *schedule_,
+                                          *summaryConfig_);
             return Ewoms::eflowMain<TypeTag>(argc_, argv_, outputCout_, outputFiles_);
         }
 
@@ -429,10 +429,6 @@ namespace Ewoms
                 readDeck(mpiRank, deckFilename, deck_, eclipseState_, schedule_,
                          summaryConfig_, nullptr, std::move(parseContext),
                          init_from_restart_file, outputCout_);
-
-                if (outputCout_) {
-                    OpmLog::info("Done reading deck file.");
-                }
 
                 setupTime_ = externalSetupTimer.elapsed();
                 outputFiles_ = (outputMode != FileOutputMode::OUTPUT_NONE);

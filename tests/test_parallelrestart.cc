@@ -163,6 +163,8 @@ Ewoms::data::Connection getConnection()
     con1.cell_saturation_water = 5.0;
     con1.cell_saturation_gas = 6.0;
     con1.effective_Kh = 7.0;
+    con1.trans_factor = 8.0;
+
     return con1;
 }
 

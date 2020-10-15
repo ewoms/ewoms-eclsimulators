@@ -528,16 +528,20 @@ public:
         }
         else
             eclSchedule_ = externalEclSchedule_;
+        this->summaryState_.reset( new Ewoms::SummaryState( std::chrono::system_clock::from_time_t(this->eclSchedule_->getStartTime() )));
+        this->actionState_.reset( new Ewoms::Action::State() );
+        this->aquiferConfig_.reset( new Ewoms::AquiferConfig() );
 
         if (!externalEclSummaryConfig_) {
             // create the schedule object. Note that if eclState is supposed to represent
             // the internalized version of the deck, this constitutes a layering
             // violation.
             internalEclSummaryConfig_.reset(new Ewoms::SummaryConfig(*deck_,
-                                                                     *eclSchedule_,
-                                                                     eclState_->getTableManager(),
-                                                                     *parseContext_,
-                                                                     *errorGuard_));
+                                                                   *eclSchedule_,
+                                                                   eclState_->getTableManager(),
+                                                                   *aquiferConfig_,
+                                                                   *parseContext_,
+                                                                   *errorGuard_));
 
             eclSummaryConfig_ = internalEclSummaryConfig_.get();
         }
@@ -758,6 +762,26 @@ public:
         return centroids_;
     }
 
+    /*!
+     * \brief Get the number of cells in the global leaf grid view.
+     * \warn This is a collective operation that needs to be called
+     * on all ranks.
+     */
+    std::size_t globalNumCells() const
+    {
+        const auto& grid = asImp_().grid();
+        if (grid.comm().size() == 1)
+        {
+            return grid.leafGridView().size(0);
+        }
+        const auto& gridView = grid.leafGridView();
+        constexpr int codim = 0;
+        constexpr auto Part = Dune::Interior_Partition;
+        auto local_cells = std::distance(gridView.template begin<codim, Part>(),
+                                         gridView.template end<codim, Part>());
+        return grid.comm().sum(local_cells);
+    }
+
 protected:
     void callImplementationInit()
     {
@@ -827,6 +851,7 @@ private:
     std::unique_ptr<Ewoms::Deck> internalDeck_;
     std::unique_ptr<Ewoms::EclipseState> internalEclState_;
     std::unique_ptr<Ewoms::Schedule> internalEclSchedule_;
+    std::unique_ptr<Ewoms::AquiferConfig> aquiferConfig_;
     std::unique_ptr<Ewoms::SummaryConfig> internalEclSummaryConfig_;
     std::unique_ptr<Ewoms::SummaryState> summaryState_;
     std::unique_ptr<Ewoms::Action::State> actionState_;

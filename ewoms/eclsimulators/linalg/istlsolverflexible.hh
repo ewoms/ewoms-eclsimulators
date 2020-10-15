@@ -85,7 +85,6 @@ class ISTLSolverFlexible
     typedef typename SparseMatrixAdapter::MatrixBlock MatrixBlockType;
     typedef typename Vector::block_type BlockVector;
     using Evaluation = GET_PROP_TYPE(TypeTag, Evaluation);
-    typedef typename GridView::template Codim<0>::Entity Element;
     using ElementContext = GET_PROP_TYPE(TypeTag, ElementContext);
 
 public:

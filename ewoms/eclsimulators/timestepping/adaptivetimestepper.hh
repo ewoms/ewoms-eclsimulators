@@ -42,6 +42,8 @@ NEW_PROP_TAG(TimeStepControlTargetIterations);
 NEW_PROP_TAG(TimeStepControlTargetNewtonIterations);
 NEW_PROP_TAG(TimeStepControlDecayRate);
 NEW_PROP_TAG(TimeStepControlGrowthRate);
+NEW_PROP_TAG(TimeStepControlDecayDampingFactor);
+NEW_PROP_TAG(TimeStepControlGrowthDampingFactor);
 NEW_PROP_TAG(TimeStepControlFileName);
 NEW_PROP_TAG(MinTimeStepBeforeShuttingProblematicWellsInDays);
 
@@ -62,6 +64,8 @@ SET_INT_PROP(EFlowTimeSteppingParameters, TimeStepControlTargetIterations, 30);
 SET_INT_PROP(EFlowTimeSteppingParameters, TimeStepControlTargetNewtonIterations, 8);
 SET_SCALAR_PROP(EFlowTimeSteppingParameters, TimeStepControlDecayRate, 0.75);
 SET_SCALAR_PROP(EFlowTimeSteppingParameters, TimeStepControlGrowthRate, 1.25);
+SET_SCALAR_PROP(EFlowTimeSteppingParameters, TimeStepControlDecayDampingFactor, 1.0);
+SET_SCALAR_PROP(EFlowTimeSteppingParameters, TimeStepControlGrowthDampingFactor, 1.0/1.2);
 SET_STRING_PROP(EFlowTimeSteppingParameters, TimeStepControlFileName, "timesteps");
 SET_SCALAR_PROP(EFlowTimeSteppingParameters, MinTimeStepBeforeShuttingProblematicWellsInDays, 0.001);
 
@@ -170,7 +174,7 @@ namespace Ewoms {
             EWOMS_REGISTER_PARAM(TypeTag, double, TimeStepAfterEventInDays,
                                  "Time step size of the first time step after an event occurs during the simulation in days");
             EWOMS_REGISTER_PARAM(TypeTag, std::string, TimeStepControl,
-                                 "The algorithm used to determine time-step sizes. valid options are: 'pid' (default), 'pid+iteration', 'pid+newtoniteration', 'iterationcount' and 'hardcoded'");
+                                 "The algorithm used to determine time-step sizes. valid options are: 'pid' (default), 'pid+iteration', 'pid+newtoniteration', 'iterationcount', 'newtoniterationcount' and 'hardcoded'");
             EWOMS_REGISTER_PARAM(TypeTag, double, TimeStepControlTolerance,
                                  "The tolerance used by the time step size control algorithm");
             EWOMS_REGISTER_PARAM(TypeTag, int, TimeStepControlTargetIterations,
@@ -181,6 +185,10 @@ namespace Ewoms {
                                  "The decay rate of the time step size of the number of target iterations is exceeded");
             EWOMS_REGISTER_PARAM(TypeTag, double, TimeStepControlGrowthRate,
                                  "The growth rate of the time step size of the number of target iterations is undercut");
+            EWOMS_REGISTER_PARAM(TypeTag, double, TimeStepControlDecayDampingFactor,
+                                 "The decay rate of the time step decrease when the target iterations is exceeded");
+            EWOMS_REGISTER_PARAM(TypeTag, double, TimeStepControlGrowthDampingFactor,
+                                 "The growth rate of the time step increase when the target iterations is undercut");
             EWOMS_REGISTER_PARAM(TypeTag, std::string, TimeStepControlFileName,
                                  "The name of the file which contains the hardcoded time steps sizes");
             EWOMS_REGISTER_PARAM(TypeTag, double, MinTimeStepBeforeShuttingProblematicWellsInDays,
@@ -478,11 +486,15 @@ namespace Ewoms {
             }
             else if (control == "pid+iteration") {
                 const int iterations =  EWOMS_GET_PARAM(TypeTag, int, TimeStepControlTargetIterations); // 30
-                timeStepControl_ = TimeStepControlType(new PIDAndIterationCountTimeStepControl(iterations, tol));
+                const double decayDampingFactor = EWOMS_GET_PARAM(TypeTag, double, TimeStepControlDecayDampingFactor); // 1.0
+                const double growthDampingFactor = EWOMS_GET_PARAM(TypeTag, double, TimeStepControlGrowthDampingFactor); // 1.0/1.2
+                timeStepControl_ = TimeStepControlType(new PIDAndIterationCountTimeStepControl(iterations, decayDampingFactor, growthDampingFactor, tol));
             }
             else if (control == "pid+newtoniteration") {
                 const int iterations =  EWOMS_GET_PARAM(TypeTag, int, TimeStepControlTargetNewtonIterations); // 8
-                timeStepControl_ = TimeStepControlType(new PIDAndIterationCountTimeStepControl(iterations, tol));
+                const double decayDampingFactor = EWOMS_GET_PARAM(TypeTag, double, TimeStepControlDecayDampingFactor); // 1.0
+                const double growthDampingFactor = EWOMS_GET_PARAM(TypeTag, double, TimeStepControlGrowthDampingFactor); // 1.0/1.2
+                timeStepControl_ = TimeStepControlType(new PIDAndIterationCountTimeStepControl(iterations, decayDampingFactor, growthDampingFactor, tol));
                 useNewtonIteration_ = true;
             }
             else if (control == "iterationcount") {
@@ -490,6 +502,13 @@ namespace Ewoms {
                 const double decayrate = EWOMS_GET_PARAM(TypeTag, double, TimeStepControlDecayRate); // 0.75
                 const double growthrate = EWOMS_GET_PARAM(TypeTag, double, TimeStepControlGrowthRate); // 1.25
                 timeStepControl_ = TimeStepControlType(new SimpleIterationCountTimeStepControl(iterations, decayrate, growthrate));
+            }
+            else if (control == "newtoniterationcount") {
+                const int iterations =  EWOMS_GET_PARAM(TypeTag, int, TimeStepControlTargetNewtonIterations); // 8
+                const double decayrate = EWOMS_GET_PARAM(TypeTag, double, TimeStepControlDecayRate); // 0.75
+                const double growthrate = EWOMS_GET_PARAM(TypeTag, double, TimeStepControlGrowthRate); // 1.25
+                timeStepControl_ = TimeStepControlType(new SimpleIterationCountTimeStepControl(iterations, decayrate, growthrate));
+                useNewtonIteration_ = true;
             }
             else if (control == "hardcoded") {
                 const std::string filename = EWOMS_GET_PARAM(TypeTag, std::string, TimeStepControlFileName); // "timesteps"

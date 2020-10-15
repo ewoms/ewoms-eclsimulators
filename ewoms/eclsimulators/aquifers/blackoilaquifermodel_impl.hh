@@ -203,4 +203,23 @@ BlackoilAquiferModel<TypeTag>::aquiferFetkovichActive() const
 {
     return !aquifers_Fetkovich.empty();
 }
+
+template<typename TypeTag>
+Ewoms::data::Aquifers BlackoilAquiferModel<TypeTag>::aquiferData() const {
+    Ewoms::data::Aquifers data;
+    if (this->aquiferCarterTracyActive()) {
+        for (const auto& aqu : aquifers_CarterTracy) {
+            Ewoms::data::AquiferData aqu_data = aqu.aquiferData();
+            data[aqu_data.aquiferID] = aqu_data;
+        }
+    }
+
+    if (this->aquiferFetkovichActive()) {
+        for (const auto& aqu : aquifers_Fetkovich) {
+            Ewoms::data::AquiferData aqu_data = aqu.aquiferData();
+            data[aqu_data.aquiferID] = aqu_data;
+        }
+    }
+    return data;
+}
 } // namespace Ewoms

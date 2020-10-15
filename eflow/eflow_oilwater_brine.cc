@@ -16,9 +16,6 @@
 */
 #include "config.h"
 
-// Define making clear that the simulator supports AMG
-#define EFLOW_SUPPORT_AMG 1
-
 #include <eflow/eflow_oilwater_brine.hh>
 
 #include <ewoms/common/resetlocale.hh>

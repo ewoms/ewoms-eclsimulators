@@ -171,6 +171,7 @@ ewoms_add_test(test_relpermdiagnostics CONDITION Boost_UNIT_TEST_FRAMEWORK_FOUND
 ewoms_add_test(test_norne_pvt CONDITION Boost_UNIT_TEST_FRAMEWORK_FOUND LIBRARIES "${Boost_LIBRARIES}")
 ewoms_add_test(test_wellstatefullyimplicitblackoil CONDITION Boost_UNIT_TEST_FRAMEWORK_FOUND LIBRARIES "${Boost_LIBRARIES}")
 ewoms_add_test(test_parallelistlinformation CONDITION MPI_FOUND AND Boost_UNIT_TEST_FRAMEWORK_FOUND LIBRARIES "${Boost_LIBRARIES}")
+ewoms_add_test(test_wellprodindexcalculator CONDITION Boost_UNIT_TEST_FRAMEWORK_FOUND LIBRARIES "${Boost_LIBRARIES}")
 
 # deal with the data required by the unit tests
 ewoms_recusive_copy_testdata_to_builddir("tests/*.txt" "tests/VFPPROD2" "tests/*.json" "tests/*.data" "tests/*.DATA")

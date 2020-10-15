@@ -62,6 +62,8 @@ public:
     void endTimeStep();
     void endEpisode();
 
+    Ewoms::data::Aquifers aquiferData() const;
+
     template <class Restarter>
     void serialize(Restarter& res);
 
@@ -79,6 +81,8 @@ protected:
     Simulator& simulator_;
 
     std::unordered_map<int, int> cartesian_to_compressed_;
+    // TODO: probably we can use one variable to store both types of aquifers, because
+    // they share the base class
     mutable std::vector<AquiferCarterTracy_object> aquifers_CarterTracy;
     mutable std::vector<AquiferFetkovich_object> aquifers_Fetkovich;
 

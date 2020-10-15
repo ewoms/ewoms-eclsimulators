@@ -39,12 +39,9 @@ namespace Ewoms {
         // Create the guide rate container.
         guideRate_.reset(new GuideRate (eebosSimulator_.vanguard().schedule()));
 
-        // calculate the number of elements of the compressed sequential grid. this needs
-        // to be done in two steps because the dune communicator expects a reference as
-        // argument for sum()
-        const auto& gridView = eebosSimulator_.gridView();
-        number_of_cells_ = gridView.size(/*codim=*/0);
-        global_nc_ = gridView.comm().sum(number_of_cells_);
+        local_num_cells_ = eebosSimulator_.gridView().size(0);
+        // Number of cells the global grid view
+        global_num_cells_ = eebosSimulator_.vanguard().globalNumCells();
 
         // Set up cartesian mapping.
         const auto& grid = eebosSimulator_.vanguard().grid();
@@ -84,7 +81,7 @@ namespace Ewoms {
         // add the eWoms auxiliary module for the wells to the list
         eebosSimulator_.model().addAuxiliaryModule(this);
 
-        is_cell_perforated_.resize(number_of_cells_, false);
+        is_cell_perforated_.resize(local_num_cells_, false);
     }
 
     template<typename TypeTag>
@@ -206,6 +203,17 @@ namespace Ewoms {
     }
 
     template<typename TypeTag>
+    std::vector< Well >
+    BlackoilWellModel<TypeTag>::
+    getLocalNonshutWells(const int timeStepIdx, int& globalNumWells) const
+    {
+        auto w = schedule().getWells(timeStepIdx);
+        globalNumWells = w.size();
+        w.erase(std::remove_if(w.begin(), w.end(), is_shut_or_defunct_), w.end());
+        return w;
+    }
+
+    template<typename TypeTag>
     void
     BlackoilWellModel<TypeTag>::
     beginReportStep(const int timeStepIdx)
@@ -217,12 +225,7 @@ namespace Ewoms {
         const auto& summaryState = eebosSimulator_.vanguard().summaryState();
         int globalNumWells = 0;
         // Make wells_ecl_ contain only this partition's non-shut wells.
-        {
-            auto w = schedule().getWells(timeStepIdx);
-            globalNumWells = w.size();
-            w.erase(std::remove_if(w.begin(), w.end(), is_shut_or_defunct_), w.end());
-            wells_ecl_.swap(w);
-        }
+        wells_ecl_ = getLocalNonshutWells(timeStepIdx, globalNumWells);
         initializeWellPerfData();
 
         // Wells are active if they are active wells on at least
@@ -232,7 +235,7 @@ namespace Ewoms {
 
         // The well state initialize bhp with the cell pressure in the top cell.
         // We must therefore provide it with updated cell pressures
-        size_t nc = number_of_cells_;
+        size_t nc = local_num_cells_;
         std::vector<double> cellPressures(nc, 0.0);
         ElementContext elemCtx(eebosSimulator_);
         const auto& gridView = eebosSimulator_.vanguard().gridView();
@@ -297,7 +300,7 @@ namespace Ewoms {
 
         // Compute reservoir volumes for RESV controls.
         rateConverter_.reset(new RateConverterType (phase_usage_,
-                                                    std::vector<int>(number_of_cells_, 0)));
+                                                    std::vector<int>(local_num_cells_, 0)));
         rateConverter_->template defineState<ElementContext>(eebosSimulator_);
 
         // update VFP properties
@@ -335,7 +338,7 @@ namespace Ewoms {
             // TODO: to see whether we can postpone of the intialization of the well containers to
             // optimize the usage of the following several member variables
             for (auto& well : well_container_) {
-                well->init(&phase_usage_, depth_, gravity_, number_of_cells_);
+                well->init(&phase_usage_, depth_, gravity_, local_num_cells_);
             }
 
             // update the updated cell flag
@@ -419,7 +422,7 @@ namespace Ewoms {
                 WellInterfacePtr well = createWellForWellTest(well_name, timeStepIdx, deferred_logger);
 
                 // some preparation before the well can be used
-                well->init(&phase_usage_, depth_, gravity_, number_of_cells_);
+                well->init(&phase_usage_, depth_, gravity_, local_num_cells_);
                 const Well& wellEcl = schedule().getWell(well_name, timeStepIdx);
                 double well_efficiency_factor = wellEcl.getEfficiencyFactor();
                 WellGroupHelpers::accumulateGroupEfficiencyFactor(schedule().getGroup(wellEcl.groupName(), timeStepIdx), schedule(), timeStepIdx, well_efficiency_factor);
@@ -537,12 +540,7 @@ namespace Ewoms {
         const auto& summaryState = eebosSimulator_.vanguard().summaryState();
         int globalNumWells = 0;
         // Make wells_ecl_ contain only this partition's non-shut wells.
-        {
-            auto w = schedule().getWells(report_step);
-            globalNumWells = w.size();
-            w.erase(std::remove_if(w.begin(), w.end(), is_shut_or_defunct_), w.end());
-            wells_ecl_.swap(w);
-        }
+        wells_ecl_ = getLocalNonshutWells(report_step, globalNumWells);
 
         initializeWellPerfData();
 
@@ -1374,12 +1372,12 @@ namespace Ewoms {
     {
         cartesian_to_compressed_.resize(number_of_cartesian_cells, -1);
         if (global_cell) {
-            for (unsigned i = 0; i < number_of_cells_; ++i) {
+            for (unsigned i = 0; i < local_num_cells_; ++i) {
                 cartesian_to_compressed_[global_cell[i]] = i;
             }
         }
         else {
-            for (unsigned i = 0; i < number_of_cells_; ++i) {
+            for (unsigned i = 0; i < local_num_cells_; ++i) {
                 cartesian_to_compressed_[i] = i;
             }
         }
@@ -1436,7 +1434,7 @@ namespace Ewoms {
         grid.comm().sum(B_avg.data(), B_avg.size());
         for(auto& bval: B_avg)
         {
-            bval/=global_nc_;
+            bval/=global_num_cells_;
         }
     }
 

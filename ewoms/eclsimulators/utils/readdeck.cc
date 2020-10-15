@@ -221,7 +221,8 @@ void readDeck(int rank, std::string& deckFilename, std::unique_ptr<Ewoms::Deck>&
                 setupMessageLimiter(schedule->getMessageLimits(), "STDOUT_LOGGER");
             }
             if (!summaryConfig)
-                summaryConfig = std::make_unique<Ewoms::SummaryConfig>(*deck, *schedule, eclipseState->getTableManager(), *parseContext, *errorGuard);
+                summaryConfig = std::make_unique<Ewoms::SummaryConfig>(*deck, *schedule,eclipseState->getTableManager(),
+                                                                     eclipseState->aquifer(), *parseContext, *errorGuard);
 
             Ewoms::checkConsistentArrayDimensions(*eclipseState, *schedule, *parseContext, *errorGuard);
         }

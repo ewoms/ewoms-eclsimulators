@@ -27,7 +27,11 @@ namespace Ewoms
 {
 
 template<class TypeTag>
-boost::property_tree::ptree setupPropertyTree(const EFlowLinearSolverParameters& p);
+boost::property_tree::ptree setupPropertyTree(EFlowLinearSolverParameters p);
+
+boost::property_tree::ptree setupCPR(const std::string& conf, const EFlowLinearSolverParameters& p);
+boost::property_tree::ptree setupAMG(const std::string& conf, const EFlowLinearSolverParameters& p);
+boost::property_tree::ptree setupILU(const std::string& conf, const EFlowLinearSolverParameters& p);
 
 } // namespace Ewoms
 
