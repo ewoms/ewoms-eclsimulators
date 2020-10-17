@@ -113,7 +113,6 @@ namespace Ewoms
 #endif
             parameters_.template init<TypeTag>();
             prm_ = setupPropertyTree<TypeTag>(parameters_);
-            const auto& gridForConn = simulator_.vanguard().grid();
             const std::string gpu_mode = EWOMS_GET_PARAM(TypeTag, std::string, GpuMode);
             if (gpu_mode != "none") {
                 EWOMS_THROW(std::logic_error,"So far, eflow does not support GPU based linear solvers!");

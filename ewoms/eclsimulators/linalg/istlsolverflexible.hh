@@ -22,7 +22,7 @@
 
 # warning "The flexible EFlow ISTL linear solver backend requires Dune 2.6 or newer"
 
-#elif defined EWOMS_ISTLSOLVEREEBOSFLEXIBLE_HH
+#elif !defined EWOMS_ISTLSOLVEREEBOSFLEXIBLE_HH
 #define EWOMS_ISTLSOLVEREEBOSFLEXIBLE_HH
 
 #include <ewoms/eclsimulators/linalg/findoverlaprowsandcolumns.hh>
@@ -107,7 +107,7 @@ public:
         // Set it up manually
         using ElementMapper =
             Dune::MultipleCodimMultipleGeomTypeMapper<GridView>;
-        ElementMapper elemMapper(simulator_.vanguard().grid().leafGridView(), Dune::mcmgElementLayout());
+        ElementMapper elemMapper(simulator_.vanguard().gridView(), Dune::mcmgElementLayout());
         detail::findOverlapAndInterior(simulator_.vanguard().grid(), elemMapper, overlapRows_, interiorRows_);
 #if HAVE_MPI
         if (parallelInformation_.type() == typeid(ParallelISTLInformation)) {
