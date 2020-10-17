@@ -1,7 +1,6 @@
+// -*- mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+// vi: set et ts=4 sw=4 sts=4:
 /*
-  File adapted from BlackoilWellModel.hpp
-
-
   This file is part of the eWoms project.
 
   eWoms is free software: you can redistribute it and/or modify
@@ -17,7 +16,6 @@
   You should have received a copy of the GNU General Public License
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
-
 #ifndef EWOMS_BLACKOILAQUIFERMODEL_HH
 #define EWOMS_BLACKOILAQUIFERMODEL_HH
 

@@ -1,3 +1,5 @@
+// -*- mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+// vi: set et ts=4 sw=4 sts=4:
 /*
   This file is part of the eWoms project.
 
@@ -13,10 +15,6 @@
 
   You should have received a copy of the GNU General Public License
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
-
-  Consult the COPYING file in the top-level source directory of this
-  module for the precise wording of the license and the list of
-  copyright holders.
 */
 #ifndef ECL_MPI_SERIALIZER_HH
 #define ECL_MPI_SERIALIZER_HH

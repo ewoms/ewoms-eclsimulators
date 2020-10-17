@@ -15,12 +15,7 @@
 
   You should have received a copy of the GNU General Public License
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
-
-  Consult the COPYING file in the top-level source directory of this
-  module for the precise wording of the license and the list of
-  copyright holders.
 */
-
 #ifndef EWOMS_EEBOS_NNCSORTER_HH
 #define EWOMS_EEBOS_NNCSORTER_HH
 
