@@ -21,10 +21,8 @@
 #define EWOMS_PRECONDITIONERFACTORY_HEADER
 
 #include <ewoms/eclsimulators/linalg/owningblockpreconditioner.hh>
-#include <ewoms/eclsimulators/linalg/owningtwolevelpreconditioner.hh>
 #include <ewoms/eclsimulators/linalg/paralleloverlappingilu0.hh>
 #include <ewoms/eclsimulators/linalg/preconditionerwithupdate.hh>
-#include <ewoms/eclsimulators/linalg/amgcpr.hh>
 
 #include <dune/istl/paamg/amg.hh>
 #include <dune/istl/paamg/kamg.hh>
@@ -182,17 +180,12 @@ private:
     {
         auto crit = amgCriterion(prm);
         auto sargs = amgSmootherArgs<Smoother>(prm);
-	if(useKamg){
-	    return std::make_shared<
-		Dune::DummyUpdatePreconditioner<
-		    Dune::Amg::KAMG< Operator, Vector, Smoother>
-		    >
-		>(op, crit, sargs,
-		  prm.get<size_t>("max_krylov", 1),
-		  prm.get<double>("min_reduction", 1e-1)  );
-	}else{
-            return std::make_shared<Dune::Amg::AMGCPR<Operator, Vector, Smoother>>(op, crit, sargs);
-        }
+
+	    return std::make_shared<Dune::DummyUpdatePreconditioner<Dune::Amg::KAMG< Operator, Vector, Smoother> >>(op,
+                                                                                                                crit,
+                                                                                                                sargs,
+                                                                                                                prm.get<size_t>("max_krylov", 1),
+                                                                                                                prm.get<double>("min_reduction", 1e-1));
     }
 
     /// Helper method to determine if the local partitioning has the
@@ -276,25 +269,6 @@ private:
             const int n = prm.get<int>("repeats", 1);
             const double w = prm.get<double>("relaxation", 1.0);
             return wrapBlockPreconditioner<DummyUpdatePreconditioner<SeqSSOR<M, V, V>>>(comm, op.getmat(), n, w);
-        });
-        doAddCreator("amg", [](const O& op, const P& prm, const std::function<Vector()>&, const C& comm) {
-            const std::string smoother = prm.get<std::string>("smoother", "ParOverILU0");
-            if (smoother == "ILU0" || smoother == "ParOverILU0") {
-                using Smoother = Ewoms::ParallelOverlappingILU0<M, V, V, C>;
-                auto crit = amgCriterion(prm);
-                auto sargs = amgSmootherArgs<Smoother>(prm);
-                return std::make_shared<Dune::Amg::AMGCPR<O, V, Smoother, C>>(op, crit, sargs, comm);
-            } else {
-                EWOMS_THROW(std::invalid_argument, "Properties: No smoother with name " << smoother <<".");
-            }
-        });
-        doAddCreator("cpr", [](const O& op, const P& prm, const std::function<Vector()> weightsCalculator, const C& comm) {
-            assert(weightsCalculator);
-            return std::make_shared<OwningTwoLevelPreconditioner<O, V, false, Comm>>(op, prm, weightsCalculator, comm);
-        });
-        doAddCreator("cprt", [](const O& op, const P& prm, const std::function<Vector()> weightsCalculator, const C& comm) {
-            assert(weightsCalculator);
-            return std::make_shared<OwningTwoLevelPreconditioner<O, V, true, Comm>>(op, prm, weightsCalculator, comm);
         });
     }
 
@@ -411,12 +385,6 @@ private:
             parms.setNoPreSmoothSteps(1);
             parms.setNoPostSmoothSteps(1);
             return wrapPreconditioner<Dune::Amg::FastAMG<O, V>>(op, crit, parms);
-        });
-        doAddCreator("cpr", [](const O& op, const P& prm, const std::function<Vector()>& weightsCalculator) {
-            return std::make_shared<OwningTwoLevelPreconditioner<O, V, false>>(op, prm, weightsCalculator);
-        });
-        doAddCreator("cprt", [](const O& op, const P& prm, const std::function<Vector()>& weightsCalculator) {
-            return std::make_shared<OwningTwoLevelPreconditioner<O, V, true>>(op, prm, weightsCalculator);
         });
     }
 

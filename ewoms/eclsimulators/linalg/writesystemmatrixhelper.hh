@@ -20,7 +20,6 @@
 #define EWOMS_WRITESYSTEMMATRIXHELPER_HH
 
 #include <dune/istl/matrixmarket.hh>
-#include <ewoms/eclsimulators/linalg/matrixmarketspecializations.hh>
 
 namespace Ewoms
 {

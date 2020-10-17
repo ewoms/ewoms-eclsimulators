@@ -135,9 +135,9 @@ namespace Dune
         linearoperator_for_solver_ = &op;
         auto op_prec = std::make_shared<SeqOperatorType>(op.getmat());
         auto child = prm.get_child_optional("preconditioner");
-        preconditioner_ = Ewoms::PreconditionerFactory<SeqOperatorType>::create(*op_prec,
-                                                                              child ? *child : pt(),
-                                                                              weightsCalculator);
+        using Comm = Dune::Amg::SequentialInformation;
+        using PrecondFactory = Ewoms::PreconditionerFactory<SeqOperatorType, Comm>;
+        preconditioner_ = PrecondFactory::create(*op_prec, child ? *child : pt(), weightsCalculator);
         scalarproduct_ = std::make_shared<Dune::SeqScalarProduct<VectorType>>();
         linearoperator_for_precond_ = op_prec;
     }

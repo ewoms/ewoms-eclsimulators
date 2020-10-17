@@ -259,50 +259,6 @@ M setupAnisotropic2d(int N, Dune::ParallelIndexSet<G,L,s>& indices, const Dune::
     return mat;
 }
 
-//BOOST_AUTO_TEST_CASE(runBlackoilAmgLaplace)
-void runBlackoilAmgLaplace()
-{
-    constexpr int BS=2, N=100;
-    typedef Dune::FieldMatrix<double,BS,BS> MatrixBlock;
-    typedef Dune::BCRSMatrix<MatrixBlock> BCRSMat;
-    typedef Dune::FieldVector<double,BS> VectorBlock;
-    typedef Dune::BlockVector<VectorBlock> Vector;
-    typedef int GlobalId;
-    typedef Dune::OwnerOverlapCopyCommunication<GlobalId> Communication;
-    typedef Dune::OverlappingSchwarzOperator<BCRSMat,Vector,Vector,Communication> Operator;
-    int argc;
-    char** argv;
-    const auto& ccomm = Dune::MPIHelper::instance(argc, argv).getCollectiveCommunication();
-
-    Communication comm(ccomm);
-    int n=0;
-    BCRSMat mat = setupAnisotropic2d<BCRSMat>(N, comm.indexSet(), comm.communicator(), &n, 1);
-
-    comm.remoteIndices().template rebuild<false>();
-
-    Vector b(mat.N()), x(mat.M());
-
-    b=0;
-    x=100;
-    setBoundary(x, b, N, comm.indexSet());
-
-    Operator fop(mat, comm);
-    Dune::OverlappingSchwarzScalarProduct<Vector,Communication> sp(comm);
-    Dune::InverseOperatorResult r;
-
-    boost::property_tree::ptree prm;
-    prm.put("type", "amg");
-    std::function<Vector()> weights = [&mat]() {
-        return Ewoms::Amg::getQuasiImpesWeights<BCRSMat, Vector>(mat, 0, false);
-    };
-    auto amg = Ewoms::PreconditionerFactory<Operator, Communication>::create(fop, prm, weights, comm);
-
-    Dune::CGSolver<Vector> amgCG(fop, sp, *amg, 10e-8, 300, (ccomm.rank()==0) ? 2 : 0);
-
-    amgCG.apply(x,b,r);
-
-}
-
 bool init_unit_test_func()
 {
     return true;

@@ -264,7 +264,7 @@ protected:
     {
         std::function<VectorType()> weightsCalculator;
 
-        auto preconditionerType = prm_.get("preconditioner.type", "cpr");
+        auto preconditionerType = prm_.get("preconditioner.type", "ParOverILU0");
         if (preconditionerType == "cpr" || preconditionerType == "cprt") {
             const bool transpose = preconditionerType == "cprt";
             const auto weightsType = prm_.get("preconditioner.weight_type", "quasiimpes");

@@ -89,20 +89,8 @@ testPrec(const boost::property_tree::ptree& prm, const std::string& matrix_filen
     }
     using Operator = Dune::MatrixAdapter<Matrix, Vector, Vector>;
     Operator op(matrix);
-    using PrecFactory = Ewoms::PreconditionerFactory<Operator>;
-    bool transpose = false;
-
-    if(prm.get<std::string>("preconditioner.type") == "cprt"){
-        transpose = true;
-    }
-    auto wc = [&matrix, &prm, transpose]()
-                    {
-                        return Ewoms::Amg::getQuasiImpesWeights<Matrix,
-                                                              Vector>(matrix,
-                                                                      prm.get<int>("preconditioner.pressure_var_index"),
-                                                                      transpose);
-                    };
-    auto prec = PrecFactory::create(op, prm.get_child("preconditioner"), wc);
+    using PrecFactory = Ewoms::PreconditionerFactory<Operator, Dune::Amg::SequentialInformation>;
+    auto prec = PrecFactory::create(op, prm.get_child("preconditioner"));
     Dune::BiCGSTABSolver<Vector> solver(op, *prec, prm.get<double>("tol"), prm.get<int>("maxiter"), prm.get<int>("verbosity"));
     Vector x(rhs.size());
     Dune::InverseOperatorResult res;
@@ -172,7 +160,7 @@ using V = Dune::BlockVector<Dune::FieldVector<double, bz>>;
 template <int bz>
 using O = Dune::MatrixAdapter<M<bz>, V<bz>, V<bz>>;
 template <int bz>
-using PF = Ewoms::PreconditionerFactory<O<bz>>;
+using PF = Ewoms::PreconditionerFactory<O<bz>, Dune::Amg::SequentialInformation>;
 
 BOOST_AUTO_TEST_CASE(TestAddingPreconditioner)
 {
