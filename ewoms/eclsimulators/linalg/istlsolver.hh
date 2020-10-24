@@ -113,10 +113,27 @@ namespace Ewoms
 #endif
             parameters_.template init<TypeTag>();
             prm_ = setupPropertyTree<TypeTag>(parameters_);
-            const std::string gpu_mode = EWOMS_GET_PARAM(TypeTag, std::string, GpuMode);
-            if (gpu_mode != "none") {
-                EWOMS_THROW(std::logic_error,"So far, eflow does not support GPU based linear solvers!");
+#if HAVE_CUDA || HAVE_OPENCL
+            {
+                std::string gpu_mode = EWOMS_GET_PARAM(TypeTag, std::string, GpuMode);
+                if ((simulator_.vanguard().grid().comm().size() > 1) && (gpu_mode != "none")) {
+                    if (on_io_rank) {
+                        OpmLog::warning("Cannot use GPU with MPI, GPU is disabled");
+                    }
+                    gpu_mode = "none";
+                }
+                const int platformID = EWOMS_GET_PARAM(TypeTag, int, OpenclPlatformId);
+                const int deviceID = EWOMS_GET_PARAM(TypeTag, int, BdaDeviceId);
+                const int maxit = EWOMS_GET_PARAM(TypeTag, int, LinearSolverMaxIter);
+                const double tolerance = EWOMS_GET_PARAM(TypeTag, double, LinearSolverReduction);
+                const int linear_solver_verbosity = parameters_.linear_solver_verbosity_;
+                bdaBridge.reset(new BdaBridge<Matrix, Vector, block_size>(gpu_mode, linear_solver_verbosity, maxit, tolerance, platformID, deviceID));
             }
+#else
+            if (EWOMS_GET_PARAM(TypeTag, std::string, GpuMode) != "none") {
+                EWOMS_THROW(std::logic_error,"Error cannot use GPU solver since neither CUDA nor OpenCL were found by cmake");
+            }
+#endif
             extractParallelGridInformationToISTL(simulator_.vanguard().grid(), parallelInformation_);
 
             // For some reason simulator_.model().elementMapper() is not initialized at this stage

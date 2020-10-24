@@ -24,10 +24,13 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
 #include <ewoms/eclsimulators/utils/deferredlogger.hh>
 #include <ewoms/eclsimulators/utils/deferredloggingerrorhelpers.hh>
+#include <ewoms/eclsimulators/wells/vfpprodproperties.hh>
 #include <ewoms/eclsimulators/wells/wellstatefullyimplicitblackoil.hh>
 
 #include <algorithm>
 #include <cassert>
+#include <map>
+#include <string>
 #include <type_traits>
 #include <vector>
 
@@ -251,6 +254,11 @@ namespace WellGroupHelpers
                              const SummaryState& st,
                              const WellStateFullyImplicitBlackoil& wellStateNupcol,
                              WellStateFullyImplicitBlackoil& wellState);
+
+    std::map<std::string, double>
+    computeNetworkPressures(const Ewoms::Network::ExtNetwork& network,
+                            const WellStateFullyImplicitBlackoil& well_state,
+                            const VFPProdProperties& vfp_prod_props);
 
     GuideRate::RateVector
     getRateVector(const WellStateFullyImplicitBlackoil& well_state, const PhaseUsage& pu, const std::string& name);

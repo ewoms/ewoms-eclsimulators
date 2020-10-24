@@ -278,6 +278,14 @@ namespace Ewoms
     }
 
     template<typename TypeTag>
+    void
+    WellInterface<TypeTag>::
+    setDynamicThpLimit(const double thp_limit)
+    {
+       dynamic_thp_limit_ = thp_limit;
+    }
+
+    template<typename TypeTag>
     double
     WellInterface<TypeTag>::
     wpolymer() const
@@ -343,6 +351,10 @@ namespace Ewoms
     WellInterface<TypeTag>::
     wellHasTHPConstraints(const SummaryState& summaryState) const
     {
+        if (dynamic_thp_limit_) {
+            return true;
+        }
+
         if (well_ecl_.isInjector()) {
             const auto controls = well_ecl_.injectionControls(summaryState);
             if (controls.hasControl(Well::InjectorCMode::THP))
@@ -382,6 +394,9 @@ namespace Ewoms
     WellInterface<TypeTag>::
     getTHPConstraint(const SummaryState& summaryState) const
     {
+        if (dynamic_thp_limit_) {
+            return *dynamic_thp_limit_;
+        }
         if (well_ecl_.isInjector()) {
             const auto& controls = well_ecl_.injectionControls(summaryState);
             return controls.thp_limit;
@@ -1386,7 +1401,7 @@ namespace Ewoms
 
             if (controls.hasControl(Well::InjectorCMode::THP) && currentControl != Well::InjectorCMode::THP)
             {
-                const auto& thp = controls.thp_limit;
+                const auto& thp = this->getTHPConstraint(summaryState);
                 double current_thp = well_state.thp()[well_index];
                 if (thp < current_thp) {
                     currentControl = Well::InjectorCMode::THP;
@@ -1488,7 +1503,7 @@ namespace Ewoms
 
             if (controls.hasControl(Well::ProducerCMode::THP) && currentControl != Well::ProducerCMode::THP)
             {
-                const auto& thp = controls.thp_limit;
+                const auto& thp = this->getTHPConstraint(summaryState);
                 double current_thp =  well_state.thp()[well_index];
                 if (thp > current_thp) {
                     currentControl = Well::ProducerCMode::THP;
@@ -2095,6 +2110,46 @@ namespace Ewoms
         const double target_rate = std::max(0.0, target / efficiencyFactor);
         const auto current_rate = -tcalc.calcModeRateFromRates(rates); // Switch sign since 'rates' are negative for producers.
         control_eq = current_rate - target_rate;
+    }
+
+    template <typename TypeTag>
+    void
+    WellInterface<TypeTag>::
+    updateWellStateRates(const Simulator& eebosSimulator,
+                         WellState& well_state,
+                         DeferredLogger& deferred_logger) const
+    {
+        // Check if the rates of this well only are single-phase, do nothing
+        // if more than one nonzero rate.
+        int nonzero_rate_index = -1;
+        for (int p = 0; p < number_of_phases_; ++p) {
+            if (well_state.wellRates()[index_of_well_ * number_of_phases_ + p] != 0.0) {
+                if (nonzero_rate_index == -1) {
+                    nonzero_rate_index = p;
+                } else {
+                    // More than one nonzero rate.
+                    return;
+                }
+            }
+        }
+        if (nonzero_rate_index == -1) {
+            // No nonzero rates.
+            return;
+        }
+
+        // Calculate the rates that follow from the current primary variables.
+        std::vector<double> well_q_s = computeCurrentWellRates(eebosSimulator, deferred_logger);
+
+        // Set the currently-zero phase flows to be nonzero in proportion to well_q_s.
+        const double initial_nonzero_rate = well_state.wellRates()[index_of_well_ * number_of_phases_ + nonzero_rate_index];
+        const int comp_idx_nz = eflowPhaseToEebosCompIdx(nonzero_rate_index);
+        for (int p = 0; p < number_of_phases_; ++p) {
+            if (p != nonzero_rate_index) {
+                const int comp_idx = eflowPhaseToEebosCompIdx(p);
+                double& rate = well_state.wellRates()[index_of_well_ * number_of_phases_ + p];
+                rate = (initial_nonzero_rate/well_q_s[comp_idx_nz]) * (well_q_s[comp_idx]);
+            }
+        }
     }
 
 } // namespace Ewoms

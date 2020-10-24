@@ -61,6 +61,7 @@ NEW_PROP_TAG(RelaxedPressureTolInnerIterMsw);
 NEW_PROP_TAG(RegularizationFactorMsw);
 NEW_PROP_TAG(UseInnerIterationsWells);
 NEW_PROP_TAG(MaxInnerIterWells);
+NEW_PROP_TAG(AlternativeWellRateInit);
 
 SET_SCALAR_PROP(EFlowModelParameters, DbhpMaxRel, 1.0);
 SET_SCALAR_PROP(EFlowModelParameters, DwellFractionMax, 0.2);
@@ -85,6 +86,7 @@ SET_BOOL_PROP(EFlowModelParameters, UseInnerIterationsMsWells, true);
 SET_INT_PROP(EFlowModelParameters, MaxInnerIterMsWells, 100);
 SET_BOOL_PROP(EFlowModelParameters, UseInnerIterationsWells, false);
 SET_INT_PROP(EFlowModelParameters, MaxInnerIterWells, 50);
+SET_BOOL_PROP(EFlowModelParameters, AlternativeWellRateInit, false);
 SET_INT_PROP(EFlowModelParameters, StrictInnerIterMsWells, 40);
 SET_SCALAR_PROP(EFlowModelParameters, RegularizationFactorMsw, 1);
 SET_BOOL_PROP(EFlowModelParameters, EnableWellOperabilityCheck, true);
@@ -241,6 +243,7 @@ namespace Ewoms
             EWOMS_REGISTER_PARAM(TypeTag, int, StrictInnerIterMsWells, "Number of inner iterations for multi-segment wells with strict tolerance");
             EWOMS_REGISTER_PARAM(TypeTag, bool, UseInnerIterationsWells, "Use nested iterations for standard wells");
             EWOMS_REGISTER_PARAM(TypeTag, int, MaxInnerIterWells, "Maximum number of inner iterations for standard wells");
+            EWOMS_REGISTER_PARAM(TypeTag, bool, AlternativeWellRateInit, "Use alternative well rate initialization procedure");
             EWOMS_REGISTER_PARAM(TypeTag, Scalar, RegularizationFactorMsw, "Regularization factor for ms wells");
             EWOMS_REGISTER_PARAM(TypeTag, Scalar, MaxSinglePrecisionDays, "Maximum time step size where single precision floating point arithmetic can be used solving for the linear systems of equations");
             EWOMS_REGISTER_PARAM(TypeTag, int, MaxStrictIter, "Maximum number of Newton iterations before relaxed tolerances are used for the CNV convergence criterion");

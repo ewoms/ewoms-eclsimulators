@@ -224,30 +224,47 @@ namespace Ewoms
             return EvalWell(numWellEq_ + numEq, 1.0);
         }
 
-        if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx) && compIdx == Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx)) {
+        if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx)) {
+            if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx) && compIdx == Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx)) {
+                return primary_variables_evaluation_[WFrac];
+            }
+
+            if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx) && compIdx == Indices::canonicalToActiveComponentIndex(FluidSystem::gasCompIdx)) {
+                return primary_variables_evaluation_[GFrac];
+            }
+
+            if (has_solvent && compIdx == (unsigned)contiSolventEqIdx) {
+                return primary_variables_evaluation_[SFrac];
+            }
+        }
+        else if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx) && compIdx == Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx)) {
+
+            if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx) && compIdx == Indices::canonicalToActiveComponentIndex(FluidSystem::gasCompIdx)) {
+                return primary_variables_evaluation_[GFrac];
+            }
             return primary_variables_evaluation_[WFrac];
         }
 
-        if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx) && compIdx == Indices::canonicalToActiveComponentIndex(FluidSystem::gasCompIdx)) {
-            return primary_variables_evaluation_[GFrac];
-        }
-
-        if (has_solvent && compIdx == (unsigned)contiSolventEqIdx) {
-            return primary_variables_evaluation_[SFrac];
-        }
-
-        // Oil fraction
+        // Oil or WATER fraction
         EvalWell well_fraction(numWellEq_ + numEq, 1.0);
-        if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
-            well_fraction -= primary_variables_evaluation_[WFrac];
+        if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx)) {
+            if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
+                well_fraction -= primary_variables_evaluation_[WFrac];
+            }
+
+            if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
+                well_fraction -= primary_variables_evaluation_[GFrac];
+            }
+
+            if (has_solvent) {
+                well_fraction -= primary_variables_evaluation_[SFrac];
+            }
+        }
+        else if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx) && (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx))) {
+
+                well_fraction -= primary_variables_evaluation_[GFrac];
         }
 
-        if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
-            well_fraction -= primary_variables_evaluation_[GFrac];
-        }
-        if (has_solvent) {
-            well_fraction -= primary_variables_evaluation_[SFrac];
-        }
         return well_fraction;
     }
 
@@ -964,19 +981,32 @@ namespace Ewoms
     StandardWell<TypeTag>::
     processFractions() const
     {
-        assert(FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx));
         const auto pu = phaseUsage();
         std::vector<double> F(number_of_phases_, 0.0);
-        F[pu.phase_pos[Oil]] = 1.0;
 
-        if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
-            F[pu.phase_pos[Water]] = primary_variables_[WFrac];
-            F[pu.phase_pos[Oil]] -= F[pu.phase_pos[Water]];
+        if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx)) {
+            F[pu.phase_pos[Oil]] = 1.0;
+
+            if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
+                F[pu.phase_pos[Water]] = primary_variables_[WFrac];
+                F[pu.phase_pos[Oil]] -= F[pu.phase_pos[Water]];
+            }
+
+            if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
+                F[pu.phase_pos[Gas]] = primary_variables_[GFrac];
+                F[pu.phase_pos[Oil]] -= F[pu.phase_pos[Gas]];
+            }
         }
+        else if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
+            F[pu.phase_pos[Water]] = 1.0;
 
-        if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
-            F[pu.phase_pos[Gas]] = primary_variables_[GFrac];
-            F[pu.phase_pos[Oil]] -= F[pu.phase_pos[Gas]];
+            if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
+                F[pu.phase_pos[Gas]] = primary_variables_[GFrac];
+                F[pu.phase_pos[Water]] -= F[pu.phase_pos[Gas]];
+            }
+        }
+        else if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
+            F[pu.phase_pos[Gas]] = 1.0;
         }
 
         double F_solvent = 0.0;
@@ -993,7 +1023,9 @@ namespace Ewoms
                 if (has_solvent) {
                     F_solvent /= (1.0 - F[pu.phase_pos[Water]]);
                 }
-                F[pu.phase_pos[Oil]] /= (1.0 - F[pu.phase_pos[Water]]);
+                if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx)) {
+                    F[pu.phase_pos[Oil]] /= (1.0 - F[pu.phase_pos[Water]]);
+                }
                 F[pu.phase_pos[Water]] = 0.0;
             }
         }
@@ -1006,22 +1038,26 @@ namespace Ewoms
                 if (has_solvent) {
                     F_solvent /= (1.0 - F[pu.phase_pos[Gas]]);
                 }
-                F[pu.phase_pos[Oil]] /= (1.0 - F[pu.phase_pos[Gas]]);
+                if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx)) {
+                    F[pu.phase_pos[Oil]] /= (1.0 - F[pu.phase_pos[Gas]]);
+                }
                 F[pu.phase_pos[Gas]] = 0.0;
             }
         }
 
-        if (F[pu.phase_pos[Oil]] < 0.0) {
-            if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
-                F[pu.phase_pos[Water]] /= (1.0 - F[pu.phase_pos[Oil]]);
+        if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx)) {
+            if (F[pu.phase_pos[Oil]] < 0.0) {
+                if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
+                    F[pu.phase_pos[Water]] /= (1.0 - F[pu.phase_pos[Oil]]);
+                }
+                if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
+                    F[pu.phase_pos[Gas]] /= (1.0 - F[pu.phase_pos[Oil]]);
+                }
+                if (has_solvent) {
+                 F_solvent /= (1.0 - F[pu.phase_pos[Oil]]);
+                }
+                F[pu.phase_pos[Oil]] = 0.0;
             }
-            if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
-                F[pu.phase_pos[Gas]] /= (1.0 - F[pu.phase_pos[Oil]]);
-            }
-            if (has_solvent) {
-                F_solvent /= (1.0 - F[pu.phase_pos[Oil]]);
-            }
-            F[pu.phase_pos[Oil]] = 0.0;
         }
 
         if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
@@ -1041,28 +1077,42 @@ namespace Ewoms
     updateWellStateFromPrimaryVariables(WellState& well_state, Ewoms::DeferredLogger& deferred_logger) const
     {
         const PhaseUsage& pu = phaseUsage();
-        assert( FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx) );
-        const int oil_pos = pu.phase_pos[Oil];
-
         std::vector<double> F(number_of_phases_, 0.0);
-        F[oil_pos] = 1.0;
-
-        if ( FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx) ) {
-            const int water_pos = pu.phase_pos[Water];
-            F[water_pos] = primary_variables_[WFrac];
-            F[oil_pos] -= F[water_pos];
-        }
-
-        if ( FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx) ) {
-            const int gas_pos = pu.phase_pos[Gas];
-            F[gas_pos] = primary_variables_[GFrac];
-            F[oil_pos] -= F[gas_pos];
-        }
-
         double F_solvent = 0.0;
-        if (has_solvent) {
-            F_solvent = primary_variables_[SFrac];
-            F[oil_pos] -= F_solvent;
+        if ( FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx) ) {
+            const int oil_pos = pu.phase_pos[Oil];
+            F[oil_pos] = 1.0;
+
+            if ( FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx) ) {
+                const int water_pos = pu.phase_pos[Water];
+                F[water_pos] = primary_variables_[WFrac];
+                F[oil_pos] -= F[water_pos];
+            }
+
+            if ( FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx) ) {
+                const int gas_pos = pu.phase_pos[Gas];
+                F[gas_pos] = primary_variables_[GFrac];
+                F[oil_pos] -= F[gas_pos];
+            }
+
+            if (has_solvent) {
+                F_solvent = primary_variables_[SFrac];
+                F[oil_pos] -= F_solvent;
+            }
+        }
+        else if ( FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx) ) {
+            const int water_pos = pu.phase_pos[Water];
+            F[water_pos] = 1.0;
+
+            if ( FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx) ) {
+                const int gas_pos = pu.phase_pos[Gas];
+                F[gas_pos] = primary_variables_[GFrac];
+                F[water_pos] -= F[gas_pos];
+            }
+        }
+        else if ( FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx) ) {
+            const int gas_pos = pu.phase_pos[Gas];
+            F[gas_pos] = 1.0;
         }
 
         // convert the fractions to be Q_p / G_total to calculate the phase rates
@@ -1355,7 +1405,7 @@ namespace Ewoms
             }
             case Well::ProducerCMode::THP:
             {
-                well_state.thp()[well_index] = controls.thp_limit;
+                well_state.thp()[well_index] = this->getTHPConstraint(summaryState);
                 gliftDebug(
                     "computing BHP from THP to update well state",
                     deferred_logger);
@@ -2719,13 +2769,13 @@ namespace Ewoms
             const auto& controls = well.injectionControls(summaryState);
             const double vfp_ref_depth = vfp_properties_->getInj()->getTable(controls.vfp_table_number)->getDatumDepth();
             const double dp = wellhelpers::computeHydrostaticCorrection(ref_depth_, vfp_ref_depth, rho, gravity_);
-            return vfp_properties_->getInj()->bhp(controls.vfp_table_number, aqua, liquid, vapour, controls.thp_limit) - dp;
+            return vfp_properties_->getInj()->bhp(controls.vfp_table_number, aqua, liquid, vapour, this->getTHPConstraint(summaryState)) - dp;
          }
          else if (this->isProducer()) {
              const auto& controls = well.productionControls(summaryState);
              const double vfp_ref_depth = vfp_properties_->getProd()->getTable(controls.vfp_table_number)->getDatumDepth();
              const double dp = wellhelpers::computeHydrostaticCorrection(ref_depth_, vfp_ref_depth, rho, gravity_);
-             return vfp_properties_->getProd()->bhp(controls.vfp_table_number, aqua, liquid, vapour, controls.thp_limit, getALQ(well_state)) - dp;
+             return vfp_properties_->getProd()->bhp(controls.vfp_table_number, aqua, liquid, vapour, this->getTHPConstraint(summaryState), getALQ(well_state)) - dp;
          }
          else {
              EWOMS_DEFLOG_THROW(std::logic_error, "Expected INJECTOR or PRODUCER well", deferred_logger);
@@ -3341,9 +3391,9 @@ namespace Ewoms
     Ewoms::optional<double>
     StandardWell<TypeTag>::
     computeBhpAtThpLimitProdWithAlq(const Simulator& eebos_simulator,
-                             const SummaryState& summary_state,
-                                   DeferredLogger& deferred_logger,
-                                   double alq_value) const
+                                    const SummaryState& summary_state,
+                                    DeferredLogger& deferred_logger,
+                                    double alq_value) const
     {
         // Given a VFP function returning bhp as a function of phase
         // rates and thp:
@@ -3389,11 +3439,12 @@ namespace Ewoms
         const auto& table = *(vfp_properties_->getProd()->getTable(controls.vfp_table_number));
         const double vfp_ref_depth = table.getDatumDepth();
         const double rho = perf_densities_[0]; // Use the density at the top perforation.
+        const double thp_limit = this->getTHPConstraint(summary_state);
         const double dp = wellhelpers::computeHydrostaticCorrection(ref_depth_, vfp_ref_depth, rho, gravity_);
-        auto fbhp = [this, &controls, dp, alq_value](const std::vector<double>& rates) {
+        auto fbhp = [this, &controls, thp_limit, dp, alq_value](const std::vector<double>& rates) {
             assert(rates.size() == 3);
             return this->vfp_properties_->getProd()
-            ->bhp(controls.vfp_table_number, rates[Water], rates[Oil], rates[Gas], controls.thp_limit, alq_value) - dp;
+            ->bhp(controls.vfp_table_number, rates[Water], rates[Oil], rates[Gas], thp_limit, alq_value) - dp;
         };
 
         // Make the flo() function.
@@ -3592,11 +3643,12 @@ namespace Ewoms
         const auto& table = *(vfp_properties_->getInj()->getTable(controls.vfp_table_number));
         const double vfp_ref_depth = table.getDatumDepth();
         const double rho = perf_densities_[0]; // Use the density at the top perforation.
+        const double thp_limit = this->getTHPConstraint(summary_state);
         const double dp = wellhelpers::computeHydrostaticCorrection(ref_depth_, vfp_ref_depth, rho, gravity_);
-        auto fbhp = [this, &controls, dp](const std::vector<double>& rates) {
+        auto fbhp = [this, &controls, thp_limit, dp](const std::vector<double>& rates) {
             assert(rates.size() == 3);
             return this->vfp_properties_->getInj()
-                    ->bhp(controls.vfp_table_number, rates[Water], rates[Oil], rates[Gas], controls.thp_limit) - dp;
+                    ->bhp(controls.vfp_table_number, rates[Water], rates[Oil], rates[Gas], thp_limit) - dp;
         };
 
         // Make the flo() function.
@@ -3775,6 +3827,39 @@ namespace Ewoms
         } while (it < max_iter);
 
         return converged;
+    }
+
+    template<typename TypeTag>
+    std::vector<double>
+    StandardWell<TypeTag>::
+    computeCurrentWellRates(const Simulator& eebosSimulator,
+                            DeferredLogger& deferred_logger) const
+    {
+        // Calculate the rates that follow from the current primary variables.
+        std::vector<EvalWell> well_q_s(num_components_, {numWellEq_ + numEq, 0.});
+        const EvalWell& bhp = getBhp();
+        const bool allow_cf = getAllowCrossFlow() || openCrossFlowAvoidSingularity(eebosSimulator);
+        for (int perf = 0; perf < number_of_perforations_; ++perf) {
+            const int cell_idx = well_cells_[perf];
+            const auto& intQuants = *(eebosSimulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0));
+            std::vector<EvalWell> mob(num_components_, {numWellEq_ + numEq, 0.});
+            getMobility(eebosSimulator, perf, mob, deferred_logger);
+            std::vector<EvalWell> cq_s(num_components_, {numWellEq_ + numEq, 0.});
+            double perf_dis_gas_rate = 0.;
+            double perf_vap_oil_rate = 0.;
+            double trans_mult = eebosSimulator.problem().template rockCompTransMultiplier<double>(intQuants,  cell_idx);
+            const double Tw = well_index_[perf] * trans_mult;
+            computePerfRate(intQuants, mob, bhp, Tw, perf, allow_cf,
+                            cq_s, perf_dis_gas_rate, perf_vap_oil_rate, deferred_logger);
+            for (int comp = 0; comp < num_components_; ++comp) {
+                well_q_s[comp] += cq_s[comp];
+            }
+        }
+        std::vector<double> well_q_s_noderiv(well_q_s.size());
+        for (int comp = 0; comp < num_components_; ++comp) {
+            well_q_s_noderiv[comp] = well_q_s[comp].value();
+        }
+        return well_q_s_noderiv;
     }
 
 } // namespace Ewoms

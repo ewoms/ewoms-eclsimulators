@@ -67,13 +67,13 @@ namespace Ewoms
                 open_for_output_.assign(nw, true);
                 bhp_.resize(nw, 0.0);
                 thp_.resize(nw, 0.0);
-                temperature_.resize(nw, 273.15 + 20); // standard temperature for now
+                temperature_.resize(nw, 273.15 + 15.56); // standard condition temperature
                 wellrates_.resize(nw * np, 0.0);
                 int connpos = 0;
                 for (int w = 0; w < nw; ++w) {
                     const Well& well = wells_ecl[w];
 
-                    // Initialize bhp(), thp(), wellRates().
+                    // Initialize bhp(), thp(), wellRates(), temperature().
                     initSingleWell(cellPressures, w, well, pu, summary_state);
 
                     // Setup wellname -> well index mapping.
@@ -243,6 +243,10 @@ namespace Ewoms
             const int np = pu.num_phases;
             for (int p = 0; p < np; ++p) {
                 wellrates_[np*w + p] = 0.0;
+            }
+
+            if ( well.isInjector() ) {
+                temperature_[w] = well.injectionControls(summary_state).temperature;
             }
 
             const int num_perf_this_well = well_perf_data_[w].size();
