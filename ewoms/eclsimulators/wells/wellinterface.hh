@@ -390,7 +390,7 @@ namespace Ewoms
 
         double wsolvent_;
 
-        std::optional<double> dynamic_thp_limit_;
+        Ewoms::optional<double> dynamic_thp_limit_;
 
         const PhaseUsage& phaseUsage() const;
 

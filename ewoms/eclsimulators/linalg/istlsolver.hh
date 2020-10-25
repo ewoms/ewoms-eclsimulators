@@ -139,9 +139,16 @@ namespace Ewoms
             // For some reason simulator_.model().elementMapper() is not initialized at this stage
             // Hence const auto& elemMapper = simulator_.model().elementMapper(); does not work.
             // Set it up manually
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
             using ElementMapper =
                 Dune::MultipleCodimMultipleGeomTypeMapper<GridView>;
             ElementMapper elemMapper(simulator_.vanguard().gridView(), Dune::mcmgElementLayout());
+#else
+            using ElementMapper =
+                Dune::MultipleCodimMultipleGeomTypeMapper<GridView, Dune::MCMGElementLayout>;
+            ElementMapper elemMapper(simulator_.vanguard().gridView());
+#endif
+
             detail::findOverlapAndInterior(simulator_.vanguard().grid(), elemMapper, overlapRows_, interiorRows_);
 
             useWellConn_ = EWOMS_GET_PARAM(TypeTag, bool, MatrixAddWellContributions);

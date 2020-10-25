@@ -2428,7 +2428,9 @@ namespace Ewoms {
     assignNodeValues(std::map<std::string, data::NodeData>& nodevalues) const
     {
         nodevalues.clear();
-        for (const auto& [node, pressure] : node_pressures_) {
+        for (const auto& npPair : node_pressures_) {
+            const auto &node = npPair.first;
+            const auto &pressure = npPair.second;
             nodevalues.emplace(node, data::NodeData{pressure});
         }
     }
