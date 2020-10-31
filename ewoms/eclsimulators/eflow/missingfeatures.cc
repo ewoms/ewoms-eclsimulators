@@ -805,8 +805,6 @@ std::string optionToString_(std::enable_if_t<!std::is_arithmetic<T>::value, T>& 
             "WDRILRES",
             "WECONINJ",
             "WECONT",
-            "WEIR",
-            "WEIT",
             "WELCNTL",
             "WELDEBUG",
             "WELDRAW",

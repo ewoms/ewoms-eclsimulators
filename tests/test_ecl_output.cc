@@ -18,6 +18,8 @@
 */
 #include "config.h"
 
+#define BOOST_TEST_MODULE EclOutput
+
 #include <eebos/equil/equilibrationhelpers.hh>
 #include <eebos/eclproblem.hh>
 #include <ewoms/numerics/utils/start.hh>
@@ -50,25 +52,13 @@
 #include <vector>
 #include <string.h>
 
-#define CHECK(value, expected)             \
-    {                                      \
-         if ((value) != (expected)) {      \
-             std::cerr << "Test failure: ";     \
-             std::cerr << "expected value " << expected << " != " << value << std::endl; \
-             throw std::runtime_error("Test failed"); \
-         }                                 \
-    }
-
-#define CHECK_CLOSE(value, expected, reltol)                            \
-    {                                                                   \
-        if (std::fabs((expected) - (value)) > 1e-14 &&                  \
-            std::fabs(((expected) - (value))/((expected) + (value))) > reltol) \
-            { \
-            std::cerr << "Test failure: "; \
-            std::cerr << "expected value " << expected << " is not close to value " << value << std::endl; \
-            throw std::runtime_error("Test failed");                    \
-        } \
-    }
+#include <boost/test/unit_test.hpp>
+#include <boost/version.hpp>
+#if BOOST_VERSION / 100000 == 1 && BOOST_VERSION / 100 % 1000 < 71
+#include <boost/test/floating_point_comparison.hpp>
+#else
+#include <boost/test/tools/floating_point_comparison.hpp>
+#endif
 
 BEGIN_PROPERTIES
 NEW_TYPE_TAG(TestEclOutputTypeTag, INHERITS_FROM(BlackOilModel, EclBaseProblem));
@@ -121,7 +111,25 @@ initSimulator(const char *filename)
     return std::unique_ptr<Simulator>(new Simulator);
 }
 
-void test_summary()
+struct EclOutputFixture {
+    EclOutputFixture () {
+    int argc = boost::unit_test::framework::master_test_suite().argc;
+    char** argv = boost::unit_test::framework::master_test_suite().argv;
+#if HAVE_DUNE_FEM
+    Dune::Fem::MPIManager::initialize(argc, argv);
+#else
+    Dune::MPIHelper::instance(argc, argv);
+#endif
+        using TypeTag = TTAG(TestEclOutputTypeTag);
+        Ewoms::registerAllParameters_<TypeTag>();
+    }
+};
+
+}
+
+BOOST_GLOBAL_FIXTURE(EclOutputFixture);
+
+BOOST_AUTO_TEST_CASE(Summary)
 {
     using TypeTag = TTAG(TestEclOutputTypeTag);
     const std::string filename = "SUMMARY_DECK_NON_CONSTANT_POROSITY.DATA";
@@ -159,38 +167,38 @@ void test_summary()
 
     // fpr = sum_ (p * hcpv ) / hcpv, hcpv = pv * (1 - sw)
     const double fpr =  ( (3 * 0.1 + 8 * 0.2) * 500 * (1 - 0.2) ) / ( (500*0.1 + 500*0.2) * (1 - 0.2));
-    CHECK_CLOSE( fpr, ecl_sum_get_field_var( resp, 1, "FPR" ) , 1e-5 );
+    BOOST_CHECK_CLOSE( fpr, ecl_sum_get_field_var( resp, 1, "FPR" ) , 1e-3 );
 
     // foip = sum_ (b * s * pv), rs == 0;
     const double foip = ( (0.3 * 0.1 + 0.8 * 0.2) * 500 * (1 - 0.2) );
-    CHECK_CLOSE(foip, ecl_sum_get_field_var( resp, 1, "FOIP" ), 1e-3 );
+    BOOST_CHECK_CLOSE(foip, ecl_sum_get_field_var( resp, 1, "FOIP" ), 1e-1 );
 
     // fgip = sum_ (b * pv * s), sg == 0;
     const double fgip = 0.0;
-    CHECK_CLOSE(fgip, ecl_sum_get_field_var( resp, 1, "FGIP" ), 1e-3 );
+    BOOST_CHECK_CLOSE(fgip, ecl_sum_get_field_var( resp, 1, "FGIP" ), 1e-1 );
 
     // fgip = sum_ (b * pv * s),
     const double fwip = 1.0/1000 * ( 0.1 + 0.2) * 500 * 0.2;
-    CHECK_CLOSE(fwip, ecl_sum_get_field_var( resp, 1, "FWIP" ), 1e-3 );
+    BOOST_CHECK_CLOSE(fwip, ecl_sum_get_field_var( resp, 1, "FWIP" ), 1e-1 );
 
     // region 1
     // rpr = sum_ (p * hcpv ) / hcpv, hcpv = pv * (1 - sw)
     const double rpr1 =  ( 2.5 * 0.1 * 400 * (1 - 0.2) ) / (400*0.1 * (1 - 0.2));
-    CHECK_CLOSE( rpr1, ecl_sum_get_general_var( resp, 1, "RPR:1" ) , 1e-5 );
+    BOOST_CHECK_CLOSE( rpr1, ecl_sum_get_general_var( resp, 1, "RPR:1" ) , 1e-3 );
     // roip = sum_ (b * s * pv) // rs == 0;
     const double roip1 = ( 0.25 * 0.1 * 400 * (1 - 0.2) );
-    CHECK_CLOSE(roip1, ecl_sum_get_general_var( resp, 1, "ROIP:1" ), 1e-3 );
+    BOOST_CHECK_CLOSE(roip1, ecl_sum_get_general_var( resp, 1, "ROIP:1" ), 1e-1 );
 
     // region 2
     // rpr = sum_ (p * hcpv ) / hcpv, hcpv = pv * (1 - sw)
     const double rpr2 =  ( (5 * 0.1 * 100 + 6 * 0.2 * 100) * (1 - 0.2) ) / ( (100*0.1 + 100*0.2) * (1 - 0.2));
-    CHECK_CLOSE( rpr2, ecl_sum_get_general_var( resp, 1, "RPR:2" ) , 1e-5 );
+    BOOST_CHECK_CLOSE( rpr2, ecl_sum_get_general_var( resp, 1, "RPR:2" ) , 1e-3 );
     // roip = sum_ (b * s * pv) // rs == 0;
     const double roip2 = ( (0.5 * 0.1 * 100 + 0.6 * 0.2 * 100) * (1 - 0.2) );
-    CHECK_CLOSE(roip2, ecl_sum_get_general_var( resp, 1, "ROIP:2" ), 1e-3 );
+    BOOST_CHECK_CLOSE(roip2, ecl_sum_get_general_var( resp, 1, "ROIP:2" ), 1e-1 );
 }
 
-void test_readWriteWells()
+BOOST_AUTO_TEST_CASE(readWriteWells)
 {
     using opt = Ewoms::data::Rates::opt;
 
@@ -252,24 +260,6 @@ void test_readWriteWells()
     Ewoms::data::Wells wellRatesCopy;
     wellRatesCopy.read(buffer);
 
-    CHECK( wellRatesCopy.get( "OP_1" , opt::wat) , wellRates.get( "OP_1" , opt::wat));
-    CHECK( wellRatesCopy.get( "OP_2" , 188 , opt::wat) , wellRates.get( "OP_2" , 188 , opt::wat));
+    BOOST_CHECK_EQUAL( wellRatesCopy.get( "OP_1" , opt::wat) , wellRates.get( "OP_1" , opt::wat));
+    BOOST_CHECK_EQUAL( wellRatesCopy.get( "OP_2" , 188 , opt::wat) , wellRates.get( "OP_2" , 188 , opt::wat));
 }
-} // Anonymous namespace
-
-int main(int argc, char** argv)
-{
-#if HAVE_DUNE_FEM
-    Dune::Fem::MPIManager::initialize(argc, argv);
-#else
-    Dune::MPIHelper::instance(argc, argv);
-#endif
-
-    using TypeTag = TTAG(TestEclOutputTypeTag);
-    Ewoms::registerAllParameters_<TypeTag>();
-    test_summary();
-    test_readWriteWells();
-
-    return 0;
-}
-
