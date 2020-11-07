@@ -1213,6 +1213,13 @@ public:
     { return referencePorosity_[timeIdx][elementIdx]; }
 
     /*!
+     * \brief Sets the porosity of an element
+     *
+     */
+    void setPorosity(Scalar poro, unsigned elementIdx, unsigned timeIdx = 0)
+    { referencePorosity_[timeIdx][elementIdx] = poro; }
+
+    /*!
      * \brief Returns the depth of an degree of freedom [m]
      *
      * For ECL problems this is defined as the average of the depth of an element and is

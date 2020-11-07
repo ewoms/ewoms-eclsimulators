@@ -237,12 +237,10 @@ namespace Ewoms
                 return primary_variables_evaluation_[SFrac];
             }
         }
-        else if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx) && compIdx == Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx)) {
-
+        else if (FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)) {
             if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx) && compIdx == Indices::canonicalToActiveComponentIndex(FluidSystem::gasCompIdx)) {
                 return primary_variables_evaluation_[GFrac];
             }
-            return primary_variables_evaluation_[WFrac];
         }
 
         // Oil or WATER fraction
@@ -1967,7 +1965,7 @@ namespace Ewoms
             x = mix;
 
             // Subtract dissolved gas from oil phase and vapporized oil from gas phase
-            if (FluidSystem::phaseIsActive(FluidSystem::gasCompIdx) && FluidSystem::phaseIsActive(FluidSystem::oilCompIdx)) {
+            if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx) && FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx)) {
                 const unsigned gaspos = Indices::canonicalToActiveComponentIndex(FluidSystem::gasCompIdx);
                 const unsigned oilpos = Indices::canonicalToActiveComponentIndex(FluidSystem::oilCompIdx);
                 double rs = 0.0;
@@ -2583,12 +2581,11 @@ namespace Ewoms
                 = well_state.currentProductionControls()[this->index_of_well_];
             if ( this->Base::wellHasTHPConstraints(summary_state)
                 && current_control != Well::ProducerCMode::BHP ) {
-                std::vector<double> potentials = well_state.wellPotentials();
                 if (doGasLiftOptimize(well_state, eebos_simulator, deferred_logger)) {
                     const auto& controls = well.productionControls(summary_state);
                     GasLiftHandler glift {
                         *this, eebos_simulator, summary_state,
-                        deferred_logger, potentials, well_state, controls };
+                        deferred_logger, well_state, controls };
                     glift.runOptimize();
                 }
             }

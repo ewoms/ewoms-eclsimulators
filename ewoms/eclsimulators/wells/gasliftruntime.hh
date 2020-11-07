@@ -66,7 +66,6 @@ namespace Ewoms
             const Simulator &eebos_simulator,
             const SummaryState &summary_state,
             DeferredLogger &deferred_logger,
-            std::vector<double> &potentials,
             const WellState &well_state,
             const Well::ProductionControls &controls
         );
@@ -79,8 +78,8 @@ namespace Ewoms
         void displayDebugMessage_(const std::string &msg);
         void displayWarning_();
         void displayWarning_(std::string warning);
-        double getGasRateWithLimit_(std::vector<double> &potentials);
-        double getOilRateWithLimit_(std::vector<double> &potentials);
+        bool getGasRateWithLimit_(double& new_rate, const std::vector<double> &potentials);
+        bool getOilRateWithLimit_(double& new_rate, const std::vector<double> &potentials);
         void logSuccess_();
         bool runOptimizeLoop_(bool increase);
         void setAlqMaxRate_(const GasLiftOpt::Well &well);
@@ -94,7 +93,7 @@ namespace Ewoms
         const Well::ProductionControls &controls_;
         DeferredLogger &deferred_logger_;
         const Simulator &eebos_simulator_;
-        std::vector<double> &potentials_;
+        std::vector<double> potentials_;
         const StdWell &std_well_;
         const SummaryState &summary_state_;
         const WellState &well_state_;

@@ -60,6 +60,10 @@ setupCPR(const std::string& conf, const EFlowLinearSolverParameters& p)
     prm.put("preconditioner.coarsesolver.preconditioner.verbosity", 0);
     prm.put("preconditioner.coarsesolver.preconditioner.maxlevel", 15);
     prm.put("preconditioner.coarsesolver.preconditioner.skip_isolated", 0);
+    // We request to accumulate data to 1 process always as our matrix
+    // graph might be unsymmetric and hence not supported by the PTScotch/ParMetis
+    // calls in DUNE. Accumulating to 1 skips PTScotch/ParMetis
+    prm.put("preconditioner.coarsesolver.preconditioner.accumulate", 1);
     return prm;
 }
 
@@ -83,6 +87,10 @@ setupAMG([[maybe_unused]] const std::string& conf, const EFlowLinearSolverParame
     prm.put("preconditioner.verbosity", 0);
     prm.put("preconditioner.maxlevel", 15);
     prm.put("preconditioner.skip_isolated", 0);
+    // We request to accumulate data to 1 process always as our matrix
+    // graph might be unsymmetric and hence not supported by the PTScotch/ParMetis
+    // calls in DUNE. Accumulating to 1 skips PTScotch/ParMetis
+    prm.put("preconditioner.accumulate", 1);
     return prm;
 }
 

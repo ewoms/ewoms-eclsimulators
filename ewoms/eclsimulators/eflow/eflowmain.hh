@@ -266,6 +266,15 @@ namespace Ewoms
             return simulator_->runStep(*simtimer_);
         }
 
+        // Called from Python to cleanup after having executed the last
+        // executeStep()
+        int executeStepsCleanup()
+        {
+            SimulatorReport report = simulator_->finalize();
+            runSimulatorAfterSim_(report);
+            return report.success.exit_status;
+        }
+
         // Print an ASCII-art header to the PRT and DEBUG files.
         // \return Whether unkown keywords were seen during parsing.
         static void printPRTHeader(bool output_cout)
@@ -313,6 +322,11 @@ namespace Ewoms
               OpmLog::note(ss.str());
           }
         }
+
+        EebosSimulator *getSimulatorPtr() {
+            return eebosSimulator_.get();
+        }
+
     private:
         // called by execute() or executeInitStep()
         int execute_(int (EFlowMain::* runOrInitFunc)(), bool cleanup)
