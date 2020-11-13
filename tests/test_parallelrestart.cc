@@ -36,7 +36,6 @@
 #include <ewoms/eclio/parser/eclipsestate/eclipseconfig.hh>
 #include <ewoms/eclio/parser/eclipsestate/runspec.hh>
 #include <ewoms/eclio/parser/eclipsestate/tracerconfig.hh>
-#include <ewoms/eclio/parser/eclipsestate/edit/editnnc.hh>
 #include <ewoms/eclio/parser/eclipsestate/grid/facedir.hh>
 #include <ewoms/eclio/parser/eclipsestate/grid/fault.hh>
 #include <ewoms/eclio/parser/eclipsestate/grid/faultcollection.hh>
@@ -465,7 +464,6 @@ TEST_FOR_TYPE(DenT)
 TEST_FOR_TYPE(Dimension)
 TEST_FOR_TYPE(EclHysterConfig)
 TEST_FOR_TYPE(EclipseConfig)
-TEST_FOR_TYPE(EDITNNC)
 TEST_FOR_TYPE(EndpointScaling)
 TEST_FOR_TYPE(Eqldims)
 TEST_FOR_TYPE(Equil)

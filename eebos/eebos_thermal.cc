@@ -54,7 +54,7 @@ void eebosThermalSetDeck(Ewoms::Deck* deck,
 
 int eebosThermalMain(int argc, char **argv)
 {
-    typedef TTAG(EebosThermalTypeTag) ProblemTypeTag;
+    using ProblemTypeTag = TTAG(EebosThermalTypeTag);
     return Ewoms::start<ProblemTypeTag>(argc, argv);
 }
 

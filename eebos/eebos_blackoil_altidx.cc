@@ -54,7 +54,7 @@ NEW_TYPE_TAG(EebosAltIdxTypeTag, INHERITS_FROM(EebosTypeTag));
 // use a fluid system with different indices than the default
 SET_PROP(EebosAltIdxTypeTag, FluidSystem)
 {
-    typedef GET_PROP_TYPE(TypeTag, Scalar) Scalar;
+    using Scalar = GET_PROP_TYPE(TypeTag, Scalar);
 
 public:
     typedef Ewoms::BlackOilFluidSystem<Scalar, Ewoms::EclAlternativeBlackOilIndexTraits> type;
@@ -69,6 +69,6 @@ namespace CO2DefaultTables {
 
 int main(int argc, char **argv)
 {
-    typedef TTAG(EebosAltIdxTypeTag) ProblemTypeTag;
+    using ProblemTypeTag = TTAG(EebosAltIdxTypeTag);
     return Ewoms::start<ProblemTypeTag>(argc, argv);
 }

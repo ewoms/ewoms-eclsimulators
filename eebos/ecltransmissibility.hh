@@ -24,8 +24,6 @@
 #ifndef EWOMS_ECL_TRANSMISSIBILITY_HH
 #define EWOMS_ECL_TRANSMISSIBILITY_HH
 
-#include <eebos/nncsorter.hh>
-
 #include <ewoms/common/propertysystem.hh>
 
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
@@ -44,6 +42,7 @@
 #include <dune/common/fvector.hh>
 #include <dune/common/fmatrix.hh>
 
+#include <ewoms/common/fmt/format.h>
 #include <array>
 #include <vector>
 #include <unordered_map>
@@ -748,13 +747,11 @@ private:
         // First scale NNCs with EDITNNC.
         std::vector<Ewoms::NNCdata> unprocessedNnc;
         std::vector<Ewoms::NNCdata> processedNnc;
-        const auto& nnc = vanguard_.eclState().getInputNNC();
-        if (!nnc.hasNNC())
+        const auto& nnc_input = vanguard_.eclState().getInputNNC().input();
+        if (nnc_input.empty())
             return make_tuple(processedNnc, unprocessedNnc);
 
-        auto nncData = sortNncAndApplyEditnnc(nnc.data(), vanguard_.eclState().getInputEDITNNC().data());
-
-        for (const auto& nncEntry : nncData) {
+        for (const auto& nncEntry : nnc_input) {
             auto c1 = nncEntry.cell1;
             auto c2 = nncEntry.cell2;
             auto low = cartesianToCompressed[c1];
@@ -781,13 +778,13 @@ private:
             if (candidate == trans_.end())
                 // This NNC is not resembled by the grid. Save it for later
                 // processing with local cell values
-                unprocessedNnc.push_back({c1, c2, nncEntry.trans});
+                unprocessedNnc.push_back(nncEntry);
             else {
                 // NNC is represented by the grid and might be a neighboring connection
                 // In this case the transmissibilty is added to the value already
                 // set or computed.
                 candidate->second += nncEntry.trans;
-                processedNnc.push_back({c1, c2, nncEntry.trans});
+                processedNnc.push_back(nncEntry);
             }
         }
         return make_tuple(processedNnc, unprocessedNnc);
@@ -796,15 +793,34 @@ private:
     /// \brief Multiplies the grid transmissibilities according to EDITNNC.
     void applyEditNncToGridTrans_(const std::vector<int>& globalToLocal)
     {
-        const auto& editNnc = vanguard_.eclState().getInputEDITNNC();
+        const auto& nnc_input = vanguard_.eclState().getInputNNC();
+        const auto& editNnc = nnc_input.edit();
         if (editNnc.empty())
             return;
+        const auto& cartMapper = vanguard_.cartesianIndexMapper();
+        const auto& cartDims = cartMapper.cartesianDimensions();
+
+        auto format_ijk = [&cartDims](std::size_t cell) -> std::string {
+            auto i = cell % cartDims[0]; cell /= cartDims[0];
+            auto j = cell % cartDims[1];
+            auto k = cell / cartDims[1];
+
+            return fmt::format("({},{},{})", i + 1,j + 1,k + 1);
+        };
+
+        auto make_warning = [&format_ijk] (const Ewoms::KeywordLocation& location, const Ewoms::NNCdata& nnc) -> std::string {
+            return fmt::format("Problem with EDITNNC keyword\n"
+                               "In {} line {} \n"
+                               "No NNC defined for connection {} -> {}", location.filename, location.lineno, format_ijk(nnc.cell1), format_ijk(nnc.cell2));
+
+        };
 
         // editNnc is supposed to only reference non-neighboring connections and not
         // neighboring connections. Use all entries for scaling if there is an NNC.
         // variable nnc incremented in loop body.
-        auto nnc = editNnc.data().begin();
-        auto end = editNnc.data().end();
+        auto nnc = editNnc.begin();
+        auto end = editNnc.end();
+        std::size_t warning_count = 0;
         while (nnc != end) {
             auto c1 = nnc->cell1;
             auto c2 = nnc->cell2;
@@ -814,8 +830,13 @@ private:
                 std::swap(low, high);
 
             auto candidate = trans_.find(isId_(low, high));
-            if (candidate == trans_.end())
+            if (candidate == trans_.end()) {
+                const auto& location = nnc_input.edit_location( *nnc );
+                auto warning = make_warning(location, *nnc);
+                Ewoms::OpmLog::warning("EDITNNC", warning);
                 ++nnc;
+                warning_count++;
+            }
             else {
                 // NNC exists
                 while (nnc!= end && c1==nnc->cell1 && c2==nnc->cell2) {
@@ -823,6 +844,12 @@ private:
                     ++nnc;
                 }
             }
+        }
+
+        if (warning_count > 0) {
+            auto warning = fmt::format("Problems with EDITNNC keyword\n"
+                                       "A total of {} connections not defined in grid", warning_count);
+            Ewoms::OpmLog::warning(warning);
         }
     }
 

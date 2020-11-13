@@ -336,32 +336,31 @@ private:
             }
         }
 
-        if (enableExperiments)
+        if (enableExperiments) {
             // apply threshold pressures accross faults (experimental!)
-            extractThpresft_();
+            const auto& deck = simulator_.vanguard().deck();
+            if (deck.hasKeyword("THPRESFT"))
+                extractThpresft_(deck.getKeyword("THPRESFT"));
+        }
 
     }
 
-    void extractThpresft_()
+    void extractThpresft_(const Ewoms::DeckKeyword& thpresftKeyword)
     {
         // retrieve the faults collection.
         const Ewoms::EclipseState& eclState = simulator_.vanguard().eclState();
         const Ewoms::FaultCollection& faults = eclState.getFaults();
-
-        const std::vector<Ewoms::ThpresftItem>& thpresftItems = eclState.getThpresft().data();
-        if (thpresftItems.empty())
-            return;
 
         // extract the multipliers from the deck keyword
         int numFaults = faults.size();
         int numCartesianElem = eclState.getInputGrid().getCartesianSize();
         thpresftValues_.resize(numFaults, -1.0);
         cartElemFaultIdx_.resize(numCartesianElem, -1);
-        for (size_t itemIdx = 0; thpresftItems.size(); ++ itemIdx) {
-            const Ewoms::ThpresftItem& item = thpresftItems[itemIdx];
+        for (size_t recordIdx = 0; recordIdx < thpresftKeyword.size(); ++ recordIdx) {
+            const Ewoms::DeckRecord& record = thpresftKeyword.getRecord(recordIdx);
 
-            const std::string& faultName = item.faultName;
-            Scalar thpresValue = item.thresholdPressure;
+            const std::string& faultName = record.getItem("FAULT_NAME").getTrimmedString(0);
+            Scalar thpresValue = record.getItem("VALUE").getSIDouble(0);
 
             for (size_t faultIdx = 0; faultIdx < faults.size(); faultIdx++) {
                 auto& fault = faults.getFault(faultIdx);

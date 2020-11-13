@@ -54,7 +54,7 @@ void eebosFoamSetDeck(Ewoms::Deck* deck,
 
 int eebosFoamMain(int argc, char **argv)
 {
-    typedef TTAG(EebosFoamTypeTag) ProblemTypeTag;
+    using ProblemTypeTag = TTAG(EebosFoamTypeTag);
     return Ewoms::start<ProblemTypeTag>(argc, argv);
 }
 

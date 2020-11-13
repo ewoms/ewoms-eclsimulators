@@ -74,14 +74,14 @@ SET_INT_PROP(EFlowTimeSteppingParameters, TimeStepVerbosity, 1);
 SET_SCALAR_PROP(EFlowTimeSteppingParameters, InitialTimeStepInDays, 1.0);
 SET_BOOL_PROP(EFlowTimeSteppingParameters, FullTimeStepInitially, false);
 SET_SCALAR_PROP(EFlowTimeSteppingParameters, TimeStepAfterEventInDays, -1.0);
-SET_STRING_PROP(EFlowTimeSteppingParameters, TimeStepControl, "pid");
+SET_STRING_PROP(EFlowTimeSteppingParameters, TimeStepControl, "pid+newtoniteration");
 SET_SCALAR_PROP(EFlowTimeSteppingParameters, TimeStepControlTolerance, 1e-1);
 SET_INT_PROP(EFlowTimeSteppingParameters, TimeStepControlTargetIterations, 30);
 SET_INT_PROP(EFlowTimeSteppingParameters, TimeStepControlTargetNewtonIterations, 8);
 SET_SCALAR_PROP(EFlowTimeSteppingParameters, TimeStepControlDecayRate, 0.75);
 SET_SCALAR_PROP(EFlowTimeSteppingParameters, TimeStepControlGrowthRate, 1.25);
 SET_SCALAR_PROP(EFlowTimeSteppingParameters, TimeStepControlDecayDampingFactor, 1.0);
-SET_SCALAR_PROP(EFlowTimeSteppingParameters, TimeStepControlGrowthDampingFactor, 1.0/1.2);
+SET_SCALAR_PROP(EFlowTimeSteppingParameters, TimeStepControlGrowthDampingFactor, 3.2);
 SET_STRING_PROP(EFlowTimeSteppingParameters, TimeStepControlFileName, "timesteps");
 SET_SCALAR_PROP(EFlowTimeSteppingParameters, MinTimeStepBeforeShuttingProblematicWellsInDays, 0.001);
 
@@ -503,13 +503,13 @@ namespace Ewoms {
             else if (control == "pid+iteration") {
                 const int iterations =  EWOMS_GET_PARAM(TypeTag, int, TimeStepControlTargetIterations); // 30
                 const double decayDampingFactor = EWOMS_GET_PARAM(TypeTag, double, TimeStepControlDecayDampingFactor); // 1.0
-                const double growthDampingFactor = EWOMS_GET_PARAM(TypeTag, double, TimeStepControlGrowthDampingFactor); // 1.0/1.2
+                const double growthDampingFactor = EWOMS_GET_PARAM(TypeTag, double, TimeStepControlGrowthDampingFactor); // 3.2
                 timeStepControl_ = TimeStepControlType(new PIDAndIterationCountTimeStepControl(iterations, decayDampingFactor, growthDampingFactor, tol));
             }
             else if (control == "pid+newtoniteration") {
                 const int iterations =  EWOMS_GET_PARAM(TypeTag, int, TimeStepControlTargetNewtonIterations); // 8
                 const double decayDampingFactor = EWOMS_GET_PARAM(TypeTag, double, TimeStepControlDecayDampingFactor); // 1.0
-                const double growthDampingFactor = EWOMS_GET_PARAM(TypeTag, double, TimeStepControlGrowthDampingFactor); // 1.0/1.2
+                const double growthDampingFactor = EWOMS_GET_PARAM(TypeTag, double, TimeStepControlGrowthDampingFactor); // 3.2
                 timeStepControl_ = TimeStepControlType(new PIDAndIterationCountTimeStepControl(iterations, decayDampingFactor, growthDampingFactor, tol));
                 useNewtonIteration_ = true;
             }

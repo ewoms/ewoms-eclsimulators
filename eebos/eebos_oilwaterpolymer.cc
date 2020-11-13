@@ -73,7 +73,7 @@ void eebosOilWaterPolymerSetDeck(Ewoms::Deck* deck,
 
 int eebosOilWaterPolymerMain(int argc, char **argv)
 {
-    typedef TTAG(EebosOilWaterPolymerTypeTag) ProblemTypeTag;
+    using ProblemTypeTag = TTAG(EebosOilWaterPolymerTypeTag);
     return Ewoms::start<ProblemTypeTag>(argc, argv);
 }
 

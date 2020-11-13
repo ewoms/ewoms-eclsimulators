@@ -42,8 +42,8 @@ void eebosBrineSetDeck(Ewoms::Deck* deck,
                      Ewoms::ErrorGuard* errorGuard,
                      double externalSetupTime)
 {
-    typedef TTAG(EebosBrineTypeTag) ProblemTypeTag;
-    typedef GET_PROP_TYPE(ProblemTypeTag, Vanguard) Vanguard;
+    using ProblemTypeTag = TTAG(EebosBrineTypeTag);
+    using Vanguard = GET_PROP_TYPE(ProblemTypeTag, Vanguard);
 
     Vanguard::setExternalSetupTime(externalSetupTime);
     Vanguard::setExternalParseContext(parseContext);
@@ -53,7 +53,7 @@ void eebosBrineSetDeck(Ewoms::Deck* deck,
 
 int eebosBrineMain(int argc, char **argv)
 {
-    typedef TTAG(EebosBrineTypeTag) ProblemTypeTag;
+    using ProblemTypeTag = TTAG(EebosBrineTypeTag);
     return Ewoms::start<ProblemTypeTag>(argc, argv);
 }
 

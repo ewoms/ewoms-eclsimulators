@@ -69,8 +69,8 @@ std::string eebosBlackOilGetDeckFileName(int argc, char** argv)
 
 std::unique_ptr<Ewoms::ParseContext> eebosBlackOilCreateParseContext(int argc, char** argv)
 {
-    typedef TTAG(EebosTypeTag) ProblemTypeTag;
-    typedef GET_PROP_TYPE(ProblemTypeTag, Vanguard) Vanguard;
+    using ProblemTypeTag = TTAG(EebosTypeTag);
+    using Vanguard = GET_PROP_TYPE(ProblemTypeTag, Vanguard);
 
     // use the ewoms parameter machinery and the blackoil vanguard to handle the grunt of
     // the work
@@ -91,8 +91,8 @@ void eebosBlackOilSetDeck(Ewoms::Deck* deck,
                          Ewoms::ErrorGuard* errorGuard,
                          double externalSetupTime)
 {
-    typedef TTAG(EebosTypeTag) ProblemTypeTag;
-    typedef GET_PROP_TYPE(ProblemTypeTag, Vanguard) Vanguard;
+    using ProblemTypeTag = TTAG(EebosTypeTag);
+    using Vanguard = GET_PROP_TYPE(ProblemTypeTag, Vanguard);
 
     Vanguard::setExternalSetupTime(externalSetupTime);
     Vanguard::setExternalParseContext(parseContext);
@@ -102,7 +102,7 @@ void eebosBlackOilSetDeck(Ewoms::Deck* deck,
 
 int eebosBlackOilMain(int argc, char **argv)
 {
-    typedef TTAG(EebosTypeTag) ProblemTypeTag;
+    using ProblemTypeTag = TTAG(EebosTypeTag);
     return Ewoms::start<ProblemTypeTag>(argc, argv);
 }
 

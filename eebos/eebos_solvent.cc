@@ -54,7 +54,7 @@ void eebosSolventSetDeck(Ewoms::Deck* deck,
 
 int eebosSolventMain(int argc, char **argv)
 {
-    typedef TTAG(EebosSolventTypeTag) ProblemTypeTag;
+    using ProblemTypeTag = TTAG(EebosSolventTypeTag);
     return Ewoms::start<ProblemTypeTag>(argc, argv);
 }
 

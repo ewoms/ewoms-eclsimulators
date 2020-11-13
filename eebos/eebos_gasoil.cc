@@ -70,7 +70,7 @@ void eebosGasOilSetDeck(Ewoms::Deck* deck,
 
 int eebosGasOilMain(int argc, char **argv)
 {
-    typedef TTAG(EebosGasOilTypeTag) ProblemTypeTag;
+    using ProblemTypeTag = TTAG(EebosGasOilTypeTag);
     return Ewoms::start<ProblemTypeTag>(argc, argv);
 }
 
