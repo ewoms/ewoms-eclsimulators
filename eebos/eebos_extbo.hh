@@ -16,26 +16,25 @@
   You should have received a copy of the GNU General Public License
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef PARALLEL_SERIALIZATION_HH
-#define PARALLEL_SERIALIZATION_HH
+/*!
+ * \file
+ *
+ * \brief The function prototypes required to start the solvent variant of eebos
+ */
+#ifndef EEBOS_EXTBO_HH
+#define EEBOS_EXTBO_HH
+
+#include <ewoms/eclio/parser/deck/deck.hh>
+#include <ewoms/eclio/parser/parsecontext.hh>
+#include <ewoms/eclio/parser/errorguard.hh>
 
 namespace Ewoms {
+void eebosExtboSetDeck(Ewoms::Deck* deck,
+                        Ewoms::ParseContext* parseContext,
+                        Ewoms::ErrorGuard* errorGuard,
+                        double externalSetupTime);
 
-class EclipseState;
-class Schedule;
-class SummaryConfig;
+int eebosExtboMain(int argc, char** argv);
+}
 
-/*! \brief Broadcasts an eclipse state from root node in parallel runs.
- *! \param eclState EclipseState to broadcast
- *! \param schedule Schedule to broadcast
- *! \param summaryConfig SummaryConfig to broadcast
-*/
-void eclStateBroadcast(EclipseState& eclState, Schedule& schedule,
-                       SummaryConfig& summaryConfig);
-
-/// \brief Broadcasts an schedule from root node in parallel runs.
-void eclScheduleBroadcast(Schedule& schedule);
-
-} // end namespace Ewoms
-
-#endif // PARALLEL_SERIALIZATION_HH
+#endif

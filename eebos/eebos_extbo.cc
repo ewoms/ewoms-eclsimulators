@@ -24,26 +24,25 @@
 #include "config.h"
 
 #include "eebos.hh"
-
-#include <ewoms/numerics/utils/start.hh>
+#include "starteebos.hh"
 
 BEGIN_PROPERTIES
 
-NEW_TYPE_TAG(EebosThermalTypeTag, INHERITS_FROM(EebosTypeTag));
+NEW_TYPE_TAG(EebosExtboTypeTag, INHERITS_FROM(EebosTypeTag));
 
-// enable the energy extension of the black oil model
-SET_BOOL_PROP(EebosThermalTypeTag, EnableEnergy, true);
+// enable the polymer extension of the black oil model
+SET_BOOL_PROP(EebosExtboTypeTag, EnableExtbo, true);
 
 END_PROPERTIES
 
 namespace Ewoms {
 
-void eebosThermalSetDeck(Ewoms::Deck* deck,
-                        Ewoms::ParseContext* parseContext,
-                        Ewoms::ErrorGuard* errorGuard,
-                        double externalSetupTime)
+void eebosExtboSetDeck(Ewoms::Deck* deck,
+                      Ewoms::ParseContext* parseContext,
+                      Ewoms::ErrorGuard* errorGuard,
+                      double externalSetupTime)
 {
-    using ProblemTypeTag = TTAG(EebosThermalTypeTag);
+    using ProblemTypeTag = TTAG(EebosExtboTypeTag);
     using Vanguard = GET_PROP_TYPE(ProblemTypeTag, Vanguard);
 
     Vanguard::setExternalSetupTime(externalSetupTime);
@@ -52,10 +51,10 @@ void eebosThermalSetDeck(Ewoms::Deck* deck,
     Vanguard::setExternalDeck(deck);
 }
 
-int eebosThermalMain(int argc, char **argv)
+int eebosExtboMain(int argc, char **argv)
 {
-    using ProblemTypeTag = TTAG(EebosThermalTypeTag);
-    return Ewoms::start<ProblemTypeTag>(argc, argv);
+    using ProblemTypeTag = TTAG(EebosExtboTypeTag);
+    return Ewoms::startEebos<ProblemTypeTag>(argc, argv);
 }
 
 }

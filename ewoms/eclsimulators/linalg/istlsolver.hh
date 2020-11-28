@@ -83,6 +83,12 @@ namespace Ewoms
         using FlexibleSolverType = Dune::FlexibleSolver<Matrix, Vector>;
         using AbstractOperatorType = Dune::AssembledLinearOperator<Matrix, Vector, Vector>;
         using WellModelOperator = WellModelAsLinearOperator<WellModel, Vector, Vector>;
+        using ElementMapper = GET_PROP_TYPE(TypeTag, ElementMapper);
+
+#if HAVE_CUDA || HAVE_OPENCL
+        static const unsigned int block_size = Matrix::block_type::rows;
+        std::unique_ptr<BdaBridge<Matrix, Vector, block_size>> bdaBridge;
+#endif
 
 #if HAVE_MPI
         using CommunicationType = Dune::OwnerOverlapCopyCommunication<int,int>;
@@ -126,8 +132,9 @@ namespace Ewoms
                 const int deviceID = EWOMS_GET_PARAM(TypeTag, int, BdaDeviceId);
                 const int maxit = EWOMS_GET_PARAM(TypeTag, int, LinearSolverMaxIter);
                 const double tolerance = EWOMS_GET_PARAM(TypeTag, double, LinearSolverReduction);
+                const std::string opencl_ilu_reorder = EWOMS_GET_PARAM(TypeTag, std::string, OpenclIluReorder);
                 const int linear_solver_verbosity = parameters_.linear_solver_verbosity_;
-                bdaBridge.reset(new BdaBridge<Matrix, Vector, block_size>(gpu_mode, linear_solver_verbosity, maxit, tolerance, platformID, deviceID));
+                bdaBridge.reset(new BdaBridge<Matrix, Vector, block_size>(gpu_mode, linear_solver_verbosity, maxit, tolerance, platformID, deviceID, opencl_ilu_reorder));
             }
 #else
             if (EWOMS_GET_PARAM(TypeTag, std::string, GpuMode) != "none") {
@@ -139,16 +146,7 @@ namespace Ewoms
             // For some reason simulator_.model().elementMapper() is not initialized at this stage
             // Hence const auto& elemMapper = simulator_.model().elementMapper(); does not work.
             // Set it up manually
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
-            using ElementMapper =
-                Dune::MultipleCodimMultipleGeomTypeMapper<GridView>;
             ElementMapper elemMapper(simulator_.vanguard().gridView(), Dune::mcmgElementLayout());
-#else
-            using ElementMapper =
-                Dune::MultipleCodimMultipleGeomTypeMapper<GridView, Dune::MCMGElementLayout>;
-            ElementMapper elemMapper(simulator_.vanguard().gridView());
-#endif
-
             detail::findOverlapAndInterior(simulator_.vanguard().grid(), elemMapper, overlapRows_, interiorRows_);
 
             useWellConn_ = EWOMS_GET_PARAM(TypeTag, bool, MatrixAddWellContributions);
@@ -236,9 +234,49 @@ namespace Ewoms
 
             // Solve system.
             Dune::InverseOperatorResult result;
+            bool gpu_was_used = false;
 
-            // use flexible istl solver.
-            flexibleSolver_->apply(x, *rhs_, result);
+            // Use GPU if: available, chosen by user, and successful.
+#if HAVE_CUDA || HAVE_OPENCL
+            bool use_gpu = bdaBridge->getUseGpu();
+            if (use_gpu) {
+                const std::string gpu_mode = EWOMS_GET_PARAM(TypeTag, std::string, GpuMode);
+                WellContributions wellContribs(gpu_mode);
+#if HAVE_OPENCL
+                if(gpu_mode.compare("opencl") == 0){
+                    const auto openclBackend = static_cast<const bda::openclSolverBackend<block_size>*>(&bdaBridge->getBackend());
+                    wellContribs.setOpenCLEnv(openclBackend->context.get(), openclBackend->queue.get());
+                }
+#endif
+                if (!useWellConn_) {
+                    simulator_.problem().wellModel().getWellContributions(wellContribs);
+                }
+                // Const_cast needed since the CUDA stuff overwrites values for better matrix condition..
+                bdaBridge->solve_system(const_cast<Matrix*>(&getMatrix()), *rhs_, wellContribs, result);
+                if (result.converged) {
+                    // get result vector x from non-Dune backend, iff solve was successful
+                    bdaBridge->get_result(x);
+                    gpu_was_used = true;
+                } else {
+                    // CPU fallback
+                    use_gpu = bdaBridge->getUseGpu();  // update value, BdaBridge might have disabled cusparseSolver
+                    if (use_gpu && simulator_.gridView().comm().rank() == 0) {
+                        if (gpu_mode.compare("cusparse") == 0) {
+                            OpmLog::warning("cusparseSolver did not converge, now trying Dune to solve current linear system...");
+                        }
+                        if (gpu_mode.compare("opencl") == 0) {
+                            OpmLog::warning("openclSolver did not converge, now trying Dune to solve current linear system...");
+                        }
+                    }
+                }
+            }
+#endif
+
+            // Otherwise, use flexible istl solver.
+            if (!gpu_was_used) {
+                assert(flexibleSolver_);
+                flexibleSolver_->apply(x, *rhs_, result);
+            }
 
             // Check convergence, iterations etc.
             checkConvergence(result);
@@ -257,10 +295,9 @@ namespace Ewoms
         int iterations () const { return iterations_; }
 
         /// \copydoc NewtonIterationBlackoilInterface::parallelInformation
-        const Ewoms::any& parallelInformation() const { return parallelInformation_; }
+        const std::any& parallelInformation() const { return parallelInformation_; }
 
     protected:
-
         // 3x3 matrix block inversion was unstable at least 2.3 until and including
         // 2.5.0. There may still be some issue with the 4x4 matrix block inversion
         // we therefore still use the custom block inversion of eWoms

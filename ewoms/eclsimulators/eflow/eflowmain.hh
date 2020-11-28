@@ -25,6 +25,7 @@
 #include <ewoms/eclsimulators/eflow/simulatorfullyimplicitblackoil.hh>
 #include <ewoms/eclsimulators/utils/parallelfilemerger.hh>
 #include <ewoms/eclsimulators/linalg/extractparallelgridinformationtoistl.hh>
+#include <ewoms/eclsimulators/utils/paralleleclipsestate.hh>
 
 #include <ewoms/eclsimulators/deprecated/props/satfunc/relpermdiagnostics.hh>
 

@@ -34,6 +34,7 @@
 #include <ewoms/eclsimulators/wells/vfpproperties.hh>
 #include <ewoms/eclsimulators/wells/wellhelpers.hh>
 #include <ewoms/eclsimulators/wells/wellgrouphelpers.hh>
+#include <ewoms/eclsimulators/wells/wellprodindexcalculator.hh>
 #include <ewoms/eclsimulators/wells/wellstatefullyimplicitblackoil.hh>
 #include <ewoms/eclsimulators/eflow/blackoilmodelparameters.hh>
 
@@ -86,6 +87,7 @@ namespace Ewoms
         typedef DenseAd::Evaluation<double, /*size=*/numEq> Eval;
 
         static const bool has_solvent = GET_PROP_VALUE(TypeTag, EnableSolvent);
+        static const bool has_zFraction = GET_PROP_VALUE(TypeTag, EnableExtbo);
         static const bool has_polymer = GET_PROP_VALUE(TypeTag, EnablePolymer);
         static const bool has_energy = GET_PROP_VALUE(TypeTag, EnableEnergy);
         static const bool has_temperature = GET_PROP_VALUE(TypeTag, EnableTemperature);
@@ -94,6 +96,7 @@ namespace Ewoms
         static const bool has_foam = GET_PROP_VALUE(TypeTag, EnableFoam);
         static const bool has_brine = GET_PROP_VALUE(TypeTag, EnableBrine);
         static const int contiSolventEqIdx = Indices::contiSolventEqIdx;
+        static const int contiZfracEqIdx = Indices::contiZfracEqIdx;
         static const int contiPolymerEqIdx = Indices::contiPolymerEqIdx;
         // index for the polymer molecular weight continuity equation
         static const int contiPolymerMWEqIdx = Indices::contiPolymerMWEqIdx;
@@ -163,7 +166,7 @@ namespace Ewoms
                                     ) = 0;
 
         virtual void maybeDoGasLiftOptimization (
-            const WellState& well_state,
+            WellState& well_state,
             const Simulator& eebosSimulator,
             DeferredLogger& deferred_logger
         ) const = 0;
@@ -212,6 +215,11 @@ namespace Ewoms
         virtual void calculateExplicitQuantities(const Simulator& eebosSimulator,
                                                  const WellState& well_state,
                                                  Ewoms::DeferredLogger& deferred_logger) = 0; // should be const?
+
+        virtual void updateProductivityIndex(const Simulator& eebosSimulator,
+                                             const WellProdIndexCalculator& wellPICalc,
+                                             WellState& well_state,
+                                             DeferredLogger& deferred_logger) const = 0;
 
         /// \brief Wether the Jacobian will also have well contributions in it.
         virtual bool jacobianContainsWellContributions() const
@@ -502,13 +510,7 @@ namespace Ewoms
                                  const std::vector<double>& B_avg,
                                  Ewoms::DeferredLogger& deferred_logger);
 
-        void scaleProductivityIndex(const int perfIdx, double& productivity_index, const bool new_well, Ewoms::DeferredLogger& deferred_logger);
-
         void initCompletions();
-
-        // count the number of times an output log message is created in the productivity
-        // index calculations
-        int well_productivity_index_logger_counter_;
 
         bool checkConstraints(WellState& well_state,
                               const Schedule& schedule,

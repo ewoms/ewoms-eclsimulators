@@ -27,15 +27,15 @@
 
 #include <ewoms/eclio/errormacros.hh>
 
-#include <vector>
-#include <cassert>
-#include <string>
-#include <utility>
-#include <map>
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <iostream>
+#include <map>
 #include <numeric>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace Ewoms
 {
@@ -148,12 +148,18 @@ namespace Ewoms
                 first_perf_index_[w+1] = connpos;
             }
 
+            is_producer_.resize(nw, false);
+            for (int w = 0; w < nw; ++w) {
+                is_producer_[w] = wells_ecl[w].isProducer();
+            }
+
             current_injection_controls_.resize(nw);
             current_production_controls_.resize(nw);
 
             perfRateSolvent_.clear();
             perfRateSolvent_.resize(nperf, 0.0);
             productivity_index_.resize(nw * np, 0.0);
+            conn_productivity_index_.resize(nperf * np, 0.0);
             well_potentials_.resize(nw * np, 0.0);
 
             perfRatePolymer_.clear();
@@ -161,7 +167,6 @@ namespace Ewoms
 
             perfRateBrine_.clear();
             perfRateBrine_.resize(nperf, 0.0);
-
             // intialize wells that have been there before
             // order may change so the mapping is based on the well name
             if (prevState && !prevState->wellMap().empty()) {
@@ -504,16 +509,20 @@ namespace Ewoms
 
             using rt = data::Rates::opt;
             std::vector< rt > phs( np );
+            std::vector<rt> pi(np);
             if( pu.phase_used[Water] ) {
                 phs.at( pu.phase_pos[Water] ) = rt::wat;
+                pi .at( pu.phase_pos[Water] ) = rt::productivity_index_water;
             }
 
             if( pu.phase_used[Oil] ) {
                 phs.at( pu.phase_pos[Oil] ) = rt::oil;
+                pi .at( pu.phase_pos[Oil] ) = rt::productivity_index_oil;
             }
 
             if( pu.phase_used[Gas] ) {
                 phs.at( pu.phase_pos[Gas] ) = rt::gas;
+                pi .at( pu.phase_pos[Gas] ) = rt::productivity_index_gas;
             }
 
             /* this is a reference or example on **how** to convert from
@@ -569,7 +578,7 @@ namespace Ewoms
                     well.rates.set( rt::well_potential_gas, this->well_potentials_[well_rate_index + pu.phase_pos[Gas]] );
                 }
 
-                if ( pu.has_solvent ) {
+                if ( pu.has_solvent || pu.has_zFraction) {
                     well.rates.set( rt::solvent, solventWellRate(w) );
                 }
 
@@ -581,7 +590,7 @@ namespace Ewoms
                     well.rates.set( rt::brine, brineWellRate(w) );
                 }
 
-                if ( well.current_control.isProducer ) {
+                if ( is_producer_[w] ) {
                     well.rates.set( rt::alq, getALQ(/*wellName=*/wt.first) );
                 }
                 else {
@@ -594,18 +603,21 @@ namespace Ewoms
                 {
                     auto& curr = well.current_control;
 
+                    curr.isProducer = this->is_producer_[w];
                     curr.prod = this->currentProductionControls()[w];
                     curr.inj  = this->currentInjectionControls() [w];
                 }
 
                 size_t local_comp_index = 0;
                 for( auto& comp : well.connections) {
-                    const auto rates = this->perfPhaseRates().begin()
-                                     + (np * wt.second[ 1 ])
-                                     + (np * local_comp_index);
+                    const auto connPhaseOffset = np * (wt.second[1] + local_comp_index);
+
+                    const auto rates  = this->perfPhaseRates().begin() + connPhaseOffset;
+                    const auto connPI = this->connectionProductivityIndex().begin() + connPhaseOffset;
 
                     for( int i = 0; i < np; ++i ) {
-                        comp.rates.set( phs[ i ], *(rates + i) );
+                        comp.rates.set( phs[ i ], *(rates  + i) );
+                        comp.rates.set( pi [ i ], *(connPI + i) );
                     }
                     if ( pu.has_polymer ) {
                         comp.rates.set( rt::polymer, this->perfRatePolymer()[wt.second[1] + local_comp_index]);
@@ -613,7 +625,7 @@ namespace Ewoms
                     if ( pu.has_brine ) {
                         comp.rates.set( rt::brine, this->perfRateBrine()[wt.second[1] + local_comp_index]);
                     }
-                    if ( pu.has_solvent ) {
+                    if ( pu.has_solvent || pu.has_zFraction) {
                         comp.rates.set( rt::solvent, this->perfRateSolvent()[wt.second[1] + local_comp_index]);
                     }
 
@@ -963,6 +975,14 @@ namespace Ewoms
             return productivity_index_;
         }
 
+        std::vector<double>& connectionProductivityIndex() {
+            return this->conn_productivity_index_;
+        }
+
+        const std::vector<double>& connectionProductivityIndex() const {
+            return this->conn_productivity_index_;
+        }
+
         std::vector<double>& wellPotentials() {
             return well_potentials_;
         }
@@ -1024,7 +1044,7 @@ namespace Ewoms
                 iterateContainer(injection_group_reduction_rates, func);
                 iterateContainer(injection_group_reservoir_rates, func);
                 iterateContainer(production_group_rates, func);
-                iterateContainer(well_rates,func);
+                iterateContainer(well_rates, func);
             };
 
             // Compute the size of the data.
@@ -1034,6 +1054,7 @@ namespace Ewoms
             };
             forAllGroupData(computeSize);
             sz += injection_group_vrep_rates.size();
+            sz += current_alq_.size();
 
             // Make a vector and collect all data into it.
             std::vector<double> data(sz);
@@ -1045,6 +1066,9 @@ namespace Ewoms
             };
             forAllGroupData(collect);
             for (const auto& x : injection_group_vrep_rates) {
+                data[pos++] = x.second;
+            }
+            for (const auto& x : current_alq_) {
                 data[pos++] = x.second;
             }
             assert(pos == sz);
@@ -1061,6 +1085,9 @@ namespace Ewoms
             };
             forAllGroupData(distribute);
             for (auto& x : injection_group_vrep_rates) {
+                x.second = data[pos++];
+            }
+            for (auto& x : current_alq_) {
                 x.second = data[pos++];
             }
             assert(pos == sz);
@@ -1123,25 +1150,15 @@ namespace Ewoms
             return globalIsProductionGrup_[it->second] != 0;
         }
 
-        void updateALQ( const WellStateFullyImplicitBlackoil &copy ) const
-        {
-            this->current_alq_ = copy.getCurrentALQ();
-        }
-
-        std::map<std::string, double> getCurrentALQ() const
-        {
-            return current_alq_;
-        }
-
         double getALQ( const std::string& name) const
         {
             if (this->current_alq_.count(name) == 0) {
-                this->current_alq_[name] = this->default_alq_[name];
+                return this->default_alq_.at(name);
             }
-            return this->current_alq_[name];
+            return this->current_alq_.at(name);
         }
 
-        void setALQ( const std::string& name, double value) const
+        void setALQ( const std::string& name, double value)
         {
             this->current_alq_[name] = value;
         }
@@ -1150,16 +1167,17 @@ namespace Ewoms
             return do_glift_optimization_;
         }
 
-        void disableGliftOptimization() const {
+        void disableGliftOptimization() {
             do_glift_optimization_ = false;
         }
 
-        void enableGliftOptimization() const {
+        void enableGliftOptimization() {
             do_glift_optimization_ = true;
         }
 
     private:
         std::vector<double> perfphaserates_;
+        std::vector<bool> is_producer_; // Size equal to number of local wells.
 
         // vector with size number of wells +1.
         // iterate over all perforations of a given well
@@ -1185,9 +1203,9 @@ namespace Ewoms
         std::map<std::string, double> injection_group_vrep_rates;
         std::map<std::string, std::vector<double>> injection_group_rein_rates;
         std::map<std::string, double> group_grat_target_from_sales;
-        mutable std::map<std::string, double> current_alq_;
-        mutable std::map<std::string, double> default_alq_;
-        mutable bool do_glift_optimization_;
+        std::map<std::string, double> current_alq_;
+        std::map<std::string, double> default_alq_;
+        bool do_glift_optimization_;
 
         std::vector<double> perfRateSolvent_;
 
@@ -1245,6 +1263,9 @@ namespace Ewoms
 
         // Productivity Index
         std::vector<double> productivity_index_;
+
+        // Connection-level Productivity Index
+        std::vector<double> conn_productivity_index_;
 
         // Well potentials
         std::vector<double> well_potentials_;

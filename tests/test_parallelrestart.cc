@@ -79,6 +79,7 @@
 #include <ewoms/eclio/parser/eclipsestate/schedule/udq/udqinput.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/vfpinjtable.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/vfpprodtable.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/well/pavg.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/connection.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/wellfoamproperties.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/well/wellpolymerproperties.hh>
@@ -492,6 +493,7 @@ TEST_FOR_TYPE(MULTREGTScanner)
 TEST_FOR_TYPE(NNC)
 TEST_FOR_TYPE2(Network, Node)
 TEST_FOR_TYPE(OilVaporizationProperties)
+TEST_FOR_TYPE(PAvg)
 TEST_FOR_TYPE(Phases)
 TEST_FOR_TYPE(PlymwinjTable)
 TEST_FOR_TYPE(PlyshlogTable)

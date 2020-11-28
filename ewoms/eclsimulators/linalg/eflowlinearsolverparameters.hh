@@ -47,6 +47,7 @@ NEW_PROP_TAG(MiluVariant);
 NEW_PROP_TAG(IluRedblack);
 NEW_PROP_TAG(IluReorderSpheres);
 NEW_PROP_TAG(UseGmres);
+NEW_PROP_TAG(LinearSolverBackend);
 NEW_PROP_TAG(LinearSolverRequireFullSparsityPattern);
 NEW_PROP_TAG(LinearSolverIgnoreConvergenceFailure);
 NEW_PROP_TAG(PreconditionerAddWellContributions);
@@ -58,7 +59,7 @@ NEW_PROP_TAG(Linsolver);
 NEW_PROP_TAG(GpuMode);
 NEW_PROP_TAG(BdaDeviceId);
 NEW_PROP_TAG(OpenclPlatformId);
-NEW_PROP_TAG(LinearSolverBackend);
+NEW_PROP_TAG(OpenclIluReorder);
 
 SET_SCALAR_PROP(EFlowIstlSolverParams, LinearSolverReduction, 1e-2);
 SET_SCALAR_PROP(EFlowIstlSolverParams, IluRelaxation, 0.9);
@@ -82,6 +83,7 @@ SET_STRING_PROP(EFlowIstlSolverParams, Linsolver, "ilu0");
 SET_STRING_PROP(EFlowIstlSolverParams, GpuMode, "none");
 SET_INT_PROP(EFlowIstlSolverParams, BdaDeviceId, 0);
 SET_INT_PROP(EFlowIstlSolverParams, OpenclPlatformId, 0);
+SET_STRING_PROP(EFlowIstlSolverParams, OpenclIluReorder, "graph_coloring");
 
 END_PROPERTIES
 
@@ -110,7 +112,7 @@ namespace Ewoms
         int opencl_platform_id_;
         int cpr_max_ell_iter_ = 20;
         int cpr_reuse_setup_ = 0;
-        bool use_gpu_;
+        std::string opencl_ilu_reorder_;
 
         template <class TypeTag>
         void init()
@@ -135,6 +137,7 @@ namespace Ewoms
             gpu_mode_ = EWOMS_GET_PARAM(TypeTag, std::string, GpuMode);
             bda_device_id_ = EWOMS_GET_PARAM(TypeTag, int, BdaDeviceId);
             opencl_platform_id_ = EWOMS_GET_PARAM(TypeTag, int, OpenclPlatformId);
+            opencl_ilu_reorder_ = EWOMS_GET_PARAM(TypeTag, std::string, OpenclIluReorder);
         }
 
         template <class TypeTag>
@@ -159,6 +162,7 @@ namespace Ewoms
             EWOMS_REGISTER_PARAM(TypeTag, std::string, GpuMode, "Use GPU cusparseSolver or openclSolver as the linear solver, usage: '--gpu-mode=[none|cusparse|opencl]'");
             EWOMS_REGISTER_PARAM(TypeTag, int, BdaDeviceId, "Choose device ID for cusparseSolver or openclSolver, use 'nvidia-smi' or 'clinfo' to determine valid IDs");
             EWOMS_REGISTER_PARAM(TypeTag, int, OpenclPlatformId, "Choose platform ID for openclSolver, use 'clinfo' to determine valid platform IDs");
+            EWOMS_REGISTER_PARAM(TypeTag, std::string, OpenclIluReorder, "Choose the reordering strategy for ILU for openclSolver, usage: '--opencl-ilu-reorder=[level_scheduling|graph_coloring], level_scheduling behaves like Dune and cusparse, graph_coloring is more aggressive and likely to be faster, but is random-based and generally increases the number of linear solves and linear iterations significantly.");
         }
 
         EFlowLinearSolverParameters() { reset(); }
@@ -181,6 +185,7 @@ namespace Ewoms
             gpu_mode_                 = "none";
             bda_device_id_            = 0;
             opencl_platform_id_       = 0;
+            opencl_ilu_reorder_       = "graph_coloring";
         }
     };
 

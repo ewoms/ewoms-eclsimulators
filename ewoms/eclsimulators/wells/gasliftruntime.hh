@@ -66,7 +66,7 @@ namespace Ewoms
             const Simulator &eebos_simulator,
             const SummaryState &summary_state,
             DeferredLogger &deferred_logger,
-            const WellState &well_state,
+            WellState &well_state,
             const Well::ProductionControls &controls
         );
         void runOptimize();
@@ -96,7 +96,7 @@ namespace Ewoms
         std::vector<double> potentials_;
         const StdWell &std_well_;
         const SummaryState &summary_state_;
-        const WellState &well_state_;
+        WellState &well_state_;
         std::string well_name_;
         bool debug;  // extra debug output
 

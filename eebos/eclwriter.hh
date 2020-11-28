@@ -269,7 +269,7 @@ public:
 
         std::map<std::string, double> miscSummaryData;
         std::map<std::string, std::vector<double>> regionData;
-        eclOutputModule_.outputFipLog(miscSummaryData, regionData, isSubStep);
+        auto inplace = eclOutputModule_.outputFipLog(miscSummaryData, regionData, isSubStep);
 
         bool forceDisableProdOutput = false;
         bool forceDisableInjOutput = false;
@@ -281,7 +281,6 @@ public:
         std::vector<char> buffer;
         if (this->collectToIORank_.isIORank()) {
             const auto& summary = eclIO_->summary();
-            const auto& eclState = simulator_.vanguard().eclState();
 
             // Add TCPU
             if (totalCpuTime != 0.0) {
@@ -307,11 +306,11 @@ public:
             summary.eval(summaryState(),
                          reportStepNum,
                          curTime,
-                         eclState,
-                         schedule(),
                          wellData,
                          groupAndNetworkData,
                          miscSummaryData,
+                         eclOutputModule_.initialInplace(),
+                         inplace,
                          regionData,
                          blockData,
                          aquiferData);
@@ -411,7 +410,6 @@ public:
             Ewoms::Action::State& actionState = simulator_.vanguard().actionState();
             auto restartValues = loadParallelRestart(eclIO_.get(), summaryState, actionState, solutionKeys, extraKeys,
                                                      gridView.grid().comm());
-
             for (unsigned elemIdx = 0; elemIdx < numElements; ++elemIdx) {
                 unsigned globalIdx = collectToIORank_.localIdxToGlobalIdx(elemIdx);
                 eclOutputModule_.setRestart(restartValues.solution, elemIdx, globalIdx);

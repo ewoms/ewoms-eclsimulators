@@ -44,20 +44,20 @@ ewoms_recusive_export_all_headers("ewoms")
 ######
 # standard eebos variants
 set(EEBOS_TARGETS "")
-foreach(EXT blackoil solvent polymer foam gasoil oilwater thermal)
+foreach(EXT blackoil solvent polymer foam gasoil oilwater energy)
   add_library(eebos_lib${EXT} OBJECT EXCLUDE_FROM_ALL eebos/eebos_${EXT}.cc)
   target_include_directories(eebos_lib${EXT} PRIVATE ${ecl_INCLUDE_DIRS})
   list(APPEND EEBOS_TARGETS $<TARGET_OBJECTS:eebos_lib${EXT}>)
 endforeach()
 
 # non-standard eebos variants
-foreach(EXT oilwaterpolymer brine)
+foreach(EXT oilwater_polymer brine)
   add_library(eebos_lib${EXT} OBJECT EXCLUDE_FROM_ALL eebos/eebos_${EXT}.cc)
   target_include_directories(eebos_lib${EXT} PRIVATE ${ecl_INCLUDE_DIRS})
 endforeach()
  
 # add specialized eebos simulators with some black-oil extension
-foreach(EXT blackoil solvent polymer foam gasoil oilwater oilwaterpolymer thermal brine)
+foreach(EXT blackoil solvent polymer foam gasoil oilwater oilwater_polymer energy brine)
   ewoms_add_application(eebos_${EXT}
     DEFAULT_ENABLE_IF ${BUILD_EEBOS_EXTENSIONS}
     SOURCES eebos/eebos_${EXT}_main.cc $<TARGET_OBJECTS:eebos_lib${EXT}>)
@@ -99,7 +99,7 @@ add_dependencies(all_eebos "eebos_blackoil")
 add_dependencies(all_eebos "eebos_solvent")
 add_dependencies(all_eebos "eebos_polymer")
 add_dependencies(all_eebos "eebos_foam")
-add_dependencies(all_eebos "eebos_thermal")
+add_dependencies(all_eebos "eebos_energy")
 add_dependencies(all_eebos "eebos_oilwater")
 add_dependencies(all_eebos "eebos_gasoil")
 add_dependencies(all_eebos "eebos_brine")
@@ -123,6 +123,7 @@ ewoms_add_application(eflow
    eflow/eflow_oilwater_polymer_injectivity.cc
    eflow/eflow_polymer.cc
    eflow/eflow_solvent.cc
+   eflow/eflow_extbo.cc
    )
 
 ewoms_add_application(eflow_blackoil_dunecpr

@@ -16,25 +16,21 @@
   You should have received a copy of the GNU General Public License
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
-/*!
- * \file
- *
- * \brief The function prototypes required to start the thermal variant of eebos
- */
-#ifndef EEBOS_THERMAL_HH
-#define EEBOS_THERMAL_HH
+#ifndef EFLOW_EXTBO_HH
+#define EFLOW_EXTBO_HH
 
 #include <ewoms/eclio/parser/deck/deck.hh>
-#include <ewoms/eclio/parser/parsecontext.hh>
-#include <ewoms/eclio/parser/errorguard.hh>
+#include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
+#include <ewoms/eclio/parser/eclipsestate/schedule/schedule.hh>
+#include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 
 namespace Ewoms {
-void eebosThermalSetDeck(Ewoms::Deck* deck,
-                        Ewoms::ParseContext* parseContext,
-                        Ewoms::ErrorGuard* errorGuard,
-                        double externalSetupTime);
-
-int eebosThermalMain(int argc, char** argv);
+void eflowExtboSetDeck(double setupTime,
+                          Deck* deck,
+                          EclipseState& eclState,
+                          Schedule& schedule,
+                          SummaryConfig& summaryConfig);
+int eflowExtboMain(int argc, char** argv, bool outputCout, bool outputFiles);
 }
 
-#endif
+#endif // EFLOW_EXTBO_HH

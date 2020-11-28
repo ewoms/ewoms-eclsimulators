@@ -19,13 +19,13 @@
 /*!
  * \file
  *
- * \brief The main function for the stand alone oil-water plus polymer variant of eebos.
+ * \brief The main function for the stand alone thermal variant of eebos.
  *
- * This only calls the eebosOilWaterPolymerMain() function.
+ * This only calls the eebosThermalMain() function.
  */
 #include "config.h"
 
-#include "eebos_oilwaterpolymer.hh"
+#include "eebos_energy.hh"
 
 #include <ewoms/material/fluidsystems/blackoilfluidsystem.hh>
 
@@ -36,5 +36,5 @@ namespace CO2DefaultTables {
 
 int main(int argc, char** argv)
 {
-    return Ewoms::eebosOilWaterPolymerMain(argc, argv);
+    return Ewoms::eebosEnergyMain(argc, argv);
 }

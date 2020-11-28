@@ -52,6 +52,7 @@ private:
 
 public:
     typedef Ewoms::BlackOilTwoPhaseIndices<0,
+                                         0,
                                          2,
                                          0,
                                          GET_PROP_VALUE(TypeTag, EnableFoam),

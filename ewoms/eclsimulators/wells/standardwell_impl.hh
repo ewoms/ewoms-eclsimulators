@@ -21,6 +21,10 @@
 #include <ewoms/eclsimulators/utils/deferredloggingerrorhelpers.hh>
 #include <ewoms/eclsimulators/linalg/matrixutils.hh>
 
+#include <algorithm>
+#include <functional>
+#include <numeric>
+
 namespace Ewoms
 {
 
@@ -343,6 +347,12 @@ namespace Ewoms
             b_perfcells_dense[contiSolventEqIdx] = extendEval(intQuants.solventInverseFormationVolumeFactor());
         }
 
+        if (has_zFraction && this->isInjector()) {
+            const unsigned gasCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::gasCompIdx);
+            b_perfcells_dense[gasCompIdx] *= (1.0 - wsolvent());
+            b_perfcells_dense[gasCompIdx] += wsolvent()*intQuants.zPureInvFormationVolumeFactor().value();
+        }
+
         // Pressure drawdown (also used to determine direction of flow)
         const EvalWell well_pressure = bhp + perf_pressure_diffs_[perf];
         EvalWell drawdown = pressure - well_pressure;
@@ -522,57 +532,45 @@ namespace Ewoms
         invDuneD_ = 0.0;
         resWell_ = 0.0;
 
+        assembleWellEqWithoutIterationImpl(eebosSimulator, dt, well_state, deferred_logger);
+    }
+
+    template<typename TypeTag>
+    void
+    StandardWell<TypeTag>::
+    assembleWellEqWithoutIterationImpl(const Simulator& eebosSimulator,
+                                       const double dt,
+                                       WellState& well_state,
+                                       Ewoms::DeferredLogger& deferred_logger)
+    {
+
         // TODO: it probably can be static member for StandardWell
         const double volume = 0.002831684659200; // 0.1 cu ft;
-
-        const bool allow_cf = getAllowCrossFlow() || openCrossFlowAvoidSingularity(eebosSimulator);
-
-        const EvalWell& bhp = getBhp();
 
         // the solution gas rate and solution oil rate needs to be reset to be zero for well_state.
         well_state.wellVaporizedOilRates()[index_of_well_] = 0.;
         well_state.wellDissolvedGasRates()[index_of_well_] = 0.;
 
         const int np = number_of_phases_;
-        for (int p = 0; p < np; ++p) {
-            well_state.productivityIndex()[np*index_of_well_ + p] = 0.;
-        }
 
+        std::vector<RateVector> connectionRates = connectionRates_; // Copy to get right size.
         for (int perf = 0; perf < number_of_perforations_; ++perf) {
+            // Calculate perforation quantities.
+            std::vector<EvalWell> cq_s(num_components_, {numWellEq_ + numEq, 0.0});
+            EvalWell water_flux_s{numWellEq_ + numEq, 0.0};
+            EvalWell cq_s_zfrac_effective{numWellEq_ + numEq, 0.0};
+            calculateSinglePerf(eebosSimulator, perf, well_state, connectionRates, cq_s, water_flux_s, cq_s_zfrac_effective, deferred_logger);
 
-            const int cell_idx = well_cells_[perf];
-            const auto& intQuants = *(eebosSimulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0));
-            std::vector<EvalWell> mob(num_components_, {numWellEq_ + numEq, 0.});
-            getMobility(eebosSimulator, perf, mob, deferred_logger);
-
-            std::vector<EvalWell> cq_s(num_components_, {numWellEq_ + numEq, 0.});
-            double perf_dis_gas_rate = 0.;
-            double perf_vap_oil_rate = 0.;
-            double trans_mult = eebosSimulator.problem().template rockCompTransMultiplier<double>(intQuants,  cell_idx);
-            const double Tw = well_index_[perf] * trans_mult;
-            computePerfRate(intQuants, mob, bhp, Tw, perf, allow_cf,
-                            cq_s, perf_dis_gas_rate, perf_vap_oil_rate, deferred_logger);
-
-            // better way to do here is that use the cq_s and then replace the cq_s_water here?
+            // Equation assembly for this perforation.
             if (has_polymer && this->has_polymermw && this->isInjector()) {
-                handleInjectivityRateAndEquations(intQuants, well_state, perf, cq_s, deferred_logger);
+                handleInjectivityEquations(eebosSimulator, well_state, perf, water_flux_s, deferred_logger);
             }
-
-            // updating the solution gas rate and solution oil rate
-            if (this->isProducer()) {
-                well_state.wellDissolvedGasRates()[index_of_well_] += perf_dis_gas_rate;
-                well_state.wellVaporizedOilRates()[index_of_well_] += perf_vap_oil_rate;
-            }
-
-            if (has_energy) {
-                connectionRates_[perf][contiEnergyEqIdx] = 0.0;
-            }
-
+            const int cell_idx = well_cells_[perf];
             for (int componentIdx = 0; componentIdx < num_components_; ++componentIdx) {
                 // the cq_s entering mass balance equations need to consider the efficiency factors.
                 const EvalWell cq_s_effective = cq_s[componentIdx] * well_efficiency_factor_;
 
-                connectionRates_[perf][componentIdx] = Base::restrictEval(cq_s_effective);
+                connectionRates[perf][componentIdx] = Base::restrictEval(cq_s_effective);
 
                 // subtract sum of phase fluxes in the well equations.
                 resWell_[0][componentIdx] += cq_s_effective.value();
@@ -595,135 +593,15 @@ namespace Ewoms
                     well_state.perfPhaseRates()[(first_perf_ + perf) * np + eebosCompIdxToEFlowCompIdx(componentIdx)] = cq_s[componentIdx].value();
                 }
             }
-            if (has_energy) {
 
-                auto fs = intQuants.fluidState();
-                for (unsigned phaseIdx = 0; phaseIdx < FluidSystem::numPhases; ++phaseIdx) {
-                    if (!FluidSystem::phaseIsActive(phaseIdx)) {
-                        continue;
-                    }
-
-                    const unsigned activeCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::solventComponentIndex(phaseIdx));
-                    // convert to reservoar conditions
-                    EvalWell cq_r_thermal(numWellEq_ + numEq, 0.);
-                    if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx) && FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
-
-                        if(FluidSystem::waterPhaseIdx == phaseIdx)
-                             cq_r_thermal = cq_s[activeCompIdx] / extendEval(fs.invB(phaseIdx));
-
-                        // remove dissolved gas and vapporized oil
-                        const unsigned oilCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::oilCompIdx);
-                        const unsigned gasCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::gasCompIdx);
-                        // q_os = q_or * b_o + rv * q_gr * b_g
-                        // q_gs = q_gr * g_g + rs * q_or * b_o
-                        // d = 1.0 - rs * rv
-                        const EvalWell d = extendEval(1.0 - fs.Rv() * fs.Rs());
-                        // q_gr = 1 / (b_g * d) * (q_gs - rs * q_os)
-                        if(FluidSystem::gasPhaseIdx == phaseIdx)
-                            cq_r_thermal = (cq_s[gasCompIdx] - extendEval(fs.Rs()) * cq_s[oilCompIdx]) / (d * extendEval(fs.invB(phaseIdx)) );
-                        // q_or = 1 / (b_o * d) * (q_os - rv * q_gs)
-                        if(FluidSystem::oilPhaseIdx == phaseIdx)
-                            cq_r_thermal = (cq_s[oilCompIdx] - extendEval(fs.Rv()) * cq_s[gasCompIdx]) / (d * extendEval(fs.invB(phaseIdx)) );
-
-                    } else {
-                        cq_r_thermal = cq_s[activeCompIdx] / extendEval(fs.invB(phaseIdx));
-                    }
-
-                    // change temperature for injecting fluids
-                    if (this->isInjector() && cq_s[activeCompIdx] > 0.0){
-                        // only handles single phase injection now
-                        assert(this->well_ecl_.injectorType() != InjectorType::MULTI);
-                        fs.setTemperature(this->well_ecl_.temperature());
-                        typedef typename std::decay<decltype(fs)>::type::Scalar FsScalar;
-                        typename FluidSystem::template ParameterCache<FsScalar> paramCache;
-                        const unsigned pvtRegionIdx = intQuants.pvtRegionIndex();
-                        paramCache.setRegionIndex(pvtRegionIdx);
-                        paramCache.setMaxOilSat(eebosSimulator.problem().maxOilSaturation(cell_idx));
-                        paramCache.updatePhase(fs, phaseIdx);
-
-                        const auto& rho = FluidSystem::density(fs, paramCache, phaseIdx);
-                        fs.setDensity(phaseIdx, rho);
-                        const auto& h = FluidSystem::enthalpy(fs, paramCache, phaseIdx);
-                        fs.setEnthalpy(phaseIdx, h);
-                    }
-                    // compute the thermal flux
-                    cq_r_thermal *= extendEval(fs.enthalpy(phaseIdx)) * extendEval(fs.density(phaseIdx));
-                    connectionRates_[perf][contiEnergyEqIdx] += Base::restrictEval(cq_r_thermal);
+            if (has_zFraction) {
+                for (int pvIdx = 0; pvIdx < numWellEq_; ++pvIdx) {
+                    duneC_[0][cell_idx][pvIdx][contiZfracEqIdx] -= cq_s_zfrac_effective.derivative(pvIdx+numEq);
                 }
             }
-
-            if (has_polymer) {
-                // TODO: the application of well efficiency factor has not been tested with an example yet
-                const unsigned waterCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx);
-                EvalWell cq_s_poly = cq_s[waterCompIdx];
-                if (this->isInjector()) {
-                    cq_s_poly *= wpolymer();
-                } else {
-                    cq_s_poly *= extendEval(intQuants.polymerConcentration() * intQuants.polymerViscosityCorrection());
-                }
-                // Note. Efficiency factor is handled in the output layer
-                well_state.perfRatePolymer()[first_perf_ + perf] = cq_s_poly.value();
-
-                cq_s_poly *= well_efficiency_factor_;
-                connectionRates_[perf][contiPolymerEqIdx] = Base::restrictEval(cq_s_poly);
-
-                if (this->has_polymermw) {
-                    updateConnectionRatePolyMW(cq_s_poly, intQuants, well_state, perf, deferred_logger);
-                }
-            }
-
-            if (has_foam) {
-                // TODO: the application of well efficiency factor has not been tested with an example yet
-                const unsigned gasCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::gasCompIdx);
-                EvalWell cq_s_foam = cq_s[gasCompIdx] * well_efficiency_factor_;
-                if (this->isInjector()) {
-                    cq_s_foam *= wfoam();
-                } else {
-                    cq_s_foam *= extendEval(intQuants.foamConcentration());
-                }
-                connectionRates_[perf][contiFoamEqIdx] = Base::restrictEval(cq_s_foam);
-            }
-
-            if (has_brine) {
-                // TODO: the application of well efficiency factor has not been tested with an example yet
-                const unsigned waterCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx);
-                EvalWell cq_s_sm = cq_s[waterCompIdx];
-                if (this->isInjector()) {
-                    cq_s_sm *= wsalt();
-                } else {
-                    cq_s_sm *= extendEval(intQuants.fluidState().saltConcentration());
-                }
-                // Note. Efficiency factor is handled in the output layer
-                well_state.perfRateBrine()[first_perf_ + perf] = cq_s_sm.value();
-
-                cq_s_sm *= well_efficiency_factor_;
-                connectionRates_[perf][contiBrineEqIdx] = Base::restrictEval(cq_s_sm);
-            }
-
-            // Store the perforation pressure for later usage.
-            well_state.perfPress()[first_perf_ + perf] = well_state.bhp()[index_of_well_] + perf_pressure_diffs_[perf];
-
-            // Compute Productivity index if asked for
-            const auto& pu = phaseUsage();
-            const Ewoms::SummaryConfig& summaryConfig = eebosSimulator.vanguard().summaryConfig();
-            const Ewoms::Schedule& schedule = eebosSimulator.vanguard().schedule();
-            for (int p = 0; p < np; ++p) {
-                if ( (pu.phase_pos[Water] == p && (summaryConfig.hasSummaryKey("WPIW:" + name()) || summaryConfig.hasSummaryKey("WPIL:" + name())))
-                        || (pu.phase_pos[Oil] == p && (summaryConfig.hasSummaryKey("WPIO:" + name()) || summaryConfig.hasSummaryKey("WPIL:" + name())))
-                        || (pu.phase_pos[Gas] == p && summaryConfig.hasSummaryKey("WPIG:" + name()))) {
-
-                    const unsigned int compIdx = eflowPhaseToEebosCompIdx(p);
-                    const auto& fs = intQuants.fluidState();
-                    Eval perf_pressure = getPerfCellPressure(fs);
-                    const double drawdown  = well_state.perfPress()[first_perf_ + perf] - perf_pressure.value();
-                    const bool new_well = schedule.hasWellGroupEvent(name(), ScheduleEvents::NEW_WELL, current_step_);
-                    double productivity_index = cq_s[compIdx].value() / drawdown;
-                    scaleProductivityIndex(perf, productivity_index, new_well, deferred_logger);
-                    well_state.productivityIndex()[np*index_of_well_ + p] += productivity_index;
-                }
-            }
-
         }
+        // Update the connection
+        connectionRates_ = connectionRates;
 
         // add vol * dF/dt + Q to the well equations;
         for (int componentIdx = 0; componentIdx < numWellConservationEq; ++componentIdx) {
@@ -747,11 +625,181 @@ namespace Ewoms
 
         // do the local inversion of D.
         try {
-            Dune::ISTLUtility::invertMatrix(invDuneD_[0][0]);
+            invDuneD_[0][0].invert();
         } catch( ... ) {
             EWOMS_DEFLOG_THROW(Ewoms::NumericalIssue,"Error when inverting local well equations for well " + name(), deferred_logger);
         }
+    }
 
+    template<typename TypeTag>
+    void
+    StandardWell<TypeTag>::
+    calculateSinglePerf(const Simulator& eebosSimulator,
+                        const int perf,
+                        WellState& well_state,
+                        std::vector<RateVector>& connectionRates,
+                        std::vector<EvalWell>& cq_s,
+                        EvalWell& water_flux_s,
+                        EvalWell& cq_s_zfrac_effective,
+                        Ewoms::DeferredLogger& deferred_logger) const
+    {
+        const bool allow_cf = getAllowCrossFlow() || openCrossFlowAvoidSingularity(eebosSimulator);
+        const EvalWell& bhp = getBhp();
+        const int cell_idx = well_cells_[perf];
+        const auto& intQuants = *(eebosSimulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0));
+        std::vector<EvalWell> mob(num_components_, {numWellEq_ + numEq, 0.});
+        getMobility(eebosSimulator, perf, mob, deferred_logger);
+
+        double perf_dis_gas_rate = 0.;
+        double perf_vap_oil_rate = 0.;
+        double trans_mult = eebosSimulator.problem().template rockCompTransMultiplier<double>(intQuants,  cell_idx);
+        const double Tw = well_index_[perf] * trans_mult;
+        computePerfRate(intQuants, mob, bhp, Tw, perf, allow_cf,
+                        cq_s, perf_dis_gas_rate, perf_vap_oil_rate, deferred_logger);
+
+        if (has_polymer && this->has_polymermw && this->isInjector()) {
+            // Store the original water flux computed from the reservoir quantities.
+            // It will be required to assemble the injectivity equations.
+            const unsigned water_comp_idx = Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx);
+            water_flux_s = cq_s[water_comp_idx];
+            // Modify the water flux for the rest of this function to depend directly on the
+            // local water velocity primary variable.
+            handleInjectivityRate(eebosSimulator, perf, cq_s);
+        }
+
+        // updating the solution gas rate and solution oil rate
+        if (this->isProducer()) {
+            well_state.wellDissolvedGasRates()[index_of_well_] += perf_dis_gas_rate;
+            well_state.wellVaporizedOilRates()[index_of_well_] += perf_vap_oil_rate;
+        }
+
+        if (has_energy) {
+            connectionRates[perf][contiEnergyEqIdx] = 0.0;
+        }
+
+        if (has_energy) {
+
+            auto fs = intQuants.fluidState();
+            for (unsigned phaseIdx = 0; phaseIdx < FluidSystem::numPhases; ++phaseIdx) {
+                if (!FluidSystem::phaseIsActive(phaseIdx)) {
+                    continue;
+                }
+
+                const unsigned activeCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::solventComponentIndex(phaseIdx));
+                // convert to reservoar conditions
+                EvalWell cq_r_thermal(numWellEq_ + numEq, 0.);
+                if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx) && FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
+
+                    if(FluidSystem::waterPhaseIdx == phaseIdx)
+                        cq_r_thermal = cq_s[activeCompIdx] / extendEval(fs.invB(phaseIdx));
+
+                    // remove dissolved gas and vapporized oil
+                    const unsigned oilCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::oilCompIdx);
+                    const unsigned gasCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::gasCompIdx);
+                    // q_os = q_or * b_o + rv * q_gr * b_g
+                    // q_gs = q_gr * g_g + rs * q_or * b_o
+                    // d = 1.0 - rs * rv
+                    const EvalWell d = extendEval(1.0 - fs.Rv() * fs.Rs());
+                    // q_gr = 1 / (b_g * d) * (q_gs - rs * q_os)
+                    if(FluidSystem::gasPhaseIdx == phaseIdx)
+                        cq_r_thermal = (cq_s[gasCompIdx] - extendEval(fs.Rs()) * cq_s[oilCompIdx]) / (d * extendEval(fs.invB(phaseIdx)) );
+                    // q_or = 1 / (b_o * d) * (q_os - rv * q_gs)
+                    if(FluidSystem::oilPhaseIdx == phaseIdx)
+                        cq_r_thermal = (cq_s[oilCompIdx] - extendEval(fs.Rv()) * cq_s[gasCompIdx]) / (d * extendEval(fs.invB(phaseIdx)) );
+
+                } else {
+                    cq_r_thermal = cq_s[activeCompIdx] / extendEval(fs.invB(phaseIdx));
+                }
+
+                // change temperature for injecting fluids
+                if (this->isInjector() && cq_s[activeCompIdx] > 0.0){
+                    // only handles single phase injection now
+                    assert(this->well_ecl_.injectorType() != InjectorType::MULTI);
+                    fs.setTemperature(this->well_ecl_.temperature());
+                    typedef typename std::decay<decltype(fs)>::type::Scalar FsScalar;
+                    typename FluidSystem::template ParameterCache<FsScalar> paramCache;
+                    const unsigned pvtRegionIdx = intQuants.pvtRegionIndex();
+                    paramCache.setRegionIndex(pvtRegionIdx);
+                    paramCache.setMaxOilSat(eebosSimulator.problem().maxOilSaturation(cell_idx));
+                    paramCache.updatePhase(fs, phaseIdx);
+
+                    const auto& rho = FluidSystem::density(fs, paramCache, phaseIdx);
+                    fs.setDensity(phaseIdx, rho);
+                    const auto& h = FluidSystem::enthalpy(fs, paramCache, phaseIdx);
+                    fs.setEnthalpy(phaseIdx, h);
+                }
+                // compute the thermal flux
+                cq_r_thermal *= extendEval(fs.enthalpy(phaseIdx)) * extendEval(fs.density(phaseIdx));
+                connectionRates[perf][contiEnergyEqIdx] += Base::restrictEval(cq_r_thermal);
+            }
+        }
+
+        if (has_polymer) {
+            // TODO: the application of well efficiency factor has not been tested with an example yet
+            const unsigned waterCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx);
+            EvalWell cq_s_poly = cq_s[waterCompIdx];
+            if (this->isInjector()) {
+                cq_s_poly *= wpolymer();
+            } else {
+                cq_s_poly *= extendEval(intQuants.polymerConcentration() * intQuants.polymerViscosityCorrection());
+            }
+            // Note. Efficiency factor is handled in the output layer
+            well_state.perfRatePolymer()[first_perf_ + perf] = cq_s_poly.value();
+
+            cq_s_poly *= well_efficiency_factor_;
+            connectionRates[perf][contiPolymerEqIdx] = Base::restrictEval(cq_s_poly);
+
+            if (this->has_polymermw) {
+                updateConnectionRatePolyMW(cq_s_poly, intQuants, well_state, perf, connectionRates, deferred_logger);
+            }
+        }
+
+        if (has_foam) {
+            // TODO: the application of well efficiency factor has not been tested with an example yet
+            const unsigned gasCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::gasCompIdx);
+            EvalWell cq_s_foam = cq_s[gasCompIdx] * well_efficiency_factor_;
+            if (this->isInjector()) {
+                cq_s_foam *= wfoam();
+            } else {
+                cq_s_foam *= extendEval(intQuants.foamConcentration());
+            }
+            connectionRates[perf][contiFoamEqIdx] = Base::restrictEval(cq_s_foam);
+        }
+
+        if (has_zFraction) {
+            // TODO: the application of well efficiency factor has not been tested with an example yet
+            const unsigned gasCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::gasCompIdx);
+            cq_s_zfrac_effective = cq_s[gasCompIdx];
+            if (this->isInjector()) {
+                cq_s_zfrac_effective *= wsolvent();
+            } else if (cq_s_zfrac_effective.value() != 0.0) {
+                const double dis_gas_frac = perf_dis_gas_rate / cq_s_zfrac_effective.value();
+                cq_s_zfrac_effective *= extendEval(dis_gas_frac*intQuants.xVolume() + (1.0-dis_gas_frac)*intQuants.yVolume());
+            }
+            well_state.perfRateSolvent()[first_perf_ + perf] = cq_s_zfrac_effective.value();
+
+            cq_s_zfrac_effective *= well_efficiency_factor_;
+            connectionRates[perf][contiZfracEqIdx] = Base::restrictEval(cq_s_zfrac_effective);
+        }
+
+        if (has_brine) {
+            // TODO: the application of well efficiency factor has not been tested with an example yet
+            const unsigned waterCompIdx = Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx);
+            EvalWell cq_s_sm = cq_s[waterCompIdx];
+            if (this->isInjector()) {
+                cq_s_sm *= wsalt();
+            } else {
+                cq_s_sm *= extendEval(intQuants.fluidState().saltConcentration());
+            }
+            // Note. Efficiency factor is handled in the output layer
+            well_state.perfRateBrine()[first_perf_ + perf] = cq_s_sm.value();
+
+            cq_s_sm *= well_efficiency_factor_;
+            connectionRates[perf][contiBrineEqIdx] = Base::restrictEval(cq_s_sm);
+        }
+
+        // Store the perforation pressure for later usage.
+        well_state.perfPress()[first_perf_ + perf] = well_state.bhp()[index_of_well_] + perf_pressure_diffs_[perf];
     }
 
     template <typename TypeTag>
@@ -1810,7 +1858,7 @@ namespace Ewoms
                     const double oilrate = std::abs(well_state.wellRates()[oilpos_well]); //in order to handle negative rates in producers
                     rvmax_perf[perf] = FluidSystem::gasPvt().saturatedOilVaporizationFactor(fs.pvtRegionIndex(), temperature, p_avg);
                     if (oilrate > 0) {
-                        const double gasrate = std::abs(well_state.wellRates()[gaspos_well]) - well_state.solventWellRate(w);
+                        const double gasrate = std::abs(well_state.wellRates()[gaspos_well]) - (has_solvent ? well_state.solventWellRate(w) : 0.0);
                         double rv = 0.0;
                         if (gasrate > 0) {
                             rv = oilrate / gasrate;
@@ -1835,7 +1883,7 @@ namespace Ewoms
                 if (gasPresent) {
                     rsmax_perf[perf] = FluidSystem::oilPvt().saturatedGasDissolutionFactor(fs.pvtRegionIndex(), temperature, p_avg);
                     const int gaspos_well = pu.phase_pos[Gas] + w * pu.num_phases;
-                    const double gasrate = std::abs(well_state.wellRates()[gaspos_well]) - well_state.solventWellRate(w);
+                    const double gasrate = std::abs(well_state.wellRates()[gaspos_well]) - (has_solvent ? well_state.solventWellRate(w) : 0.0);
                     if (gasrate > 0) {
                         const double oilrate = std::abs(well_state.wellRates()[oilpos_well]);
                         double rs = 0.0;
@@ -1921,6 +1969,8 @@ namespace Ewoms
                 for (int component = 0; component < num_comp; ++component) {
                     mix[component] = std::fabs(q_out_perf[perf*num_comp + component]/tot_surf_rate);
                 }
+            } else if (num_comp == 1) {
+                mix[num_comp-1] = 1.0;
             } else {
                 std::fill(mix.begin(), mix.end(), 0.0);
                 // No flow => use well specified fractions for mix.
@@ -2045,7 +2095,7 @@ namespace Ewoms
     {
         // the following implementation assume that the polymer is always after the w-o-g phases
         // For the polymer, energy and foam cases, there is one more mass balance equations of reservoir than wells
-        assert((int(B_avg.size()) == num_components_) || has_polymer || has_energy || has_foam || has_brine);
+        assert((int(B_avg.size()) == num_components_) || has_polymer || has_energy || has_foam || has_brine || has_zFraction);
 
         const double tol_wells = param_.tolerance_wells_;
         const double maxResidualAllowed = param_.max_residual_allowed_;
@@ -2090,6 +2140,76 @@ namespace Ewoms
         checkConvergenceExtraEqs(res, report);
 
         return report;
+    }
+
+    template<typename TypeTag>
+    void
+    StandardWell<TypeTag>::
+    updateProductivityIndex(const Simulator& eebosSimulator,
+                            const WellProdIndexCalculator& wellPICalc,
+                            WellState& well_state,
+                            DeferredLogger& deferred_logger) const
+    {
+        auto fluidState = [&eebosSimulator, this](const int perf)
+        {
+            const auto cell_idx = this->well_cells_[perf];
+            return eebosSimulator.model()
+               .cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0)->fluidState();
+        };
+
+        const int np = this->number_of_phases_;
+        auto setToZero = [np](double* x) -> void
+        {
+            std::fill_n(x, np, 0.0);
+        };
+
+        auto addVector = [np](const double* src, double* dest) -> void
+        {
+            std::transform(src, src + np, dest, dest, std::plus<>{});
+        };
+
+        auto* wellPI = &well_state.productivityIndex()[this->index_of_well_*np + 0];
+        auto* connPI = &well_state.connectionProductivityIndex()[this->first_perf_*np + 0];
+
+        setToZero(wellPI);
+
+        const auto preferred_phase = this->well_ecl_.getPreferredPhase();
+
+        const auto& allConn = this->well_ecl_.getConnections();
+        const auto  nPerf   = allConn.size();
+        auto subsetPerfID   = 0*nPerf;
+        for (auto allPerfID = 0*nPerf; allPerfID < nPerf; ++allPerfID) {
+            if (allConn[allPerfID].state() == Connection::State::SHUT) {
+                continue;
+            }
+
+            auto connPICalc = [&wellPICalc, allPerfID](const double mobility) -> double
+            {
+                return wellPICalc.connectionProdIndStandard(allPerfID, mobility);
+            };
+
+            std::vector<EvalWell> mob(num_components_, {numWellEq_ + numEq, 0.0});
+            getMobility(eebosSimulator, static_cast<int>(subsetPerfID), mob, deferred_logger);
+
+            const auto& fs = fluidState(subsetPerfID);
+            setToZero(connPI);
+
+            if (this->isInjector()) {
+                this->computeConnLevelInjInd(fs, preferred_phase, connPICalc,
+                                             mob, connPI, deferred_logger);
+            }
+            else {  // Production or zero flow rate
+                this->computeConnLevelProdInd(fs, connPICalc, mob, connPI);
+            }
+
+            addVector(connPI, wellPI);
+
+            ++subsetPerfID;
+            connPI += np;
+        }
+
+        assert (static_cast<int>(subsetPerfID) == this->number_of_perforations_ &&
+                "Internal logic error in processing connections for PI/II");
     }
 
     template<typename TypeTag>
@@ -2570,7 +2690,7 @@ namespace Ewoms
     void
     StandardWell<TypeTag>::
     maybeDoGasLiftOptimization(
-                          const WellState& well_state,
+                          WellState& well_state,
                           const Simulator& eebos_simulator,
                           Ewoms::DeferredLogger& deferred_logger) const
     {
@@ -2664,9 +2784,7 @@ namespace Ewoms
                 break;
             }
         } else {
-            for (int p = 0; p < np; ++p) {
                 primary_variables_[WQTotal] = total_well_rate;
-            }
         }
 
         if (std::abs(total_well_rate) > 0.) {
@@ -2674,7 +2792,8 @@ namespace Ewoms
                 primary_variables_[WFrac] = scalingFactor(pu.phase_pos[Water]) * well_state.wellRates()[np*well_index + pu.phase_pos[Water]] / total_well_rate;
             }
             if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
-                primary_variables_[GFrac] = scalingFactor(pu.phase_pos[Gas]) * (well_state.wellRates()[np*well_index + pu.phase_pos[Gas]] - well_state.solventWellRate(well_index)) / total_well_rate ;
+                primary_variables_[GFrac] = scalingFactor(pu.phase_pos[Gas]) * (well_state.wellRates()[np*well_index + pu.phase_pos[Gas]]
+                                                 - (has_solvent ? well_state.solventWellRate(well_index) : 0.0) ) / total_well_rate ;
             }
             if (has_solvent) {
                 primary_variables_[SFrac] = scalingFactor(pu.phase_pos[Gas]) * well_state.solventWellRate(well_index) / total_well_rate ;
@@ -2693,8 +2812,9 @@ namespace Ewoms
 
                 if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
                     if (phase == InjectorType::GAS) {
-                        primary_variables_[GFrac] = 1.0 - wsolvent();
+                        primary_variables_[GFrac] = 1.0;
                         if (has_solvent) {
+                            primary_variables_[GFrac] = 1.0 - wsolvent();
                             primary_variables_[SFrac] = wsolvent();
                         }
                     } else {
@@ -3165,14 +3285,34 @@ namespace Ewoms
     template<typename TypeTag>
     void
     StandardWell<TypeTag>::
-    handleInjectivityRateAndEquations(const IntensiveQuantities& int_quants,
-                                      const WellState& well_state,
-                                      const int perf,
-                                      std::vector<EvalWell>& cq_s,
-                                      Ewoms::DeferredLogger& deferred_logger)
+    handleInjectivityRate(const Simulator& eebosSimulator,
+                          const int perf,
+                          std::vector<EvalWell>& cq_s) const
     {
+        const int cell_idx = well_cells_[perf];
+        const auto& int_quants = *(eebosSimulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0));
+        const auto& fs = int_quants.fluidState();
+        const EvalWell b_w = extendEval(fs.invB(FluidSystem::waterPhaseIdx));
+        const double area = M_PI * bore_diameters_[perf] * perf_length_[perf];
+        const int wat_vel_index = Bhp + 1 + perf;
         const unsigned water_comp_idx = Indices::canonicalToActiveComponentIndex(FluidSystem::waterCompIdx);
-        const EvalWell& water_flux_s = cq_s[water_comp_idx];
+
+        // water rate is update to use the form from water velocity, since water velocity is
+        // a primary variable now
+        cq_s[water_comp_idx] = area * primary_variables_evaluation_[wat_vel_index] * b_w;
+    }
+
+    template<typename TypeTag>
+    void
+    StandardWell<TypeTag>::
+    handleInjectivityEquations(const Simulator& eebosSimulator,
+                               const WellState& well_state,
+                               const int perf,
+                               const EvalWell& water_flux_s,
+                               Ewoms::DeferredLogger& deferred_logger)
+    {
+        const int cell_idx = well_cells_[perf];
+        const auto& int_quants = *(eebosSimulator.model().cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0));
         const auto& fs = int_quants.fluidState();
         const EvalWell b_w = extendEval(fs.invB(FluidSystem::waterPhaseIdx));
         const EvalWell water_flux_r = water_flux_s / b_w;
@@ -3200,12 +3340,7 @@ namespace Ewoms
             invDuneD_[0][0][pskin_index][pvIdx] = eq_pskin.derivative(pvIdx+numEq);
         }
 
-        // water rate is update to use the form from water velocity, since water velocity is
-        // a primary variable now
-        cq_s[water_comp_idx] = area * primary_variables_evaluation_[wat_vel_index] * b_w;
-
         // the water velocity is impacted by the reservoir primary varaibles. It needs to enter matrix B
-        const int cell_idx = well_cells_[perf];
         for (int pvIdx = 0; pvIdx < numEq; ++pvIdx) {
             duneB_[0][cell_idx][wat_vel_index][pvIdx] = eq_wat_vel.derivative(pvIdx);
         }
@@ -3344,7 +3479,8 @@ namespace Ewoms
                                const IntensiveQuantities& int_quants,
                                const WellState& well_state,
                                const int perf,
-                               DeferredLogger& deferred_logger)
+                               std::vector<RateVector>& connectionRates,
+                               DeferredLogger& deferred_logger) const
     {
         // the source term related to transport of molecular weight
         EvalWell cq_s_polymw = cq_s_poly;
@@ -3369,7 +3505,7 @@ namespace Ewoms
                 cq_s_polymw *= 0.;
             }
         }
-        connectionRates_[perf][this->contiPolymerMWEqIdx] = Base::restrictEval(cq_s_polymw);
+        connectionRates[perf][this->contiPolymerMWEqIdx] = Base::restrictEval(cq_s_polymw);
     }
 
     template<typename TypeTag>
@@ -3859,4 +3995,73 @@ namespace Ewoms
         return well_q_s_noderiv;
     }
 
+    template <typename TypeTag>
+    void
+    StandardWell<TypeTag>::
+    computeConnLevelProdInd(const typename StandardWell<TypeTag>::FluidState& fs,
+                            const std::function<double(const double)>& connPICalc,
+                            const std::vector<EvalWell>& mobility,
+                            double* connPI) const
+    {
+        const auto& pu = this->phaseUsage();
+        const int   np = this->number_of_phases_;
+        for (int p = 0; p < np; ++p) {
+            // Note: E100's notion of PI value phase mobility includes
+            // the reciprocal FVF.
+            const auto connMob =
+                mobility[ eflowPhaseToEebosCompIdx(p) ].value() * fs.invB(p).value();
+
+            connPI[p] = connPICalc(connMob);
+        }
+
+        if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx) &&
+            FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx))
+        {
+            const auto io = pu.phase_pos[Oil];
+            const auto ig = pu.phase_pos[Gas];
+
+            const auto vapoil = connPI[ig] * fs.Rv().value();
+            const auto disgas = connPI[io] * fs.Rs().value();
+
+            connPI[io] += vapoil;
+            connPI[ig] += disgas;
+        }
+    }
+
+    template <typename TypeTag>
+    void
+    StandardWell<TypeTag>::
+    computeConnLevelInjInd(const typename StandardWell<TypeTag>::FluidState& fs,
+                           const Phase preferred_phase,
+                           const std::function<double(const double)>& connIICalc,
+                           const std::vector<EvalWell>& mobility,
+                           double* connII,
+                           DeferredLogger& deferred_logger) const
+    {
+        // Assumes single phase injection
+        const auto& pu = this->phaseUsage();
+
+        auto phase_pos = 0;
+        if (preferred_phase == Phase::GAS) {
+            phase_pos = pu.phase_pos[Gas];
+        }
+        else if (preferred_phase == Phase::OIL) {
+            phase_pos = pu.phase_pos[Oil];
+        }
+        else if (preferred_phase == Phase::WATER) {
+            phase_pos = pu.phase_pos[Water];
+        }
+        else {
+            EWOMS_DEFLOG_THROW(Ewoms::NotImplemented,
+                             "Unsupported Injector Type ("
+                             << static_cast<int>(preferred_phase)
+                             << ") for well " << this->name()
+                             << " during connection I.I. calculation",
+                             deferred_logger);
+        }
+
+        const auto zero   = EvalWell { this->numWellEq_ + this->numEq, 0.0 };
+        const auto mt     = std::accumulate(mobility.begin(), mobility.end(), zero);
+        connII[phase_pos] = connIICalc(mt.value() * fs.invB(phase_pos).value());
+    }
 } // namespace Ewoms

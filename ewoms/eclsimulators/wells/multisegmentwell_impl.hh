@@ -20,15 +20,7 @@
 #include <ewoms/eclsimulators/utils/deferredloggingerrorhelpers.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/msw/valve.hh>
 
-// tell the compilers to not complain about possibly uninitialized warnings if a given
-// phase is disabled (everything which is accessed at runtime is properly initialized,
-// there is just no way for a compiler that does not pass the Turing test to verify this
-// at compile time...)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpragmas"
-#pragma GCC diagnostic ignored "-Wunknown-warning-option"
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#pragma GCC diagnostic ignored "-Warray-bounds"
+#include <algorithm>
 
 namespace Ewoms
 {
@@ -594,6 +586,11 @@ namespace Ewoms
     MultisegmentWell<TypeTag>::
     apply(const BVector& x, BVector& Ax) const
     {
+        if ( param_.matrix_add_well_contributions_ )
+        {
+            // Contributions are already in the matrix itself
+            return;
+        }
         BVectorWell Bx(duneB_.N());
 
         duneB_.mv(x, Bx);
@@ -1100,9 +1097,103 @@ namespace Ewoms
     template<typename TypeTag>
     void
     MultisegmentWell<TypeTag>::
-    addWellContributions(SparseMatrixAdapter& /* jacobian */) const
+    updateProductivityIndex(const Simulator& eebosSimulator,
+                            const WellProdIndexCalculator& wellPICalc,
+                            WellState& well_state,
+                            DeferredLogger& deferred_logger) const
     {
-        EWOMS_THROW(std::runtime_error, "addWellContributions is not supported by multisegment well yet");
+        auto fluidState = [&eebosSimulator, this](const int perf)
+        {
+            const auto cell_idx = this->well_cells_[perf];
+            return eebosSimulator.model()
+               .cachedIntensiveQuantities(cell_idx, /*timeIdx=*/ 0)->fluidState();
+        };
+
+        const int np = this->number_of_phases_;
+        auto setToZero = [np](double* x) -> void
+        {
+            std::fill_n(x, np, 0.0);
+        };
+
+        auto addVector = [np](const double* src, double* dest) -> void
+        {
+            std::transform(src, src + np, dest, dest, std::plus<>{});
+        };
+
+        auto* wellPI = &well_state.productivityIndex()[this->index_of_well_*np + 0];
+        auto* connPI = &well_state.connectionProductivityIndex()[this->first_perf_*np + 0];
+
+        setToZero(wellPI);
+
+        const auto preferred_phase = this->well_ecl_.getPreferredPhase();
+
+        const auto& allConn = this->well_ecl_.getConnections();
+        const auto  nPerf   = allConn.size();
+        auto subsetPerfID   = 0*nPerf;
+        for (auto allPerfID = 0*nPerf; allPerfID < nPerf; ++allPerfID) {
+            if (allConn[allPerfID].state() == Connection::State::SHUT) {
+                continue;
+            }
+
+            auto connPICalc = [&wellPICalc, allPerfID](const double mobility) -> double
+            {
+                return wellPICalc.connectionProdIndStandard(allPerfID, mobility);
+            };
+
+            std::vector<EvalWell> mob(this->num_components_, 0.0);
+            getMobility(eebosSimulator, static_cast<int>(subsetPerfID), mob);
+
+            const auto& fs = fluidState(subsetPerfID);
+            setToZero(connPI);
+
+            if (this->isInjector()) {
+                this->computeConnLevelInjInd(fs, preferred_phase, connPICalc,
+                                             mob, connPI, deferred_logger);
+            }
+            else {  // Production or zero flow rate
+                this->computeConnLevelProdInd(fs, connPICalc, mob, connPI);
+            }
+
+            addVector(connPI, wellPI);
+
+            ++subsetPerfID;
+            connPI += np;
+        }
+
+        assert (static_cast<int>(subsetPerfID) == this->number_of_perforations_ &&
+                "Internal logic error in processing connections for PI/II");
+    }
+
+    template<typename TypeTag>
+    void
+    MultisegmentWell<TypeTag>::
+    addWellContributions(SparseMatrixAdapter& jacobian) const
+    {
+        const auto invDuneD = mswellhelpers::invertWithUMFPack<DiagMatWell, BVectorWell>(duneD_, duneDSolver_);
+
+        // We need to change matrix A as follows
+        // A -= C^T D^-1 B
+        // D is a (nseg x nseg) block matrix with (4 x 4) blocks.
+        // B and C are (nseg x ncells) block matrices with (4 x 4 blocks).
+        // They have nonzeros at (i, j) only if this well has a
+        // perforation at cell j connected to segment i.  The code
+        // assumes that no cell is connected to more than one segment,
+        // i.e. the columns of B/C have no more than one nonzero.
+        for (size_t rowC = 0; rowC < duneC_.N(); ++rowC) {
+            for (auto colC = duneC_[rowC].begin(), endC = duneC_[rowC].end(); colC != endC; ++colC) {
+                const auto row_index = colC.index();
+                for (size_t rowB = 0; rowB < duneB_.N(); ++rowB) {
+                    for (auto colB = duneB_[rowB].begin(), endB = duneB_[rowB].end(); colB != endB; ++colB) {
+                        const auto col_index = colB.index();
+                        OffDiagMatrixBlockWellType tmp1;
+                        Detail::multMatrixImpl(invDuneD[rowC][rowB], (*colB), tmp1, std::true_type());
+                        typename SparseMatrixAdapter::MatrixBlock tmp2;
+                        Detail::multMatrixTransposedImpl((*colC), tmp1, tmp2, std::false_type());
+                        jacobian.addToBlock(row_index, col_index, tmp2);
+                    }
+                }
+            }
+        }
     }
 
     template <typename TypeTag>
@@ -3563,4 +3654,74 @@ namespace Ewoms
         return well_q_s_noderiv;
     }
 
+    template<typename TypeTag>
+    void
+    MultisegmentWell<TypeTag>::
+    computeConnLevelProdInd(const typename MultisegmentWell<TypeTag>::FluidState& fs,
+                            const std::function<double(const double)>& connPICalc,
+                            const std::vector<EvalWell>& mobility,
+                            double* connPI) const
+    {
+        const auto& pu = this->phaseUsage();
+        const int   np = this->number_of_phases_;
+        for (int p = 0; p < np; ++p) {
+            // Note: E100's notion of PI value phase mobility includes
+            // the reciprocal FVF.
+            const auto connMob =
+                mobility[ eflowPhaseToEebosCompIdx(p) ].value()
+                * fs.invB(p).value();
+
+            connPI[p] = connPICalc(connMob);
+        }
+
+        if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx) &&
+            FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx))
+        {
+            const auto io = pu.phase_pos[Oil];
+            const auto ig = pu.phase_pos[Gas];
+
+            const auto vapoil = connPI[ig] * fs.Rv().value();
+            const auto disgas = connPI[io] * fs.Rs().value();
+
+            connPI[io] += vapoil;
+            connPI[ig] += disgas;
+        }
+    }
+
+    template<typename TypeTag>
+    void
+    MultisegmentWell<TypeTag>::
+    computeConnLevelInjInd(const typename MultisegmentWell<TypeTag>::FluidState& fs,
+                           const Phase preferred_phase,
+                           const std::function<double(const double)>& connIICalc,
+                           const std::vector<EvalWell>& mobility,
+                           double* connII,
+                           DeferredLogger& deferred_logger) const
+    {
+        // Assumes single phase injection
+        const auto& pu = this->phaseUsage();
+
+        auto phase_pos = 0;
+        if (preferred_phase == Phase::GAS) {
+            phase_pos = pu.phase_pos[Gas];
+        }
+        else if (preferred_phase == Phase::OIL) {
+            phase_pos = pu.phase_pos[Oil];
+        }
+        else if (preferred_phase == Phase::WATER) {
+            phase_pos = pu.phase_pos[Water];
+        }
+        else {
+            EWOMS_DEFLOG_THROW(Ewoms::NotImplemented,
+                             "Unsupported Injector Type ("
+                             << static_cast<int>(preferred_phase)
+                             << ") for well " << this->name()
+                             << " during connection I.I. calculation",
+                             deferred_logger);
+        }
+
+        const auto zero   = EvalWell { 0.0 };
+        const auto mt     = std::accumulate(mobility.begin(), mobility.end(), zero);
+        connII[phase_pos] = connIICalc(mt.value() * fs.invB(phase_pos).value());
+    }
 } // namespace Ewoms

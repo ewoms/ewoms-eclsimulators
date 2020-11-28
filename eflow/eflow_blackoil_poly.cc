@@ -16,26 +16,16 @@
   You should have received a copy of the GNU General Public License
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef PARALLEL_SERIALIZATION_HH
-#define PARALLEL_SERIALIZATION_HH
+#include "config.h"
+#include <ewoms/eclsimulators/eflow/main.hh>
 
-namespace Ewoms {
+BEGIN_PROPERTIES
+NEW_TYPE_TAG(EclEFlowProblemPoly, INHERITS_FROM(EclEFlowProblem));
+}
 
-class EclipseState;
-class Schedule;
-class SummaryConfig;
-
-/*! \brief Broadcasts an eclipse state from root node in parallel runs.
- *! \param eclState EclipseState to broadcast
- *! \param schedule Schedule to broadcast
- *! \param summaryConfig SummaryConfig to broadcast
-*/
-void eclStateBroadcast(EclipseState& eclState, Schedule& schedule,
-                       SummaryConfig& summaryConfig);
-
-/// \brief Broadcasts an schedule from root node in parallel runs.
-void eclScheduleBroadcast(Schedule& schedule);
-
-} // end namespace Ewoms
-
-#endif // PARALLEL_SERIALIZATION_HH
+int main(int argc, char** argv)
+{
+    using TypeTag = TTAG(EclEFlowProblemPoly);
+    auto mainObject = Ewoms::Main(argc, argv);
+    return mainObject.runStatic<TypeTag>();
+}

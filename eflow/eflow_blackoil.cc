@@ -21,7 +21,6 @@
 #include <eflow/eflow_blackoil.hh>
 
 #include <ewoms/common/resetlocale.hh>
-#include <ewoms/eclgrids/cpgrid.hh>
 #include <ewoms/eclsimulators/eflow/simulatorfullyimplicitblackoil.hh>
 #include <ewoms/eclsimulators/eflow/eflowmain.hh>
 

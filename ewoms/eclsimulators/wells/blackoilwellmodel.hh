@@ -44,6 +44,7 @@
 #include <ewoms/eclsimulators/wells/standardwell.hh>
 #include <ewoms/eclsimulators/wells/multisegmentwell.hh>
 #include <ewoms/eclsimulators/wells/wellgrouphelpers.hh>
+#include <ewoms/eclsimulators/wells/wellprodindexcalculator.hh>
 #include <ewoms/eclsimulators/timestepping/gatherconvergencereport.hh>
 #include <dune/common/fmatrix.hh>
 #include <dune/istl/bcrsmatrix.hh>
@@ -205,9 +206,8 @@ namespace Ewoms {
                         continue;
                     }
 
-                    xwPos->second.current_control.isProducer = well.isProducer();
-
-                    auto& grval = xwPos->second.guide_rates;  grval.clear();
+                    auto& grval = xwPos->second.guide_rates;
+                    grval.clear();
                     grval += this->getGuideRateValues(well);
                 }
 
@@ -262,6 +262,7 @@ namespace Ewoms {
 
             std::vector< Well > wells_ecl_;
             std::vector< std::vector<PerforationData> > well_perf_data_;
+            std::vector< WellProdIndexCalculator > prod_index_calc_;
 
             bool wells_active_;
 
@@ -275,6 +276,7 @@ namespace Ewoms {
 
             std::function<bool(const Well&)> is_shut_or_defunct_;
 
+            void initializeWellProdIndCalculators();
             void initializeWellPerfData();
 
             // create the well container
@@ -289,6 +291,7 @@ namespace Ewoms {
             const ModelParameters param_;
             bool terminal_output_;
             bool has_solvent_;
+            bool has_zFraction_;
             bool has_polymer_;
             std::vector<int> pvt_region_idx_;
             PhaseUsage phase_usage_;
@@ -368,6 +371,8 @@ namespace Ewoms {
             const std::vector<double>& wellPerfEfficiencyFactors() const;
 
             void calculateEfficiencyFactors(const int reportStepIdx);
+
+            void calculateProductivityIndexValues(DeferredLogger& deferred_logger);
 
             // it should be able to go to prepareTimeStep(), however, the updateWellControls() and initPrimaryVariablesEvaluation()
             // makes it a little more difficult. unless we introduce if (iterationIdx != 0) to avoid doing the above functions

@@ -93,8 +93,6 @@ protected:
         const auto& ugrid = this->eebos_simulator_.vanguard().grid();
         const auto& grid = eclState.getInputGrid();
 
-        auto globalCellIdx = ugrid.globalCell();
-
         // We hack the cell depth values for now. We can actually get it from elementcontext pos
         this->cell_depth_.resize(this->size(), this->aquiferDepth());
         this->alphai_.resize(this->size(), 1.0);

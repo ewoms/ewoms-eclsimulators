@@ -29,38 +29,21 @@
 
 BEGIN_PROPERTIES
 
-NEW_TYPE_TAG(EebosGasOilTypeTag, INHERITS_FROM(EebosTypeTag));
+NEW_TYPE_TAG(EebosEnergyTypeTag, INHERITS_FROM(EebosTypeTag));
 
-//! The indices indices which only enable oil and water
-SET_PROP(EebosGasOilTypeTag, Indices)
-{
-private:
-    // it is unfortunately not possible to simply use 'TypeTag' here because this leads
-    // to cyclic definitions of some properties. if this happens the compiler error
-    // messages unfortunately are *really* confusing and not really helpful.
-    using FluidSystem = GET_PROP_TYPE(TTAG(EebosTypeTag), FluidSystem);
-
-public:
-    typedef Ewoms::BlackOilTwoPhaseIndices<GET_PROP_VALUE(TypeTag, EnableSolvent),
-                                         GET_PROP_VALUE(TypeTag, EnableExtbo),
-                                         GET_PROP_VALUE(TypeTag, EnablePolymer),
-                                         GET_PROP_VALUE(TypeTag, EnableEnergy),
-                                         GET_PROP_VALUE(TypeTag, EnableFoam),
-                                         GET_PROP_VALUE(TypeTag, EnableBrine),
-                                         /*PVOffset=*/0,
-                                         /*disabledCompIdx=*/FluidSystem::waterCompIdx> type;
-};
+// enable the energy extension of the black oil model
+SET_BOOL_PROP(EebosEnergyTypeTag, EnableEnergy, true);
 
 END_PROPERTIES
 
 namespace Ewoms {
 
-void eebosGasOilSetDeck(Ewoms::Deck* deck,
+void eebosEnergySetDeck(Ewoms::Deck* deck,
                        Ewoms::ParseContext* parseContext,
                        Ewoms::ErrorGuard* errorGuard,
                        double externalSetupTime)
 {
-    using ProblemTypeTag = TTAG(EebosGasOilTypeTag);
+    using ProblemTypeTag = TTAG(EebosEnergyTypeTag);
     using Vanguard = GET_PROP_TYPE(ProblemTypeTag, Vanguard);
 
     Vanguard::setExternalSetupTime(externalSetupTime);
@@ -69,9 +52,9 @@ void eebosGasOilSetDeck(Ewoms::Deck* deck,
     Vanguard::setExternalDeck(deck);
 }
 
-int eebosGasOilMain(int argc, char **argv)
+int eebosEnergyMain(int argc, char **argv)
 {
-    using ProblemTypeTag = TTAG(EebosGasOilTypeTag);
+    using ProblemTypeTag = TTAG(EebosEnergyTypeTag);
     return Ewoms::start<ProblemTypeTag>(argc, argv);
 }
 

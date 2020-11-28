@@ -29,6 +29,7 @@ namespace Ewoms {
     BlackoilWellModel(Simulator& eebosSimulator)
         : eebosSimulator_(eebosSimulator)
         , has_solvent_(GET_PROP_VALUE(TypeTag, EnableSolvent))
+        , has_zFraction_(GET_PROP_VALUE(TypeTag, EnableExtbo))
         , has_polymer_(GET_PROP_VALUE(TypeTag, EnablePolymer))
     {
         terminal_output_ = false;
@@ -227,6 +228,8 @@ namespace Ewoms {
         int globalNumWells = 0;
         // Make wells_ecl_ contain only this partition's non-shut wells.
         wells_ecl_ = getLocalNonshutWells(timeStepIdx, globalNumWells);
+
+        this->initializeWellProdIndCalculators();
         initializeWellPerfData();
 
         // Wells are active if they are active wells on at least
@@ -496,6 +499,8 @@ namespace Ewoms {
         const Group& fieldGroup = schedule().getGroup("FIELD", reportStepIdx);
         checkGconsaleLimits(fieldGroup, well_state_, local_deferredLogger);
 
+        this->calculateProductivityIndexValues(local_deferredLogger);
+
         previous_well_state_ = well_state_;
 
         Ewoms::DeferredLogger global_deferredLogger = gatherDeferredLogger(local_deferredLogger);
@@ -552,6 +557,7 @@ namespace Ewoms {
         // Make wells_ecl_ contain only this partition's non-shut wells.
         wells_ecl_ = getLocalNonshutWells(report_step, globalNumWells);
 
+        this->initializeWellProdIndCalculators();
         initializeWellPerfData();
 
         const int nw = wells_ecl_.size();
@@ -566,6 +572,18 @@ namespace Ewoms {
         previous_well_state_ = well_state_;
 
         initial_step_ = false;
+    }
+
+    template<typename TypeTag>
+    void
+    BlackoilWellModel<TypeTag>::
+    initializeWellProdIndCalculators()
+    {
+        this->prod_index_calc_.clear();
+        this->prod_index_calc_.reserve(this->wells_ecl_.size());
+        for (const auto& well : this->wells_ecl_) {
+            this->prod_index_calc_.emplace_back(well);
+        }
     }
 
     template<typename TypeTag>
@@ -918,7 +936,6 @@ namespace Ewoms {
         // prepare for StandardWells
         wellContribs.setBlockSize(StandardWell<TypeTag>::numEq, StandardWell<TypeTag>::numStaticWellEq);
 
-#if HAVE_CUDA
         for(unsigned int i = 0; i < well_container_.size(); i++){
             auto& well = well_container_[i];
             std::shared_ptr<StandardWell<TypeTag> > derived = std::dynamic_pointer_cast<StandardWell<TypeTag> >(well);
@@ -931,7 +948,6 @@ namespace Ewoms {
 
         // allocate memory for data from StandardWells
         wellContribs.alloc();
-#endif
 
         for(unsigned int i = 0; i < well_container_.size(); i++){
             auto& well = well_container_[i];
@@ -1213,7 +1229,8 @@ namespace Ewoms {
         if (!network.active()) {
             return;
         }
-        node_pressures_ = WellGroupHelpers::computeNetworkPressures(network, well_state_, *(vfp_properties_->getProd()));
+        node_pressures_ = WellGroupHelpers::computeNetworkPressures(
+            network, well_state_, *(vfp_properties_->getProd()), schedule(), reportStepIdx);
 
         // Set the thp limits of wells
         for (auto& well : well_container_) {
@@ -1272,6 +1289,16 @@ namespace Ewoms {
 
         // We use the rates from the privious time-step to reduce oscilations
         WellGroupHelpers::updateWellRates(fieldGroup, schedule(), reportStepIdx, previous_well_state_, well_state_);
+
+        // Set ALQ for off-process wells to zero
+        for (const auto& wname : schedule().wellNames(reportStepIdx)) {
+            const bool is_producer = schedule().getWell(wname, reportStepIdx).isProducer();
+            const bool not_on_this_process = well_state_.wellMap().count(wname) == 0;
+            if (is_producer && not_on_this_process) {
+                well_state_.setALQ(wname, 0.0);
+            }
+        }
+
         well_state_.communicateGroupRates(comm);
 
         // compute wsolvent fraction for REIN wells
@@ -1344,6 +1371,23 @@ namespace Ewoms {
         // Store it in the well state
         well_state_.wellPotentials() = well_potentials;
 
+    }
+
+    template<typename TypeTag>
+    void
+    BlackoilWellModel<TypeTag>::
+    calculateProductivityIndexValues(DeferredLogger& deferred_logger)
+    {
+        if (! this->localWellsActive()) {
+            return;
+        }
+
+        for (const auto& wellPtr : this->well_container_) {
+            wellPtr->updateProductivityIndex(this->eebosSimulator_,
+                                             this->prod_index_calc_[wellPtr->indexOfWell()],
+                                             this->well_state_,
+                                             deferred_logger);
+        }
     }
 
     template<typename TypeTag>
@@ -2262,10 +2306,27 @@ namespace Ewoms {
         // TODO fix this!
         // This is only used for converting RESV rates.
         // What is the proper approach?
+        const auto& comm = eebosSimulator_.vanguard().grid().comm();
         const int fipnum = 0;
-        const int pvtreg = well_perf_data_.empty()
+        int pvtreg = well_perf_data_.empty()
             ? pvt_region_idx_[0]
             : pvt_region_idx_[well_perf_data_[0][0].cell_index];
+
+        if ( comm.size() > 1)
+        {
+            // Just like in the sequential case the pvtregion is determined
+            // by the first cell of the first well. What is the first well
+            // is decided by the order in the Schedule using Well::seqIndex()
+            int firstWellIndex = well_perf_data_.empty() ?
+                std::numeric_limits<int>::max() : wells_ecl_[0].seqIndex();
+            auto regIndexPair = std::make_pair(pvtreg, firstWellIndex);
+            std::vector<decltype(regIndexPair)> pairs(comm.size());
+            comm.allgather(&regIndexPair, 1, pairs.data());
+            pvtreg = std::min_element(pairs.begin(), pairs.end(),
+                                      [](const auto& p1, const auto& p2){ return p1.second < p2.second;})
+                ->first;
+        }
+
         std::vector<double> resv_coeff(phase_usage_.num_phases, 0.0);
         rateConverter_->calcCoeff(fipnum, pvtreg, resv_coeff);
 
@@ -2273,7 +2334,6 @@ namespace Ewoms {
         const auto& summaryState = eebosSimulator_.vanguard().summaryState();
 
         std::vector<double> rates(phase_usage_.num_phases, 0.0);
-        const auto& comm = eebosSimulator_.vanguard().grid().comm();
 
         const bool skip = switched_groups.count(group.name()) || group.name() == "FIELD";
 

@@ -24,11 +24,15 @@
 #ifndef EWOMS_ECL_PROBLEM_HH
 #define EWOMS_ECL_PROBLEM_HH
 
+#if USE_POLYHEDRALGRID
+#include "eclpolyhedralgridvanguard.hh"
+#else
 #include "eclcpgridvanguard.hh"
+#endif
 
-#include "eclwriter.hh"
 #include "eclwellmanager.hh"
 #include "eclequilinitializer.hh"
+#include "eclwriter.hh"
 #include "ecloutputblackoilmodule.hh"
 #include "ecltransmissibility.hh"
 #include "eclthresholdpressure.hh"
@@ -93,8 +97,13 @@ class EclProblem;
 
 BEGIN_PROPERTIES
 
+#if EEBOS_USE_ALUGRID
+NEW_TYPE_TAG(EclBaseProblem, INHERITS_FROM());
+#elif USE_POLYHEDRALGRID
+NEW_TYPE_TAG(EclBaseProblem, INHERITS_FROM(EclPolyhedralGridVanguard, EclOutputBlackOil, VtkEclTracer));
+#else
 NEW_TYPE_TAG(EclBaseProblem, INHERITS_FROM(EclCpGridVanguard, EclOutputBlackOil, VtkEclTracer));
-//NEW_TYPE_TAG(EclBaseProblem, INHERITS_FROM(EclPolyhedralGridVanguard, EclOutputBlackOil, VtkEclTracer));
+#endif
 
 // The class which deals with ECL wells
 NEW_PROP_TAG(EclWellModel);
@@ -357,6 +366,7 @@ SET_BOOL_PROP(EclBaseProblem, EnablePolymer, false);
 SET_BOOL_PROP(EclBaseProblem, EnableSolvent, false);
 SET_BOOL_PROP(EclBaseProblem, EnableEnergy, false);
 SET_BOOL_PROP(EclBaseProblem, EnableFoam, false);
+SET_BOOL_PROP(EclBaseProblem, EnableExtbo, false);
 
 // disable thermal flux boundaries by default
 SET_BOOL_PROP(EclBaseProblem, EnableThermalFluxBoundaries, false);
@@ -404,11 +414,15 @@ class EclProblem : public GET_PROP_TYPE(TypeTag, BaseProblem)
     // copy some indices for convenience
     enum { numEq = GET_PROP_VALUE(TypeTag, NumEq) };
     enum { numPhases = FluidSystem::numPhases };
+    enum { numComponents = FluidSystem::numComponents };
     enum { enableExperiments = GET_PROP_VALUE(TypeTag, EnableExperiments) };
     enum { enableSolvent = GET_PROP_VALUE(TypeTag, EnableSolvent) };
     enum { enablePolymer = GET_PROP_VALUE(TypeTag, EnablePolymer) };
     enum { enableBrine = GET_PROP_VALUE(TypeTag, EnableBrine) };
     enum { enablePolymerMolarWeight = GET_PROP_VALUE(TypeTag, EnablePolymerMW) };
+    enum { enableFoam = GET_PROP_VALUE(TypeTag, EnableFoam) };
+    enum { enableExtbo = GET_PROP_VALUE(TypeTag, EnableExtbo) };
+    enum { enableTemperature = GET_PROP_VALUE(TypeTag, EnableTemperature) };
     enum { enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy) };
     enum { enableThermalFluxBoundaries = GET_PROP_VALUE(TypeTag, EnableThermalFluxBoundaries) };
     enum { enableApiTracking = GET_PROP_VALUE(TypeTag, EnableApiTracking) };
@@ -442,11 +456,19 @@ class EclProblem : public GET_PROP_TYPE(TypeTag, BaseProblem)
     typedef BlackOilPolymerModule<TypeTag> PolymerModule;
     typedef BlackOilFoamModule<TypeTag> FoamModule;
     typedef BlackOilBrineModule<TypeTag> BrineModule;
+    typedef BlackOilExtboModule<TypeTag> ExtboModule;
 
     typedef typename EclEquilInitializer<TypeTag>::ScalarFluidState InitialFluidState;
+
+    typedef Ewoms::MathToolbox<Evaluation> Toolbox;
     typedef Dune::FieldMatrix<Scalar, dimWorld, dimWorld> DimMatrix;
+
     typedef EclWriter<TypeTag> EclWriterType;
+
     typedef EclTracerModel<TypeTag> TracerModel;
+
+    typedef typename GridView::template Codim<0>::Iterator ElementIterator;
+
     typedef Ewoms::UniformXTabulated2DFunction<Scalar> TabulatedTwoDFunction;
     typedef Ewoms::Tabulated1DFunction<Scalar> TabulatedFunction;
 
@@ -610,10 +632,12 @@ public:
         this->model().addOutputModule(new VtkEclTracerModule<TypeTag>(simulator));
         // Tell the black-oil extensions to initialize their internal data structures
         const auto& vanguard = simulator.vanguard();
+
         SolventModule::initFromEclState(vanguard.eclState(), vanguard.schedule());
         PolymerModule::initFromEclState(vanguard.eclState());
         FoamModule::initFromEclState(vanguard.eclState());
         BrineModule::initFromEclState(vanguard.eclState());
+        ExtboModule::initFromEclState(vanguard.eclState());
 
         // create the ECL writer
         eclWriter_.reset(new EclWriterType(simulator));
@@ -1935,6 +1959,11 @@ private:
             throw std::runtime_error("The simulator requires the polymer option to be enabled, but the deck does not.");
         else if (!enablePolymer && deck.hasKeyword("POLYMER"))
             throw std::runtime_error("The deck enables the polymer option, but the simulator is compiled without it.");
+
+        if (enableExtbo && !deck.hasKeyword("PVTSOL"))
+            throw std::runtime_error("The simulator requires the extendedBO option to be enabled, but the deck does not.");
+        else if (!enableExtbo && deck.hasKeyword("PVTSOL"))
+            throw std::runtime_error("The deck enables the extendedBO option, but the simulator is compiled without it.");
 
         if (deck.hasKeyword("TEMP") && deck.hasKeyword("THERMAL"))
             throw std::runtime_error("The deck enables both, the TEMP and the THERMAL options, but they are mutually exclusive.");

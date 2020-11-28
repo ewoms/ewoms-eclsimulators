@@ -19,23 +19,20 @@
 /*!
  * \file
  *
- * \brief The main file of eebos, the general-purpose black-oil simulator for ECL decks.
+ * \brief The main file of meebos, an multiplexed-version of eebos, the general-purpose
+ *        black-oil simulator for ECL decks for research purposes.
  *
- * eebos first parses the input data set before selecting the variant which should run it
- * so it does not require the user to select the correct binary. On the flipside, only
- * the most common extensions of the blackoil modelo can be supported by the simulator to
- * avoid a combinatorial explosion of combinations and even then compiling the simulator
- * takes mighty long. (I.e., consider using the a specialized binary for development.)
- * The options available by default are standard blackoil, twophase oil-water, twophase
- * gas-oil, solvent, polymer, foam and thermal.
+ * Just like 'eflow', it does not require to select the simulator binary to run a deck
+ * that uses certain options like twophase, solvent, polymer or thermal in advance.
  */
 #include "config.h"
 
 #include "eebos_blackoil.hh"
 #include "eebos_oilwater.hh"
+#include "eebos_oilwater_polymer.hh"
 #include "eebos_gasoil.hh"
 // TODO (?): #include "eebos_watergas.hh"
-#include "eebos_thermal.hh"
+#include "eebos_energy.hh"
 #include "eebos_solvent.hh"
 #include "eebos_polymer.hh"
 #include "eebos_foam.hh"
@@ -291,11 +288,11 @@ int main(int argc, char **argv)
         // run eebos_thermal
         if (myRank == 0)
             std::cout << "Using thermal mode" << std::endl;
-        Ewoms::eebosThermalSetDeck(deck.get(),
-                                parseContext.get(),
-                                errorGuard.get(),
-                                externalSetupTimer.elapsed());
-        return Ewoms::eebosThermalMain(argc, argv);
+        Ewoms::eebosEnergySetDeck(deck.get(),
+                               parseContext.get(),
+                               errorGuard.get(),
+                               externalSetupTimer.elapsed());
+        return Ewoms::eebosEnergyMain(argc, argv);
     }
     else {
         if (myRank == 0)

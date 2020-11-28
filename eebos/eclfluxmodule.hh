@@ -113,8 +113,11 @@ class EclTransExtensiveQuantities
     enum { gasPhaseIdx = FluidSystem::gasPhaseIdx };
     enum { numPhases = FluidSystem::numPhases };
     enum { enableSolvent = GET_PROP_VALUE(TypeTag, EnableSolvent) };
+    enum { enableExtbo = GET_PROP_VALUE(TypeTag, EnableExtbo) };
+    enum { enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy) };
 
     typedef Ewoms::MathToolbox<Evaluation> Toolbox;
+    typedef Dune::FieldVector<Scalar, dimWorld> DimVector;
     typedef Dune::FieldVector<Evaluation, dimWorld> EvalDimVector;
     typedef Dune::FieldMatrix<Scalar, dimWorld, dimWorld> DimMatrix;
 
@@ -271,7 +274,11 @@ protected:
 
             const Evaluation& pressureInterior = intQuantsIn.fluidState().pressure(phaseIdx);
             Evaluation pressureExterior = Toolbox::value(intQuantsEx.fluidState().pressure(phaseIdx));
-            pressureExterior += rhoAvg*(distZ*g);
+            if (enableExtbo) // added stability; particulary useful for solvent migrating in pure water
+                             // where the solvent fraction displays a 0/1 behaviour ...
+                pressureExterior += Toolbox::value(rhoAvg)*(distZ*g);
+            else
+                pressureExterior += rhoAvg*(distZ*g);
 
             pressureDifference_[phaseIdx] = pressureExterior - pressureInterior;
 

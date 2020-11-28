@@ -18,11 +18,9 @@
 */
 #include "config.h"
 
-#include <eflow/eflow_oilwater_polymer.hh>
+#include <eflow/eflow_extbo.hh>
 
 #include <ewoms/common/resetlocale.hh>
-#include <ewoms/numerics/models/blackoil/blackoiltwophaseindices.hh>
-
 #include <ewoms/eclgrids/cpgrid.hh>
 #include <ewoms/eclsimulators/eflow/simulatorfullyimplicitblackoil.hh>
 #include <ewoms/eclsimulators/eflow/eflowmain.hh>
@@ -35,58 +33,43 @@
 
 BEGIN_PROPERTIES
 
-NEW_TYPE_TAG(EclEFlowOilWaterPolymerProblem, INHERITS_FROM(EclEFlowProblem));
-SET_BOOL_PROP(EclEFlowOilWaterPolymerProblem, EnablePolymer, true);
-//! The indices required by the model
-SET_PROP(EclEFlowOilWaterPolymerProblem, Indices)
-{
-private:
-    // it is unfortunately not possible to simply use 'TypeTag' here because this leads
-    // to cyclic definitions of some properties. if this happens the compiler error
-    // messages unfortunately are *really* confusing and not really helpful.
-    using BaseTypeTag = TTAG(EclEFlowProblem);
-    using FluidSystem = GET_PROP_TYPE(BaseTypeTag, FluidSystem);
-
-public:
-    typedef Ewoms::BlackOilTwoPhaseIndices<GET_PROP_VALUE(TypeTag, EnableSolvent),
-                                         GET_PROP_VALUE(TypeTag, EnableExtbo),
-                                         GET_PROP_VALUE(TypeTag, EnablePolymer),
-                                         GET_PROP_VALUE(TypeTag, EnableEnergy),
-                                         GET_PROP_VALUE(TypeTag, EnableFoam),
-                                         GET_PROP_VALUE(TypeTag, EnableBrine),
-                                         /*PVOffset=*/0,
-                                         /*disabledCompIdx=*/FluidSystem::gasCompIdx> type;
-};
+NEW_TYPE_TAG(EclEFlowExtboProblem, INHERITS_FROM(EclEFlowProblem));
+SET_BOOL_PROP(EclEFlowExtboProblem, EnableExtbo, true);
 
 END_PROPERTIES
 
 namespace Ewoms {
-void eflowOilWaterPolymerSetDeck(double setupTime, Deck& deck, EclipseState& eclState, Schedule& schedule, SummaryConfig& summaryConfig)
+void eflowExtboSetDeck(double setupTime,
+                          Deck* deck,
+                          EclipseState& eclState,
+                          Schedule& schedule,
+                          SummaryConfig& summaryConfig)
 {
-    using TypeTag = TTAG(EclEFlowOilWaterPolymerProblem);
+    using TypeTag = TTAG(EclEFlowExtboProblem);
     using Vanguard = GET_PROP_TYPE(TypeTag, Vanguard);
 
     Vanguard::setExternalSetupTime(setupTime);
-    Vanguard::setExternalDeck(&deck);
+    Vanguard::setExternalDeck(deck);
     Vanguard::setExternalEclState(&eclState);
     Vanguard::setExternalSchedule(&schedule);
     Vanguard::setExternalSummaryConfig(&summaryConfig);
 }
 
 // ----------------- Main program -----------------
-int eflowOilWaterPolymerMain(int argc, char** argv, bool outputCout, bool outputFiles)
+int eflowExtboMain(int argc, char** argv, bool outputCout, bool outputFiles)
 {
     // we always want to use the default locale, and thus spare us the trouble
     // with incorrect locale settings.
     Ewoms::resetLocale();
 
+    // initialize MPI, finalize is done automatically on exit
 #if HAVE_DUNE_FEM
     Dune::Fem::MPIManager::initialize(argc, argv);
 #else
-    Dune::MPIHelper::instance(argc, argv);
+    Dune::MPIHelper::instance(argc, argv).rank();
 #endif
 
-    Ewoms::EFlowMain<TTAG(EclEFlowOilWaterPolymerProblem)>
+    Ewoms::EFlowMain<TTAG(EclEFlowExtboProblem)>
         mainfunc {argc, argv, outputCout, outputFiles};
     return mainfunc.execute();
 }

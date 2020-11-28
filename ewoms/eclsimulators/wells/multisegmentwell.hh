@@ -20,7 +20,8 @@
 #define EWOMS_MULTISEGMENTWELL_HH
 
 #include <ewoms/eclsimulators/wells/wellinterface.hh>
-#include <ewoms/common/optional.hh>
+
+#include <ewoms/eclio/parser/eclipsestate/runspec.hh>
 
 #include <dune/istl/umfpack.hh>
 
@@ -42,6 +43,7 @@ namespace Ewoms
         using typename Base::Indices;
         using typename Base::RateConverterType;
         using typename Base::SparseMatrixAdapter;
+        using typename Base::FluidState;
 
         /// the number of reservior equations
         using Base::numEq;
@@ -113,7 +115,7 @@ namespace Ewoms
         virtual void initPrimaryVariablesEvaluation() const override;
 
         virtual void maybeDoGasLiftOptimization (
-            const WellState&,
+            WellState&,
             const Simulator&,
             DeferredLogger&
         ) const override {
@@ -165,6 +167,11 @@ namespace Ewoms
                                                  const WellState& well_state,
                                                  Ewoms::DeferredLogger& deferred_logger) override; // should be const?
 
+        virtual void updateProductivityIndex(const Simulator& eebosSimulator,
+                                             const WellProdIndexCalculator& wellPICalc,
+                                             WellState& well_state,
+                                             DeferredLogger& deferred_logger) const override;
+
         virtual void  addWellContributions(SparseMatrixAdapter& jacobian) const override;
 
         /// number of segments for this well
@@ -176,6 +183,17 @@ namespace Ewoms
         virtual std::vector<double> computeCurrentWellRates(const Simulator& eebosSimulator,
                                                             DeferredLogger& deferred_logger) const override;
 
+        void computeConnLevelProdInd(const FluidState& fs,
+                                     const std::function<double(const double)>& connPICalc,
+                                     const std::vector<EvalWell>& mobility,
+                                     double* connPI) const;
+
+        void computeConnLevelInjInd(const FluidState& fs,
+                                    const Phase preferred_phase,
+                                    const std::function<double(const double)>& connIICalc,
+                                    const std::vector<EvalWell>& mobility,
+                                    double* connII,
+                                    DeferredLogger& deferred_logger) const;
     protected:
         int number_segments_;
 

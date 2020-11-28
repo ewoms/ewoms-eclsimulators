@@ -19,16 +19,23 @@
 #ifndef EWOMS_STANDARDWELL_HH
 #define EWOMS_STANDARDWELL_HH
 
+#if HAVE_CUDA || HAVE_OPENCL
+#include <ewoms/eclsimulators/linalg/bda/wellcontributions.hh>
+#endif
+
+#include <ewoms/eclsimulators/wells/gasliftruntime.hh>
 #include <ewoms/eclsimulators/wells/rateconverter.hh>
 #include <ewoms/eclsimulators/wells/wellinterface.hh>
-#include <ewoms/eclsimulators/wells/gasliftruntime.hh>
+#include <ewoms/eclsimulators/wells/wellprodindexcalculator.hh>
 
 #include <ewoms/numerics/models/blackoil/blackoilpolymermodules.hh>
 #include <ewoms/numerics/models/blackoil/blackoilsolventmodules.hh>
+#include <ewoms/numerics/models/blackoil/blackoilextbomodules.hh>
 #include <ewoms/numerics/models/blackoil/blackoilfoammodules.hh>
 #include <ewoms/numerics/models/blackoil/blackoilbrinemodules.hh>
 
 #include <ewoms/common/densead/dynamicevaluation.hh>
+#include <ewoms/eclio/parser/eclipsestate/runspec.hh>
 #include <ewoms/eclio/parser/eclipsestate/schedule/scheduletypes.hh>
 
 #include <dune/common/dynvector.hh>
@@ -60,11 +67,13 @@ namespace Ewoms
         using typename Base::RateConverterType;
         using typename Base::SparseMatrixAdapter;
         using typename Base::FluidState;
+        using typename Base::RateVector;
         using GasLiftHandler = Ewoms::GasLiftRuntime<TypeTag>;
 
         using Base::numEq;
 
         using Base::has_solvent;
+        using Base::has_zFraction;
         using Base::has_polymer;
         using Base::has_foam;
         using Base::has_brine;
@@ -80,9 +89,10 @@ namespace Ewoms
         static const int numEnergyEq = Indices::numEnergy;
         static const int numFoamEq = Indices::numFoam;
         static const int numBrineEq = Indices::numBrine;
+        static const int numExtbos = Indices::numExtbos;
 
         // number of the conservation equations
-        static const int numWellConservationEq = numEq - numPolymerEq - numEnergyEq - numFoamEq - numBrineEq;
+        static const int numWellConservationEq = numEq - numPolymerEq - numEnergyEq - numFoamEq - numBrineEq - numExtbos;
         // number of the well control equations
         static const int numWellControlEq = 1;
         // number of the well equations that will always be used
@@ -137,6 +147,7 @@ namespace Ewoms
         typedef DenseAd::DynamicEvaluation<Scalar, numStaticWellEq + numEq + 1> EvalWell;
 
         using Base::contiSolventEqIdx;
+        using Base::contiZfracEqIdx;
         using Base::contiPolymerEqIdx;
         using Base::contiFoamEqIdx;
         using Base::contiBrineEqIdx;
@@ -209,6 +220,11 @@ namespace Ewoms
                                                  const WellState& well_state,
                                                  Ewoms::DeferredLogger& deferred_logger) override; // should be const?
 
+        virtual void updateProductivityIndex(const Simulator& eebosSimulator,
+                                             const WellProdIndexCalculator& wellPICalc,
+                                             WellState& well_state,
+                                             DeferredLogger& deferred_logger) const override;
+
         virtual void  addWellContributions(SparseMatrixAdapter& mat) const override;
 
         // iterate well equations with the specified control until converged
@@ -233,7 +249,7 @@ namespace Ewoms
         ) const;
 
         virtual void maybeDoGasLiftOptimization (
-            const WellState& well_state,
+            WellState& well_state,
             const Simulator& eebosSimulator,
             DeferredLogger& deferred_logger
         ) const override;
@@ -289,8 +305,19 @@ namespace Ewoms
         virtual std::vector<double> computeCurrentWellRates(const Simulator& eebosSimulator,
                                                             DeferredLogger& deferred_logger) const override;
 
-    protected:
+        void computeConnLevelProdInd(const FluidState& fs,
+                                     const std::function<double(const double)>& connPICalc,
+                                     const std::vector<EvalWell>& mobility,
+                                     double* connPI) const;
 
+        void computeConnLevelInjInd(const typename StandardWell<TypeTag>::FluidState& fs,
+                                    const Phase preferred_phase,
+                                    const std::function<double(const double)>& connIICalc,
+                                    const std::vector<EvalWell>& mobility,
+                                    double* connII,
+                                    DeferredLogger& deferred_logger) const;
+
+    protected:
         // protected functions from the Base class
         using Base::getAllowCrossFlow;
         using Base::eflowPhaseToEebosCompIdx;
@@ -300,7 +327,6 @@ namespace Ewoms
         using Base::wpolymer;
         using Base::wfoam;
         using Base::scalingFactor;
-        using Base::scaleProductivityIndex;
         using Base::mostStrictBhpFromBhpLimits;
 
         // protected member variables from the Base class
@@ -499,6 +525,20 @@ namespace Ewoms
                                                     WellState& well_state,
                                                     Ewoms::DeferredLogger& deferred_logger) override;
 
+        void assembleWellEqWithoutIterationImpl(const Simulator& eebosSimulator,
+                                                const double dt,
+                                                WellState& well_state,
+                                                Ewoms::DeferredLogger& deferred_logger);
+
+        void calculateSinglePerf(const Simulator& eebosSimulator,
+                                 const int perf,
+                                 WellState& well_state,
+                                 std::vector<RateVector>& connectionRates,
+                                 std::vector<EvalWell>& cq_s,
+                                 EvalWell& water_flux_s,
+                                 EvalWell& cq_s_zfrac_effective,
+                                 Ewoms::DeferredLogger& deferred_logger) const;
+
         // check whether the well is operable under the current reservoir condition
         // mostly related to BHP limit and THP limit
         void updateWellOperability(const Simulator& eebos_simulator,
@@ -564,12 +604,17 @@ namespace Ewoms
                             const EvalWell& water_velocity,
                             Ewoms::DeferredLogger& deferred_logger) const;
 
+        // modify the water rate for polymer injectivity study
+        void handleInjectivityRate(const Simulator& eebosSimulator,
+                                   const int perf,
+                                   std::vector<EvalWell>& cq_s) const;
+
         // handle the extra equations for polymer injectivity study
-        void handleInjectivityRateAndEquations(const IntensiveQuantities& int_quants,
-                                               const WellState& well_state,
-                                               const int perf,
-                                               std::vector<EvalWell>& cq_s,
-                                               Ewoms::DeferredLogger& deferred_logger);
+        void handleInjectivityEquations(const Simulator& eebosSimulator,
+                                        const WellState& well_state,
+                                        const int perf,
+                                        const EvalWell& water_flux_s,
+                                        Ewoms::DeferredLogger& deferred_logger);
 
         virtual void updateWaterThroughput(const double dt, WellState& well_state) const override;
 
@@ -587,14 +632,15 @@ namespace Ewoms
                                         const IntensiveQuantities& int_quants,
                                         const WellState& well_state,
                                         const int perf,
-                                        DeferredLogger& deferred_logger);
+                                        std::vector<RateVector>& connectionRates,
+                                        DeferredLogger& deferred_logger) const;
 
-        Ewoms::optional<double> computeBhpAtThpLimitProd(const WellState& well_state,
+        std::optional<double> computeBhpAtThpLimitProd(const WellState& well_state,
                                                        const Simulator& eebos_simulator,
                                                        const SummaryState& summary_state,
                                                        DeferredLogger& deferred_logger) const;
 
-        Ewoms::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
+        std::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
                                                       const SummaryState& summary_state,
                                                       DeferredLogger& deferred_logger) const;
 
