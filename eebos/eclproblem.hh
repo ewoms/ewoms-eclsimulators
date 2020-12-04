@@ -2633,15 +2633,16 @@ private:
         bool hasPressure = fieldProps.has_double("PRESSURE");
 
         // make sure all required quantities are enables
-        if (FluidSystem::phaseIsActive(waterPhaseIdx) && !hasSwat)
-            throw std::runtime_error("The ECL input file requires the presence of the SWAT keyword if "
+        if (Indices::numPhases > 1) {
+            if (FluidSystem::phaseIsActive(waterPhaseIdx) && !hasSwat)
+                throw std::runtime_error("The ECL input file requires the presence of the SWAT keyword if "
                                      "the water phase is active");
-        if (FluidSystem::phaseIsActive(gasPhaseIdx) && !hasSgas)
-            throw std::runtime_error("The ECL input file requires the presence of the SGAS keyword if "
+            if (FluidSystem::phaseIsActive(gasPhaseIdx) && !hasSgas && FluidSystem::phaseIsActive(oilPhaseIdx))
+                throw std::runtime_error("The ECL input file requires the presence of the SGAS keyword if "
                                      "the gas phase is active");
-
+        }
         if (!hasPressure)
-             throw std::runtime_error("The ECL input file requires the presence of the PRESSURE "
+            throw std::runtime_error("The ECL input file requires the presence of the PRESSURE "
                                       "keyword if the model is initialized explicitly");
         if (FluidSystem::enableDissolvedGas() && !hasRs)
             throw std::runtime_error("The ECL input file requires the RS keyword to be present if"
@@ -2661,12 +2662,12 @@ private:
         std::vector<double> rvData;
         std::vector<double> tempiData;
 
-        if (FluidSystem::phaseIsActive(waterPhaseIdx))
+        if (FluidSystem::phaseIsActive(waterPhaseIdx) && Indices::numPhases > 1)
             waterSaturationData = fieldProps.get_double("SWAT");
         else
             waterSaturationData.resize(numDof);
 
-        if (FluidSystem::phaseIsActive(gasPhaseIdx))
+        if (FluidSystem::phaseIsActive(gasPhaseIdx) && FluidSystem::phaseIsActive(oilPhaseIdx))
             gasSaturationData = fieldProps.get_double("SGAS");
         else
             gasSaturationData.resize(numDof);

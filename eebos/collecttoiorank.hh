@@ -669,14 +669,72 @@ public:
 
     };
 
+    class PackUnPackWBPData : public P2PCommunicatorType::DataHandleInterface
+    {
+        const std::map<std::size_t, double>& localWBPData_;
+        std::map<std::size_t, double>& globalWBPValues_;
+
+    public:
+        PackUnPackWBPData(const std::map<std::size_t, double>& localWBPData,
+                          std::map<std::size_t, double>& globalWBPValues,
+                          bool isIORank)
+            : localWBPData_(localWBPData)
+            , globalWBPValues_(globalWBPValues)
+        {
+            if (isIORank) {
+                MessageBufferType buffer;
+                pack(0, buffer);
+
+                // pass a dummyLink to satisfy virtual class
+                int dummyLink = -1;
+                unpack(dummyLink, buffer);
+            }
+        }
+
+        // pack all data associated with link
+        void pack(int link, MessageBufferType& buffer)
+        {
+            // we should only get one link
+            if (link != 0)
+                throw std::logic_error("link in method pack is not 0 as expected");
+
+            // write all block data
+            unsigned int size = localWBPData_.size();
+            buffer.write(size);
+            for (const auto& wbpPair : localWBPData_) {
+                const auto& global_index = wbpPair.first;
+                const auto& wbp_value = wbpPair.second;
+                buffer.write(global_index);
+                buffer.write(wbp_value);
+            }
+        }
+
+        // unpack all data associated with link
+        void unpack(int /*link*/, MessageBufferType& buffer)
+        {
+            // read all block data
+            unsigned int size = 0;
+            buffer.read(size);
+            for (size_t i = 0; i < size; ++i) {
+                std::size_t idx;
+                double data;
+                buffer.read(idx);
+                buffer.read(data);
+                globalWBPValues_[idx] = data;
+            }
+        }
+
+    };
     // gather solution to rank 0 for EclipseWriter
     void collect(const Ewoms::data::Solution& localCellData,
                  const std::map<std::pair<std::string, int>, double>& localBlockData,
+                 const std::map<std::size_t, double>& localWBPData,
                  const Ewoms::data::Wells& localWellData,
                  const Ewoms::data::GroupAndNetworkValues& localGroupAndNetworkData)
     {
         globalCellData_ = {};
         globalBlockData_.clear();
+        globalWBPData_.clear();
         globalWellData_.clear();
         globalGroupAndNetworkData_.clear();
 
@@ -717,16 +775,26 @@ public:
             this->isIORank()
         };
 
+        PackUnPackWBPData packUnpackWBPData {
+            localWBPData,
+            this->globalWBPData_,
+            this->isIORank()
+        };
+
         toIORankComm_.exchange(packUnpackCellData);
         toIORankComm_.exchange(packUnpackWellData);
         toIORankComm_.exchange(packUnpackGroupAndNetworkData);
         toIORankComm_.exchange(packUnpackBlockData);
+        toIORankComm_.exchange(packUnpackWBPData);
 
 #ifndef NDEBUG
         // mkae sure every process is on the same page
         toIORankComm_.barrier();
 #endif
     }
+
+    const std::map<std::size_t, double>& globalWBPData() const
+    { return this->globalWBPData_; }
 
     const std::map<std::pair<std::string, int>, double>& globalBlockData() const
     { return globalBlockData_; }
@@ -784,6 +852,7 @@ protected:
     std::vector<int> globalRanks_;
     Ewoms::data::Solution globalCellData_;
     std::map<std::pair<std::string, int>, double> globalBlockData_;
+    std::map<std::size_t, double> globalWBPData_;
     Ewoms::data::Wells globalWellData_;
     Ewoms::data::GroupAndNetworkValues globalGroupAndNetworkData_;
     std::vector<int> localIdxToGlobalIdx_;

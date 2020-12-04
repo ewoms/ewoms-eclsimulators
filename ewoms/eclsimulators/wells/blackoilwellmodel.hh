@@ -22,8 +22,15 @@
 #include <ewoms/eclio/opmlog/opmlog.hh>
 
 #include <cassert>
-#include <unordered_map>
+#include <functional>
+#include <map>
+#include <memory>
+#include <string>
 #include <tuple>
+#include <unordered_map>
+#include <vector>
+
+#include <stddef.h>
 
 #include <ewoms/eclio/parser/eclipsestate/runspec.hh>
 
@@ -281,6 +288,15 @@ namespace Ewoms {
 
             // create the well container
             std::vector<WellInterfacePtr > createWellContainer(const int time_step);
+
+            WellInterfacePtr
+            createWellPointer(const int wellID,
+                              const int time_step) const;
+
+            template <typename WellType>
+            std::unique_ptr<WellType>
+            createTypedWellPointer(const int wellID,
+                                   const int time_step) const;
 
             WellInterfacePtr createWellForWellTest(const std::string& well_name, const int report_step, Ewoms::DeferredLogger& deferred_logger) const;
 

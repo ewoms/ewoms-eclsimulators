@@ -24,6 +24,7 @@
 # ifndef FLOW_BLACKOIL_ONLY
 #  include <eflow/eflow_gasoil.hh>
 #  include <eflow/eflow_oilwater.hh>
+#  include <eflow/eflow_gaswater.hh>
 #  include <eflow/eflow_solvent.hh>
 #  include <eflow/eflow_polymer.hh>
 #  include <eflow/eflow_extbo.hh>
@@ -204,19 +205,27 @@ namespace Ewoms
             // Twophase cases
             else if( phases.size() == 2 ) {
                 // oil-gas
-                if (phases.active( Ewoms::Phase::GAS )) {
+                if (phases.active( Ewoms::Phase::OIL ) && phases.active( Ewoms::Phase::GAS )) {
                     Ewoms::eflowGasOilSetDeck(setupTime_, *deck_, *eclipseState_,
                                                *schedule_, *summaryConfig_);
                     return Ewoms::eflowGasOilMain(argc_, argv_, outputCout_, outputFiles_);
                 }
                 // oil-water
-                else if ( phases.active( Ewoms::Phase::WATER ) ) {
+                else if ( phases.active( Ewoms::Phase::OIL ) && phases.active( Ewoms::Phase::WATER ) ) {
                     Ewoms::eflowOilWaterSetDeck(setupTime_, *deck_, *eclipseState_, *schedule_, *summaryConfig_);
                     return Ewoms::eflowOilWaterMain(argc_, argv_, outputCout_, outputFiles_);
                 }
+                // gas-water
+                else if ( phases.active( Ewoms::Phase::GAS ) && phases.active( Ewoms::Phase::WATER ) ) {
+                    if (outputCout_)
+                        std::cerr << "Gas-water systems are not yet supported" << std::endl;
+                    return EXIT_FAILURE;
+                    Ewoms::eflowGasWaterSetDeck(setupTime_, *deck_, *eclipseState_, *schedule_, *summaryConfig_);
+                    return Ewoms::eflowGasWaterMain(argc_, argv_, outputCout_, outputFiles_);
+                }
                 else {
                     if (outputCout_)
-                        std::cerr << "No suitable configuration found, valid are Twophase (oilwater and oilgas), polymer, solvent, or blackoil" << std::endl;
+                        std::cerr << "No suitable configuration found, valid are Twophase (oilwater, oilgas and gaswater), polymer, solvent, or blackoil" << std::endl;
                     return EXIT_FAILURE;
                 }
             }

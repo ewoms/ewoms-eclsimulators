@@ -31,7 +31,7 @@
 #include "eebos_oilwater.hh"
 #include "eebos_oilwater_polymer.hh"
 #include "eebos_gasoil.hh"
-// TODO (?): #include "eebos_watergas.hh"
+#include "eebos_gaswater.hh"
 #include "eebos_energy.hh"
 #include "eebos_solvent.hh"
 #include "eebos_polymer.hh"

@@ -146,7 +146,11 @@ namespace Ewoms
             // For some reason simulator_.model().elementMapper() is not initialized at this stage
             // Hence const auto& elemMapper = simulator_.model().elementMapper(); does not work.
             // Set it up manually
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
             ElementMapper elemMapper(simulator_.vanguard().gridView(), Dune::mcmgElementLayout());
+#else
+            ElementMapper elemMapper(simulator_.vanguard().gridView());
+#endif
             detail::findOverlapAndInterior(simulator_.vanguard().grid(), elemMapper, overlapRows_, interiorRows_);
 
             useWellConn_ = EWOMS_GET_PARAM(TypeTag, bool, MatrixAddWellContributions);
@@ -295,7 +299,7 @@ namespace Ewoms
         int iterations () const { return iterations_; }
 
         /// \copydoc NewtonIterationBlackoilInterface::parallelInformation
-        const std::any& parallelInformation() const { return parallelInformation_; }
+        const Ewoms::any& parallelInformation() const { return parallelInformation_; }
 
     protected:
         // 3x3 matrix block inversion was unstable at least 2.3 until and including

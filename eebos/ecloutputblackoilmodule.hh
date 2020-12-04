@@ -25,8 +25,9 @@
 
 #include <array>
 #include <numeric>
-#include <optional>
+#include <ewoms/common/optional.hh>
 #include <stdexcept>
+#include <map>
 
 #include <ewoms/numerics/models/blackoil/blackoilproperties.hh>
 
@@ -177,7 +178,7 @@ class EclOutputBlackOilModule
 
 public:
     template<class CollectDataToIORankType>
-    EclOutputBlackOilModule(const Simulator& simulator, const CollectDataToIORankType& collectToIORank)
+    EclOutputBlackOilModule(const Simulator& simulator, const std::vector<std::size_t>& wbp_index_list, const CollectDataToIORankType& collectToIORank)
         : simulator_(simulator)
     {
         const Ewoms::SummaryConfig summaryConfig = simulator_.vanguard().summaryConfig();
@@ -205,6 +206,11 @@ public:
                     blockData_[key] = 0.0;
                 }
             }
+        }
+
+        for (const auto& global_index : wbp_index_list) {
+            if (collectToIORank.isCartIdxOnThisRank(global_index - 1))
+                this->wbpData_[global_index] = 0.0;
         }
 
         forceDisableFipOutput_ = EWOMS_GET_PARAM(TypeTag, bool, ForceDisableFluidInPlaceOutput);
@@ -807,6 +813,8 @@ public:
             if (gasConnectionSaturations_.count(cartesianIdx) > 0) {
                 gasConnectionSaturations_[cartesianIdx] = Ewoms::getValue(fs.saturation(gasPhaseIdx));
             }
+            if (this->wbpData_.count(cartesianIdx) > 0)
+                this->wbpData_[cartesianIdx] = Ewoms::getValue(fs.pressure(oilPhaseIdx));
 
             // tracers
             const auto& tracerModel = simulator_.problem().tracerModel();
@@ -1131,8 +1139,8 @@ public:
         const Ewoms::SummaryConfig summaryConfig = simulator_.vanguard().summaryConfig();
         Ewoms::Inplace inplace;
 
-        for (const auto& [region_name, _] : this->regions_) {
-            (void)_;
+        for (const auto& rPair : this->regions_) {
+            const auto& region_name = rPair.first;
             makeRegionSum(inplace, region_name);
         }
 
@@ -1146,7 +1154,7 @@ public:
         //
         // Finally it is of course not desirable to mutate state in an output
         // routine.
-        if (!this->initialInplace_.has_value())
+        if (!static_cast<bool>(this->initialInplace_))
             this->initialInplace_ = inplace;
         return inplace;
     }
@@ -1223,8 +1231,8 @@ public:
                                                                                  inplace.get(Ewoms::Inplace::Phase::PoreVolume),
                                                                                  true);
 
-            std::unordered_map<Ewoms::Inplace::Phase, Scalar> initial_values;
-            std::unordered_map<Ewoms::Inplace::Phase, Scalar> current_values;
+            std::map<Ewoms::Inplace::Phase, Scalar> initial_values;
+            std::map<Ewoms::Inplace::Phase, Scalar> current_values;
 
             for (const auto& phase : Ewoms::Inplace::phases()) {
                 initial_values[phase] = this->initialInplace_->get(phase);
@@ -1241,8 +1249,8 @@ public:
         }
 
         for (size_t reg = 1; reg <= inplace.max_region("FIPNUM"); ++reg) {
-            std::unordered_map<Ewoms::Inplace::Phase, Scalar> initial_values;
-            std::unordered_map<Ewoms::Inplace::Phase, Scalar> current_values;
+            std::map<Ewoms::Inplace::Phase, Scalar> initial_values;
+            std::map<Ewoms::Inplace::Phase, Scalar> current_values;
 
             for (const auto& phase : Ewoms::Inplace::phases()) {
                 initial_values[phase] = this->initialInplace_->get("FIPNUM", phase, reg);
@@ -1805,6 +1813,10 @@ public:
         return 0;
     }
 
+    const std::map<std::size_t, double>& getWBPData() const {
+        return this->wbpData_;
+    }
+
     const std::map<std::pair<std::string, int>, double>& getBlockData()
     { return blockData_; }
 
@@ -1978,7 +1990,7 @@ private:
         return pressurePv / pv;
     }
 
-    void fipUnitConvert_(std::unordered_map<Ewoms::Inplace::Phase, Scalar>& fip) const
+    void fipUnitConvert_(std::map<Ewoms::Inplace::Phase, Scalar>& fip) const
     {
         const Ewoms::UnitSystem& units = simulator_.vanguard().eclState().getUnits();
         if (units.getType() == Ewoms::UnitSystem::UnitType::UNIT_TYPE_FIELD) {
@@ -2028,8 +2040,8 @@ private:
         }
     }
 
-    void outputRegionFluidInPlace_(std::unordered_map<Ewoms::Inplace::Phase, Scalar> oip,
-                                   std::unordered_map<Ewoms::Inplace::Phase, Scalar> cip,
+    void outputRegionFluidInPlace_(std::map<Ewoms::Inplace::Phase, Scalar> oip,
+                                   std::map<Ewoms::Inplace::Phase, Scalar> cip,
                                    const Scalar& pav, const int reg = 0) const
     {
         if (forceDisableFipOutput_)
@@ -2301,17 +2313,18 @@ private:
 
     std::vector<int> failedCellsPb_;
     std::vector<int> failedCellsPd_;
-    std::unordered_map<std::string, std::vector<int>> regions_;
-    std::unordered_map<Ewoms::Inplace::Phase, ScalarBuffer> fip_;
-    std::optional<Ewoms::Inplace> initialInplace_;
+    std::map<std::string, std::vector<int>> regions_;
+    std::map<Ewoms::Inplace::Phase, ScalarBuffer> fip_;
+    Ewoms::optional<Ewoms::Inplace> initialInplace_;
 
     std::vector<Ewoms::SummaryConfigNode> RPRNodes_;
     std::vector<Ewoms::SummaryConfigNode> RPRPNodes_;
-    std::unordered_map<Ewoms::Inplace::Phase, std::vector<Ewoms::SummaryConfigNode>> regionNodes_;
+    std::map<Ewoms::Inplace::Phase, std::vector<Ewoms::SummaryConfigNode>> regionNodes_;
 
     ScalarBuffer hydrocarbonPoreVolume_;
     ScalarBuffer pressureTimesPoreVolume_;
     ScalarBuffer pressureTimesHydrocarbonVolume_;
+    std::map<std::size_t , double> wbpData_;
     std::map<std::pair<std::string, int>, double> blockData_;
     std::map<size_t, Scalar> oilConnectionPressures_;
     std::map<size_t, Scalar> waterConnectionSaturations_;

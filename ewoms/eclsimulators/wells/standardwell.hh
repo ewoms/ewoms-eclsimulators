@@ -635,12 +635,12 @@ namespace Ewoms
                                         std::vector<RateVector>& connectionRates,
                                         DeferredLogger& deferred_logger) const;
 
-        std::optional<double> computeBhpAtThpLimitProd(const WellState& well_state,
+        Ewoms::optional<double> computeBhpAtThpLimitProd(const WellState& well_state,
                                                        const Simulator& eebos_simulator,
                                                        const SummaryState& summary_state,
                                                        DeferredLogger& deferred_logger) const;
 
-        std::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
+        Ewoms::optional<double> computeBhpAtThpLimitInj(const Simulator& eebos_simulator,
                                                       const SummaryState& summary_state,
                                                       DeferredLogger& deferred_logger) const;
 

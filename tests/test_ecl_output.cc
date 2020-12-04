@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE(Summary)
     using Vanguard = GET_PROP_TYPE(TypeTag, Vanguard);
     typedef Ewoms::CollectDataToIORank< Vanguard > CollectDataToIORankType;
     CollectDataToIORankType collectToIORank(simulator->vanguard());
-    Ewoms::EclOutputBlackOilModule<TypeTag> eclOutputModule(*simulator, collectToIORank);
+    Ewoms::EclOutputBlackOilModule<TypeTag> eclOutputModule(*simulator, {}, collectToIORank);
 
     typedef Ewoms::EclWriter<TypeTag> EclWriterType;
     // create the actual ECL writer
