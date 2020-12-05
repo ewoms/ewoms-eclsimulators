@@ -121,8 +121,9 @@ BOOST_AUTO_TEST_CASE(TestStandardWellInput) {
 
     Ewoms::PerforationData dummy;
     std::vector<Ewoms::PerforationData> pdata(well.getConnections().size(), dummy);
+    Ewoms::ParallelWellInfo pinfo{well.name()};
 
-    BOOST_CHECK_THROW( StandardWell( well, -1, param, *rateConverter, 0, 3, 3, 0, 0, pdata), std::invalid_argument);
+    BOOST_CHECK_THROW( StandardWell( well, pinfo, -1, param, *rateConverter, 0, 3, 3, 0, 0, pdata), std::invalid_argument);
 }
 
 BOOST_AUTO_TEST_CASE(TestBehavoir) {
@@ -150,7 +151,8 @@ BOOST_AUTO_TEST_CASE(TestBehavoir) {
                                              std::vector<int>(10, 0)));
             Ewoms::PerforationData dummy;
             std::vector<Ewoms::PerforationData> pdata(wells_ecl[w].getConnections().size(), dummy);
-            wells.emplace_back(new StandardWell(wells_ecl[w], current_timestep, param, *rateConverter, 0, 3, 3, w, 0, pdata) );
+            Ewoms::ParallelWellInfo pinfo{wells_ecl[w].name()};
+            wells.emplace_back(new StandardWell(wells_ecl[w], pinfo, current_timestep, param, *rateConverter, 0, 3, 3, w, 0, pdata) );
         }
     }
 

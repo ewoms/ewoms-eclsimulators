@@ -97,6 +97,11 @@ Ewoms::WellProdIndexCalculator::WellProdIndexCalculator(const Well& well)
     : standardConnFactors_{ calculateStandardConnFactors(well) }
 {}
 
+void Ewoms::WellProdIndexCalculator::reInit(const Well& well)
+{
+    this->standardConnFactors_ = calculateStandardConnFactors(well);
+}
+
 double
 Ewoms::WellProdIndexCalculator::
 connectionProdIndStandard(const std::size_t connIdx,

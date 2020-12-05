@@ -25,6 +25,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <ewoms/common/optional.hh>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -52,6 +53,7 @@
 #include <ewoms/eclsimulators/wells/multisegmentwell.hh>
 #include <ewoms/eclsimulators/wells/wellgrouphelpers.hh>
 #include <ewoms/eclsimulators/wells/wellprodindexcalculator.hh>
+#include <ewoms/eclsimulators/wells/parallelwellinfo.hh>
 #include <ewoms/eclsimulators/timestepping/gatherconvergencereport.hh>
 #include <dune/common/fmatrix.hh>
 #include <dune/istl/bcrsmatrix.hh>
@@ -207,16 +209,8 @@ namespace Ewoms {
             {
                 auto wsrpt = well_state_.report(phase_usage_, Ewoms::UgGridHelpers::globalCell(grid()));
 
-                for (const auto& well : this->wells_ecl_) {
-                    auto xwPos = wsrpt.find(well.name());
-                    if (xwPos == wsrpt.end()) { // No well results.  Unexpected.
-                        continue;
-                    }
-
-                    auto& grval = xwPos->second.guide_rates;
-                    grval.clear();
-                    grval += this->getGuideRateValues(well);
-                }
+                this->assignWellGuideRates(wsrpt);
+                this->assignShutConnections(wsrpt);
 
                 return wsrpt;
             }
@@ -271,6 +265,9 @@ namespace Ewoms {
             std::vector< std::vector<PerforationData> > well_perf_data_;
             std::vector< WellProdIndexCalculator > prod_index_calc_;
 
+            std::vector< ParallelWellInfo > parallel_well_info_;
+            std::vector< ParallelWellInfo* > local_parallel_well_info_;
+
             bool wells_active_;
 
             // a vector of all the wells.
@@ -285,6 +282,9 @@ namespace Ewoms {
 
             void initializeWellProdIndCalculators();
             void initializeWellPerfData();
+            void initializeWellState(const int           timeStepIdx,
+                                     const int           globalNumWells,
+                                     const SummaryState& summaryState);
 
             // create the well container
             std::vector<WellInterfacePtr > createWellContainer(const int time_step);
@@ -320,6 +320,9 @@ namespace Ewoms {
             bool report_step_starts_;
             bool glift_debug = false;
             bool alternative_well_rate_init_;
+
+            Ewoms::optional<int> last_run_wellpi_{};
+
             std::unique_ptr<RateConverterType> rateConverter_;
             std::unique_ptr<VFPProperties<VFPInjProperties,VFPProdProperties>> vfp_properties_;
 
@@ -351,6 +354,11 @@ namespace Ewoms {
             /// \param[out] globalNumWells the number of wells globally.
             std::vector< Well > getLocalNonshutWells(const int timeStepIdx,
                                                      int& globalNumWells) const;
+
+            /// \brief Create the parallel well information
+            /// \param localWells The local wells from ECL schedule
+            std::vector< ParallelWellInfo* >
+            createLocalParallelWellInfo(const std::vector<Well>& localWells);
 
             // compute the well fluxes and assemble them in to the reservoir equations as source terms
             // and in the well equations.
@@ -465,6 +473,10 @@ namespace Ewoms {
 
             void setWsolvent(const Group& group, const Schedule& schedule, const int reportStepIdx, double wsolvent);
 
+            void runWellPIScaling(const int timeStepIdx, DeferredLogger& local_deferredLogger);
+
+            void assignWellGuideRates(data::Wells& wsrpt) const;
+            void assignShutConnections(data::Wells& wsrpt) const;
             void assignGroupValues(const int                               reportStepIdx,
                                    const Schedule&                         sched,
                                    std::map<std::string, data::GroupData>& gvalues) const;

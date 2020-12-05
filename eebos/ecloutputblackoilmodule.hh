@@ -1235,7 +1235,7 @@ public:
             std::map<Ewoms::Inplace::Phase, Scalar> current_values;
 
             for (const auto& phase : Ewoms::Inplace::phases()) {
-                initial_values[phase] = this->initialInplace_->get(phase);
+                initial_values[phase] = (*this->initialInplace_).get(phase);
                 current_values[phase] = inplace.get(phase);
             }
 
@@ -1253,7 +1253,7 @@ public:
             std::map<Ewoms::Inplace::Phase, Scalar> current_values;
 
             for (const auto& phase : Ewoms::Inplace::phases()) {
-                initial_values[phase] = this->initialInplace_->get("FIPNUM", phase, reg);
+                initial_values[phase] = (*this->initialInplace_).get("FIPNUM", phase, reg);
                 current_values[phase] = inplace.get("FIPNUM", phase, reg);
             }
             fipUnitConvert_(initial_values);

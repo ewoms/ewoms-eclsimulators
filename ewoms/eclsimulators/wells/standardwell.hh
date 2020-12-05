@@ -27,6 +27,7 @@
 #include <ewoms/eclsimulators/wells/rateconverter.hh>
 #include <ewoms/eclsimulators/wells/wellinterface.hh>
 #include <ewoms/eclsimulators/wells/wellprodindexcalculator.hh>
+#include <ewoms/eclsimulators/wells/parallelwellinfo.hh>
 
 #include <ewoms/numerics/models/blackoil/blackoilpolymermodules.hh>
 #include <ewoms/numerics/models/blackoil/blackoilsolventmodules.hh>
@@ -153,7 +154,9 @@ namespace Ewoms
         using Base::contiBrineEqIdx;
         static const int contiEnergyEqIdx = Indices::contiEnergyEqIdx;
 
-        StandardWell(const Well& well, const int time_step,
+        StandardWell(const Well& well,
+                     const ParallelWellInfo& pw_info,
+                     const int time_step,
                      const ModelParameters& param,
                      const RateConverterType& rate_converter,
                      const int pvtRegionIdx,
@@ -370,6 +373,9 @@ namespace Ewoms
         OffDiagMatWell duneC_;
         // diagonal matrix for the well
         DiagMatWell invDuneD_;
+
+        // Wrapper for the parallel application of B for distributed wells
+        wellhelpers::ParallelStandardWellB<Scalar> parallelB_;
 
         // several vector used in the matrix calculation
         mutable BVectorWell Bx_;
