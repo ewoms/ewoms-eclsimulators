@@ -102,7 +102,6 @@ namespace Ewoms {
 
         // Create cartesian to compressed mapping
         const auto& schedule_wells = schedule().getWellsatEnd();
-        const auto& cartesianSize = Ewoms::UgGridHelpers::cartDims(grid());
 
         // initialize the additional cell connections introduced by wells.
         for (const auto& well : schedule_wells)
@@ -115,11 +114,8 @@ namespace Ewoms {
             for ( size_t c=0; c < connectionSet.size(); c++ )
             {
                 const auto& connection = connectionSet.get(c);
-                int i = connection.getI();
-                int j = connection.getJ();
-                int k = connection.getK();
-                int cart_grid_idx = i + cartesianSize[0]*(j + cartesianSize[1]*k);
-                int compressed_idx = cartesian_to_compressed_.at(cart_grid_idx);
+                int compressed_idx = cartesian_to_compressed_
+                    .at(connection.global_index());
 
                 if ( compressed_idx >= 0 ) { // Ignore connections in inactive/remote cells.
                     wellCells.push_back(compressed_idx);
@@ -337,8 +333,11 @@ namespace Ewoms {
             // do the initialization for all the wells
             // TODO: to see whether we can postpone of the intialization of the well containers to
             // optimize the usage of the following several member variables
+            std::vector< Scalar > B_avg(numComponents(), Scalar() );
+            computeAverageFormationFactor(B_avg);
+
             for (auto& well : well_container_) {
-                well->init(&phase_usage_, depth_, gravity_, local_num_cells_);
+                well->init(&phase_usage_, depth_, gravity_, local_num_cells_, B_avg);
             }
 
             // update the updated cell flag
@@ -383,9 +382,14 @@ namespace Ewoms {
         }
 
         if (alternative_well_rate_init_) {
-            // Update the well rates to match state, if only single-phase rates.
+            // Update the well rates of well_state_, if only single-phase rates, to
+            // have proper multi-phase rates proportional to rates at bhp zero.
+            // This is done only for producers, as injectors will only have a single
+            // nonzero phase anyway.
             for (auto& well : well_container_) {
-                well->updateWellStateRates(eebosSimulator_, well_state_, local_deferredLogger);
+                if (well->isProducer()) {
+                    well->updateWellStateRates(eebosSimulator_, well_state_, local_deferredLogger);
+                }
             }
         }
 
@@ -429,7 +433,7 @@ namespace Ewoms {
                 WellInterfacePtr well = createWellForWellTest(well_name, timeStepIdx, deferred_logger);
 
                 // some preparation before the well can be used
-                well->init(&phase_usage_, depth_, gravity_, local_num_cells_);
+                well->init(&phase_usage_, depth_, gravity_, local_num_cells_, B_avg);
                 const Well& wellEcl = schedule().getWell(well_name, timeStepIdx);
                 double well_efficiency_factor = wellEcl.getEfficiencyFactor();
                 WellGroupHelpers::accumulateGroupEfficiencyFactor(schedule().getGroup(wellEcl.groupName(), timeStepIdx), schedule(), timeStepIdx, well_efficiency_factor);
@@ -550,6 +554,7 @@ namespace Ewoms {
         int globalNumWells = 0;
         // Make wells_ecl_ contain only this partition's non-shut wells.
         wells_ecl_ = getLocalNonshutWells(report_step, globalNumWells);
+        local_parallel_well_info_ = createLocalParallelWellInfo(wells_ecl_);
 
         this->initializeWellProdIndCalculators();
         initializeWellPerfData();
@@ -559,7 +564,7 @@ namespace Ewoms {
             const auto phaseUsage = phaseUsageFromDeck(eclState());
             const size_t numCells = Ewoms::UgGridHelpers::numCells(grid());
             const bool handle_ms_well = (param_.use_multisegment_well_ && anyMSWellOpenLocal());
-            well_state_.resize(wells_ecl_, schedule(), handle_ms_well, numCells, phaseUsage, well_perf_data_, summaryState, globalNumWells); // Resize for restart step
+            well_state_.resize(wells_ecl_, local_parallel_well_info_, schedule(), handle_ms_well, numCells, phaseUsage, well_perf_data_, summaryState, globalNumWells); // Resize for restart step
             wellsToState(restartValues.wells, restartValues.grp_nwrk, phaseUsage, handle_ms_well, well_state_);
         }
 
@@ -585,27 +590,26 @@ namespace Ewoms {
     BlackoilWellModel<TypeTag>::
     initializeWellPerfData()
     {
-        const auto& grid = eebosSimulator_.vanguard().grid();
-        const auto& cartDims = Ewoms::UgGridHelpers::cartDims(grid);
         well_perf_data_.resize(wells_ecl_.size());
         int well_index = 0;
         for (const auto& well : wells_ecl_) {
             std::size_t completion_index = 0;
             well_perf_data_[well_index].clear();
             well_perf_data_[well_index].reserve(well.getConnections().size());
+            CheckDistributedWellConnections checker(well, *local_parallel_well_info_[well_index]);
+            bool hasFirstPerforation = false;
+            bool firstOpenCompletion = true;
+
             for (const auto& completion : well.getConnections()) {
+                const int active_index =
+                    cartesian_to_compressed_[completion.global_index()];
                 if (completion.state() == Connection::State::OPEN) {
-                    const int i = completion.getI();
-                    const int j = completion.getJ();
-                    const int k = completion.getK();
-                    const int cart_grid_indx = i + cartDims[0] * (j + cartDims[1] * k);
-                    const int active_index = cartesian_to_compressed_[cart_grid_indx];
-                    if (active_index < 0) {
-                        const std::string msg
-                            = ("Cell with i,j,k indices " + std::to_string(i) + " " + std::to_string(j) + " "
-                               + std::to_string(k) + " not found in grid (well = " + well.name() + ").");
-                        EWOMS_THROW(std::runtime_error, msg);
-                    } else {
+                    if (active_index >= 0) {
+                        if (firstOpenCompletion)
+                        {
+                            hasFirstPerforation = true;
+                        }
+                        checker.connectionFound(completion_index);
                         PerforationData pd;
                         pd.cell_index = active_index;
                         pd.connection_transmissibility_factor = completion.CF();
@@ -613,7 +617,9 @@ namespace Ewoms {
                         pd.ecl_index = completion_index;
                         well_perf_data_[well_index].push_back(pd);
                     }
+                    firstOpenCompletion = false;
                 } else {
+                    checker.connectionFound(completion_index);
                     if (completion.state() != Connection::State::SHUT) {
                         EWOMS_THROW(std::runtime_error,
                                   "Completion state: " << Connection::State2String(completion.state()) << " not handled");
@@ -621,6 +627,8 @@ namespace Ewoms {
                 }
                 ++completion_index;
             }
+            checker.checkAllConnectionsFound();
+            local_parallel_well_info_[well_index]->communicateFirstPerforation(hasFirstPerforation);
             ++well_index;
         }
     }
@@ -661,7 +669,7 @@ namespace Ewoms {
             }
         }
 
-        well_state_.init(cellPressures, schedule(), wells_ecl_, timeStepIdx,
+        well_state_.init(cellPressures, schedule(), wells_ecl_, local_parallel_well_info_, timeStepIdx,
                          &previous_well_state_, phase_usage_, well_perf_data_,
                          summaryState, globalNumWells);
     }
@@ -802,12 +810,18 @@ namespace Ewoms {
         // Use the pvtRegionIdx from the top cell
         const auto& perf_data = this->well_perf_data_[wellID];
 
+        // Cater for case where local part might have no perforations.
+        const int pvtreg = perf_data.empty() ?
+            0 : pvt_region_idx_[perf_data.front().cell_index];
+        const auto& parallel_well_info = *local_parallel_well_info_[wellID];
+        auto global_pvtreg = parallel_well_info.broadcastFirstPerforationValue(pvtreg);
+
         return std::make_unique<WellType>(this->wells_ecl_[wellID],
-                                          *local_parallel_well_info_[wellID],
+                                          parallel_well_info,
                                           time_step,
                                           this->param_,
                                           *this->rateConverter_,
-                                          this->pvt_region_idx_[perf_data.front().cell_index],
+                                          global_pvtreg,
                                           this->numComponents(),
                                           this->numPhases(),
                                           wellID,
@@ -2521,9 +2535,11 @@ namespace Ewoms {
             this->previous_well_state_ = this->well_state_;
 
             well_container_ = createWellContainer(timeStepIdx);
-
+            std::vector< Scalar > B_avg(numComponents(), Scalar() );
+            // we don't plan to iterate so just passing trivial B_avg
+            // for now
             for (auto& well : well_container_) {
-                well->init(&phase_usage_, depth_, gravity_, local_num_cells_);
+                well->init(&phase_usage_, depth_, gravity_, local_num_cells_, B_avg);
             }
 
             std::fill(is_cell_perforated_.begin(), is_cell_perforated_.end(), false);

@@ -86,7 +86,7 @@ SET_BOOL_PROP(EFlowModelParameters, UseInnerIterationsMsWells, true);
 SET_INT_PROP(EFlowModelParameters, MaxInnerIterMsWells, 100);
 SET_BOOL_PROP(EFlowModelParameters, UseInnerIterationsWells, false);
 SET_INT_PROP(EFlowModelParameters, MaxInnerIterWells, 50);
-SET_BOOL_PROP(EFlowModelParameters, AlternativeWellRateInit, false);
+SET_BOOL_PROP(EFlowModelParameters, AlternativeWellRateInit, true);
 SET_INT_PROP(EFlowModelParameters, StrictInnerIterMsWells, 40);
 SET_SCALAR_PROP(EFlowModelParameters, RegularizationFactorMsw, 1);
 SET_BOOL_PROP(EFlowModelParameters, EnableWellOperabilityCheck, true);

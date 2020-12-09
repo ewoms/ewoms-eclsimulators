@@ -119,12 +119,14 @@ namespace Ewoms {
         typedef double Scalar;
         static const int numEq = Indices::numEq;
         static const int contiSolventEqIdx = Indices::contiSolventEqIdx;
+        static const int contiZfracEqIdx = Indices::contiZfracEqIdx;
         static const int contiPolymerEqIdx = Indices::contiPolymerEqIdx;
         static const int contiEnergyEqIdx = Indices::contiEnergyEqIdx;
         static const int contiPolymerMWEqIdx = Indices::contiPolymerMWEqIdx;
         static const int contiFoamEqIdx = Indices::contiFoamEqIdx;
         static const int contiBrineEqIdx = Indices::contiBrineEqIdx;
         static const int solventSaturationIdx = Indices::solventSaturationIdx;
+        static const int zFractionIdx = Indices::zFractionIdx;
         static const int polymerConcentrationIdx = Indices::polymerConcentrationIdx;
         static const int polymerMoleWeightIdx = Indices::polymerMoleWeightIdx;
         static const int temperatureIdx = Indices::temperatureIdx;
@@ -136,6 +138,7 @@ namespace Ewoms {
         typedef typename SparseMatrixAdapter::IstlMatrix Mat;
         typedef Dune::BlockVector<VectorBlockType>      BVector;
 
+        typedef ISTLSolver<TypeTag> ISTLSolverType;
         //typedef typename SolutionVector :: value_type            PrimaryVariables ;
 
         // ---------  Public methods  ---------
@@ -165,6 +168,7 @@ namespace Ewoms {
         , has_energy_(GET_PROP_VALUE(TypeTag, EnableEnergy))
         , has_foam_(GET_PROP_VALUE(TypeTag, EnableFoam))
         , has_brine_(GET_PROP_VALUE(TypeTag, EnableBrine))
+        , has_extbo_(GET_PROP_VALUE(TypeTag, EnableExtbo))
         , param_( param )
         , well_model_ (well_model)
         , terminal_output_ (terminal_output)
@@ -609,25 +613,31 @@ namespace Ewoms {
                     maxCoeff[ compIdx ] = std::max( maxCoeff[ compIdx ], std::abs( R2 ) / pvValue );
                 }
 
-                if ( has_solvent_ ) {
+                if (has_solvent_) {
                     B_avg[ contiSolventEqIdx ] += 1.0 / intQuants.solventInverseFormationVolumeFactor().value();
                     const auto R2 = eebosResid[cell_idx][contiSolventEqIdx];
                     R_sum[ contiSolventEqIdx ] += R2;
                     maxCoeff[ contiSolventEqIdx ] = std::max( maxCoeff[ contiSolventEqIdx ], std::abs( R2 ) / pvValue );
                 }
-                if (has_polymer_ ) {
+                if (has_extbo_) {
+                    B_avg[ contiZfracEqIdx ] += 1.0 / fs.invB(FluidSystem::gasPhaseIdx).value();
+                    const auto R2 = eebosResid[cell_idx][contiZfracEqIdx];
+                    R_sum[ contiZfracEqIdx ] += R2;
+                    maxCoeff[ contiZfracEqIdx ] = std::max( maxCoeff[ contiZfracEqIdx ], std::abs( R2 ) / pvValue );
+                }
+                if (has_polymer_) {
                     B_avg[ contiPolymerEqIdx ] += 1.0 / fs.invB(FluidSystem::waterPhaseIdx).value();
                     const auto R2 = eebosResid[cell_idx][contiPolymerEqIdx];
                     R_sum[ contiPolymerEqIdx ] += R2;
                     maxCoeff[ contiPolymerEqIdx ] = std::max( maxCoeff[ contiPolymerEqIdx ], std::abs( R2 ) / pvValue );
                 }
-                if (has_foam_ ) {
+                if (has_foam_) {
                     B_avg[ contiFoamEqIdx ] += 1.0 / fs.invB(FluidSystem::gasPhaseIdx).value();
                     const auto R2 = eebosResid[cell_idx][contiFoamEqIdx];
                     R_sum[ contiFoamEqIdx ] += R2;
                     maxCoeff[ contiFoamEqIdx ] = std::max( maxCoeff[ contiFoamEqIdx ], std::abs( R2 ) / pvValue );
                 }
-                if (has_brine_ ) {
+                if (has_brine_) {
                     B_avg[ contiBrineEqIdx ] += 1.0 / fs.invB(FluidSystem::waterPhaseIdx).value();
                     const auto R2 = eebosResid[cell_idx][contiBrineEqIdx];
                     R_sum[ contiBrineEqIdx ] += R2;
@@ -646,7 +656,7 @@ namespace Ewoms {
                     maxCoeff[contiPolymerMWEqIdx] = std::max( maxCoeff[contiPolymerMWEqIdx], std::abs( R2 ) / pvValue );
                 }
 
-                if (has_energy_ ) {
+                if (has_energy_) {
                     B_avg[ contiEnergyEqIdx ] += 1.0;
                     const auto R2 = eebosResid[cell_idx][contiEnergyEqIdx];
                     R_sum[ contiEnergyEqIdx ] += R2;
@@ -750,6 +760,9 @@ namespace Ewoms {
                 }
                 if (has_solvent_) {
                     compNames[solventSaturationIdx] = "Solvent";
+                }
+                if (has_extbo_) {
+                    compNames[zFractionIdx] = "ZFraction";
                 }
                 if (has_polymer_) {
                     compNames[polymerConcentrationIdx] = "Polymer";
@@ -912,6 +925,7 @@ namespace Ewoms {
         const bool has_energy_;
         const bool has_foam_;
         const bool has_brine_;
+        const bool has_extbo_;
 
         ModelParameters                 param_;
         SimulatorReportSingle failureReport_;

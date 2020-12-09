@@ -20,6 +20,7 @@
 
 #define BOOST_TEST_MODULE WellStateFIBOTest
 
+#include "mpifixture.hh"
 #include <ewoms/eclsimulators/wells/wellstatefullyimplicitblackoil.hh>
 
 #include <boost/test/unit_test.hpp>
@@ -39,6 +40,8 @@
 #include <chrono>
 #include <cstddef>
 #include <string>
+
+BOOST_GLOBAL_FIXTURE(MPIFixture);
 
 struct Setup
 {
@@ -110,7 +113,8 @@ struct Setup
 
 namespace {
     Ewoms::WellStateFullyImplicitBlackoil
-    buildWellState(const Setup& setup, const std::size_t timeStep)
+    buildWellState(const Setup& setup, const std::size_t timeStep,
+                   std::vector<Ewoms::ParallelWellInfo>& pinfos)
     {
         auto state  = Ewoms::WellStateFullyImplicitBlackoil{};
 
@@ -118,9 +122,25 @@ namespace {
             std::vector<double>(setup.grid.c_grid()->number_of_cells,
                                 100.0*Ewoms::unit::barsa);
 
+        auto wells = setup.sched.getWells(timeStep);
+        pinfos.resize(wells.size());
+        std::vector<Ewoms::ParallelWellInfo*> ppinfos(wells.size());
+        auto pw = pinfos.begin();
+        auto ppw = ppinfos.begin();
+
+        for (const auto& well : wells)
+        {
+            *pw = {well.name()};
+            *ppw = &(*pw);
+            pw->communicateFirstPerforation(true);
+            ++pw;
+            ++ppw;
+        }
+
         state.init(cpress, setup.sched,
-                   setup.sched.getWells(timeStep),
-                   timeStep, nullptr, setup.pu, setup.well_perf_data, setup.st, setup.sched.getWells(timeStep).size());
+                   wells, ppinfos,
+                   timeStep, nullptr, setup.pu, setup.well_perf_data, setup.st,
+                   wells.size());
 
         state.initWellStateMSWell(setup.sched.getWells(timeStep),
                                   setup.pu, nullptr);
@@ -217,7 +237,8 @@ BOOST_AUTO_TEST_CASE(Linearisation)
     const Setup setup{ "msw.data" };
     const auto tstep = std::size_t{0};
 
-    const auto wstate = buildWellState(setup, tstep);
+    std::vector<Ewoms::ParallelWellInfo> pinfos;
+    const auto wstate = buildWellState(setup, tstep, pinfos);
 
     BOOST_CHECK_EQUAL(wstate.numSegment(), 6 + 1);
 
@@ -238,7 +259,8 @@ BOOST_AUTO_TEST_CASE(Pressure)
     const Setup setup{ "msw.data" };
     const auto tstep = std::size_t{0};
 
-    auto wstate = buildWellState(setup, tstep);
+    std::vector<Ewoms::ParallelWellInfo> pinfos;
+    auto wstate = buildWellState(setup, tstep, pinfos);
 
     const auto& wells = setup.sched.getWells(tstep);
     const auto prod01_first = wells[0].name() == "PROD01";
@@ -284,7 +306,8 @@ BOOST_AUTO_TEST_CASE(Rates)
     const Setup setup{ "msw.data" };
     const auto tstep = std::size_t{0};
 
-    auto wstate = buildWellState(setup, tstep);
+    std::vector<Ewoms::ParallelWellInfo> pinfos;
+    auto wstate = buildWellState(setup, tstep, pinfos);
 
     const auto wells = setup.sched.getWells(tstep);
     const auto prod01_first = wells[0].name() == "PROD01";
@@ -355,7 +378,9 @@ BOOST_AUTO_TEST_CASE(STOP_well)
       also for wells in the STOP state.
     */
     const Setup setup{ "wells_manager_data_wellSTOP.data" };
-    auto wstate = buildWellState(setup, 0);
+
+    std::vector<Ewoms::ParallelWellInfo> pinfos;
+    auto wstate = buildWellState(setup, 0, pinfos);
     for (const auto& p : wstate.perfPress())
         BOOST_CHECK(p > 0);
 }

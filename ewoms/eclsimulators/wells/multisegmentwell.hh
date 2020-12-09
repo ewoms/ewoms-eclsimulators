@@ -112,7 +112,8 @@ namespace Ewoms
         virtual void init(const PhaseUsage* phase_usage_arg,
                           const std::vector<double>& depth_arg,
                           const double gravity_arg,
-                          const int num_cells) override;
+                          const int num_cells,
+                          const std::vector< Scalar >& B_avg) override;
 
         virtual void initPrimaryVariablesEvaluation() const override;
 
@@ -228,6 +229,9 @@ namespace Ewoms
         using Base::perf_depth_;
         using Base::num_components_;
         using Base::connectionRates_;
+        using Base::ipr_a_;
+        using Base::ipr_b_;
+        using Base::changed_to_stopped_this_step_;
 
         // protected functions from the Base class
         using Base::phaseUsage;
@@ -237,6 +241,8 @@ namespace Ewoms
         using Base::getAllowCrossFlow;
         using Base::scalingFactor;
         using Base::wellIsStopped_;
+        using Base::updateWellOperability;
+        using Base::checkWellOperability;
 
         // TODO: trying to use the information from the Well ewoms-eclio as much
         // as possible, it will possibly be re-implemented later for efficiency reason.
@@ -428,12 +434,6 @@ namespace Ewoms
         // handling the overshooting and undershooting of the fractions
         void processFractions(const int seg) const;
 
-        // checking the operability of the well based on current reservoir condition
-        // it is not implemented for multisegment well yet
-        virtual void checkWellOperability(const Simulator& eebos_simulator,
-                                          const WellState& well_state,
-                                          Ewoms::DeferredLogger& deferred_logger) override;
-
         void updateWellStateFromPrimaryVariables(WellState& well_state, Ewoms::DeferredLogger& deferred_logger) const;
 
         bool frictionalPressureLossConsidered() const;
@@ -454,10 +454,6 @@ namespace Ewoms
                                     const Well::ProductionControls& prod_controls,
                                     WellState& well_state,
                                     Ewoms::DeferredLogger& deferred_logger) override;
-
-        virtual void wellTestingPhysical(const Simulator& simulator, const std::vector<double>& B_avg,
-                                         const double simulation_time, const int report_step,
-                                         WellState& well_state, WellTestState& welltest_state, Ewoms::DeferredLogger& deferred_logger) override;
 
         virtual void updateWaterThroughput(const double dt, WellState& well_state) const override;
 
@@ -513,6 +509,16 @@ namespace Ewoms
         void assembleValvePressureEq(const int seg, WellState& well_state) const;
 
         EvalWell pressureDropValve(const int seg) const;
+
+        // check whether the well is operable under BHP limit with current reservoir condition
+        virtual void checkOperabilityUnderBHPLimitProducer(const WellState& well_state, const Simulator& eebos_simulator, Ewoms::DeferredLogger& deferred_logger) override;
+
+        // check whether the well is operable under THP limit with current reservoir condition
+        virtual void checkOperabilityUnderTHPLimitProducer(const Simulator& eebos_simulator, const WellState& well_state, Ewoms::DeferredLogger& deferred_logger) override;
+
+        // updating the inflow based on the current reservoir condition
+        virtual void updateIPR(const Simulator& eebos_simulator, Ewoms::DeferredLogger& deferred_logger) const override;
+
     };
 
 }

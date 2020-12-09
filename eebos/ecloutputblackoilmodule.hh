@@ -62,7 +62,7 @@ namespace Ewoms {
 
 namespace {
 
-std::string EclString(Ewoms::Inplace::Phase phase) {
+inline std::string EclString(Ewoms::Inplace::Phase phase) {
     switch(phase) {
     case Ewoms::Inplace::Phase::WATER: return "WIP";
     case Ewoms::Inplace::Phase::OIL: return "OIP";

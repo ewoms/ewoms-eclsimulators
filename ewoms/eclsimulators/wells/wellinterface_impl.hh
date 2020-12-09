@@ -47,6 +47,8 @@ namespace Ewoms
       , index_of_well_(index_of_well)
       , first_perf_(first_perf_index)
       , perf_data_(&perf_data)
+      , ipr_a_(number_of_phases_)
+      , ipr_b_(number_of_phases_)
     {
         assert(well.name()==pw_info.name());
         assert(std::is_sorted(perf_data.begin(), perf_data.end(),
@@ -116,10 +118,12 @@ namespace Ewoms
     init(const PhaseUsage* phase_usage_arg,
          const std::vector<double>& /* depth_arg */,
          const double gravity_arg,
-         const int /* num_cells */)
+         const int /* num_cells */,
+         const std::vector< Scalar >& B_avg)
     {
         phase_usage_ = phase_usage_arg;
         gravity_ = gravity_arg;
+        B_avg_ = B_avg;
     }
 
     template<typename TypeTag>
@@ -1053,7 +1057,6 @@ namespace Ewoms
                                Ewoms::DeferredLogger& deferred_logger
                                )
     {
-        const int* cart_dims = Ewoms::UgGridHelpers::cartDims(grid);
         auto cell_to_faces = Ewoms::UgGridHelpers::cell2Faces(grid);
         auto begin_face_centroids = Ewoms::UgGridHelpers::beginFaceCentroids(grid);
 
@@ -1069,23 +1072,18 @@ namespace Ewoms
 
         // COMPDAT handling
         const auto& connectionSet = well_ecl_.getConnections();
+        CheckDistributedWellConnections checker(well_ecl_, parallel_well_info_);
         for (size_t c=0; c<connectionSet.size(); c++) {
             const auto& connection = connectionSet.get(c);
+            const int cell =
+                cartesian_to_compressed[connection.global_index()];
+            if (connection.state() != Connection::State::OPEN || cell >= 0)
+            {
+                checker.connectionFound(c);
+            }
             if (connection.state() == Connection::State::OPEN) {
-                const int i = connection.getI();
-                const int j = connection.getJ();
-                const int k = connection.getK();
 
-                const int* cpgdim = cart_dims;
-                const int cart_grid_indx = i + cpgdim[0]*(j + cpgdim[1]*k);
-                const int cell = cartesian_to_compressed[cart_grid_indx];
-
-                if (cell < 0) {
-                    EWOMS_DEFLOG_THROW(std::runtime_error, "Cell with i,j,k indices " << i << ' ' << j << ' '
-                              << k << " not found in grid (well = " << name() << ')', deferred_logger);
-                }
-
-                {
+                if (cell >= 0) {
                     double radius = connection.rw();
                     const std::array<double, 3> cubical =
                         wellhelpers::getCubeDim<3>(cell_to_faces, begin_face_centroids, cell);
@@ -1117,6 +1115,7 @@ namespace Ewoms
                 }
             }
         }
+        checker.checkAllConnectionsFound();
     }
 
     template<typename TypeTag>
@@ -1274,6 +1273,136 @@ namespace Ewoms
         EWOMS_THROW(std::invalid_argument, "The well with name " + name()
                   + " does not perforate cell " + std::to_string(cellIdx));
         return 0.0;
+    }
+
+    template<typename TypeTag>
+    void
+    WellInterface<TypeTag>::
+    wellTestingPhysical(const Simulator& eebos_simulator, const std::vector<double>& B_avg,
+                        const double /* simulation_time */, const int /* report_step */,
+                        WellState& well_state, WellTestState& welltest_state,
+                        Ewoms::DeferredLogger& deferred_logger)
+    {
+        deferred_logger.info(" well " + name() + " is being tested for physical limits");
+
+        // some most difficult things are the explicit quantities, since there is no information
+        // in the WellState to do a decent initialization
+
+        // TODO: Let us assume that the simulator is updated
+
+        // Let us try to do a normal simualtion running, to keep checking the operability status
+        // If the well is not operable during any of the time. It means it does not pass the physical
+        // limit test.
+
+        // create a copy of the well_state to use. If the operability checking is sucessful, we use this one
+        // to replace the original one
+        WellState well_state_copy = well_state;
+
+        // TODO: well state for this well is kind of all zero status
+        // we should be able to provide a better initialization
+        calculateExplicitQuantities(eebos_simulator, well_state_copy, deferred_logger);
+
+        updateWellOperability(eebos_simulator, well_state_copy, deferred_logger);
+
+        if ( !this->isOperable() ) {
+            const std::string msg = " well " + name() + " is not operable during well testing for physical reason";
+            deferred_logger.debug(msg);
+            return;
+        }
+
+        updateWellStateWithTarget(eebos_simulator, well_state_copy, deferred_logger);
+
+        calculateExplicitQuantities(eebos_simulator, well_state_copy, deferred_logger);
+
+        const double dt = eebos_simulator.timeStepSize();
+        const bool converged = this->iterateWellEquations(eebos_simulator, B_avg, dt, well_state_copy, deferred_logger);
+
+        if (!converged) {
+            const std::string msg = " well " + name() + " did not get converged during well testing for physical reason";
+            deferred_logger.debug(msg);
+            return;
+        }
+
+        if (this->isOperable() ) {
+            welltest_state.openWell(name(), WellTestConfig::PHYSICAL );
+            const std::string msg = " well " + name() + " is re-opened through well testing for physical reason";
+            deferred_logger.info(msg);
+            well_state = well_state_copy;
+        } else {
+            const std::string msg = " well " + name() + " is not operable during well testing for physical reason";
+            deferred_logger.debug(msg);
+        }
+    }
+
+    template<typename TypeTag>
+    void
+    WellInterface<TypeTag>::
+    checkWellOperability(const Simulator& eebos_simulator,
+                         const WellState& well_state,
+                         Ewoms::DeferredLogger& deferred_logger)
+    {
+
+        const bool checkOperability = EWOMS_GET_PARAM(TypeTag, bool, EnableWellOperabilityCheck);
+        if (!checkOperability) {
+            return;
+        }
+
+        // focusing on PRODUCER for now
+        if (this->isInjector()) {
+            return;
+        }
+
+        if (!this->underPredictionMode() ) {
+            return;
+        }
+
+        if (this->wellIsStopped() && !changed_to_stopped_this_step_) {
+            return;
+        }
+
+        const bool old_well_operable = this->operability_status_.isOperable();
+
+        updateWellOperability(eebos_simulator, well_state, deferred_logger);
+
+        const bool well_operable = this->operability_status_.isOperable();
+
+        if (!well_operable && old_well_operable) {
+            if (well_ecl_.getAutomaticShutIn()) {
+                deferred_logger.info(" well " + name() + " gets SHUT during iteration ");
+            } else {
+                if (!this->wellIsStopped()) {
+                    deferred_logger.info(" well " + name() + " gets STOPPED during iteration ");
+                    this->stopWell();
+                    changed_to_stopped_this_step_ = true;
+                }
+            }
+        } else if (well_operable && !old_well_operable) {
+            deferred_logger.info(" well " + name() + " gets REVIVED during iteration ");
+            this->openWell();
+            changed_to_stopped_this_step_ = false;
+        }
+    }
+
+    template<typename TypeTag>
+    void
+    WellInterface<TypeTag>::
+    updateWellOperability(const Simulator& eebos_simulator,
+                          const WellState& well_state,
+                          Ewoms::DeferredLogger& deferred_logger)
+    {
+        this->operability_status_.reset();
+
+        const Well::ProducerCMode& current_control = well_state.currentProductionControls()[this->index_of_well_];
+        // Operability checking is not free
+        // Only check wells under BHP and THP control
+        if(current_control == Well::ProducerCMode::BHP || current_control == Well::ProducerCMode::THP) {
+            updateIPR(eebos_simulator, deferred_logger);
+            checkOperabilityUnderBHPLimitProducer(well_state, eebos_simulator, deferred_logger);
+        }
+        // we do some extra checking for wells under THP control.
+        if (current_control == Well::ProducerCMode::THP) {
+            checkOperabilityUnderTHPLimitProducer(eebos_simulator, well_state, deferred_logger);
+        }
     }
 
     template<typename TypeTag>

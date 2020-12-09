@@ -112,6 +112,7 @@ namespace Ewoms {
                     // broadcast when applying C^T.
                     using YField = typename Y::block_type::value_type;
                     assert(y.size() == 1);
+
 #if DUNE_VERSION_NEWER(DUNE_COMMON, 2,6)
                     this->parallel_well_info_->communication().template allreduce< MySillyWellPlus<YField> >(y[0].container().data(),
                                                                                                              y[0].size());
