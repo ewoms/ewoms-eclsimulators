@@ -168,7 +168,7 @@ namespace Ewoms {
         , has_energy_(GET_PROP_VALUE(TypeTag, EnableEnergy))
         , has_foam_(GET_PROP_VALUE(TypeTag, EnableFoam))
         , has_brine_(GET_PROP_VALUE(TypeTag, EnableBrine))
-        , has_extbo_(GET_PROP_VALUE(TypeTag, EnableExtbo))
+        , has_ssasolvent_(GET_PROP_VALUE(TypeTag, EnableSsaSolvent))
         , param_( param )
         , well_model_ (well_model)
         , terminal_output_ (terminal_output)
@@ -619,7 +619,7 @@ namespace Ewoms {
                     R_sum[ contiSolventEqIdx ] += R2;
                     maxCoeff[ contiSolventEqIdx ] = std::max( maxCoeff[ contiSolventEqIdx ], std::abs( R2 ) / pvValue );
                 }
-                if (has_extbo_) {
+                if (has_ssasolvent_) {
                     B_avg[ contiZfracEqIdx ] += 1.0 / fs.invB(FluidSystem::gasPhaseIdx).value();
                     const auto R2 = eebosResid[cell_idx][contiZfracEqIdx];
                     R_sum[ contiZfracEqIdx ] += R2;
@@ -761,7 +761,7 @@ namespace Ewoms {
                 if (has_solvent_) {
                     compNames[solventSaturationIdx] = "Solvent";
                 }
-                if (has_extbo_) {
+                if (has_ssasolvent_) {
                     compNames[zFractionIdx] = "ZFraction";
                 }
                 if (has_polymer_) {
@@ -925,7 +925,7 @@ namespace Ewoms {
         const bool has_energy_;
         const bool has_foam_;
         const bool has_brine_;
-        const bool has_extbo_;
+        const bool has_ssasolvent_;
 
         ModelParameters                 param_;
         SimulatorReportSingle failureReport_;

@@ -351,10 +351,10 @@ public:
             cFoam_.resize(bufferSize, 0.0);
         if (GET_PROP_VALUE(TypeTag, EnableBrine))
             cSalt_.resize(bufferSize, 0.0);
-        if (GET_PROP_VALUE(TypeTag, EnableExtbo)) {
-            extboX_.resize(bufferSize, 0.0);
-            extboY_.resize(bufferSize, 0.0);
-            extboZ_.resize(bufferSize, 0.0);
+        if (GET_PROP_VALUE(TypeTag, EnableSsaSolvent)) {
+            ssaSolventX_.resize(bufferSize, 0.0);
+            ssaSolventY_.resize(bufferSize, 0.0);
+            ssaSolventZ_.resize(bufferSize, 0.0);
             mFracOil_.resize(bufferSize, 0.0);
             mFracGas_.resize(bufferSize, 0.0);
             mFracCo2_.resize(bufferSize, 0.0);
@@ -592,9 +592,9 @@ public:
                 if (viscosity_[phaseIdx].size() == 0)
                     continue;
 
-                if (extboX_.size() > 0 && phaseIdx==oilPhaseIdx)
+                if (ssaSolventX_.size() > 0 && phaseIdx==oilPhaseIdx)
                     viscosity_[phaseIdx][globalDofIdx] = Ewoms::getValue(intQuants.oilViscosity());
-                else if (extboX_.size() > 0 && phaseIdx==gasPhaseIdx)
+                else if (ssaSolventX_.size() > 0 && phaseIdx==gasPhaseIdx)
                     viscosity_[phaseIdx][globalDofIdx] = Ewoms::getValue(intQuants.gasViscosity());
                 else
                     viscosity_[phaseIdx][globalDofIdx] = Ewoms::getValue(fs.viscosity(phaseIdx));
@@ -625,16 +625,16 @@ public:
                 cSalt_[globalDofIdx] = fs.saltConcentration().value();
             }
 
-            if (extboX_.size() > 0) {
-                extboX_[globalDofIdx] = intQuants.xVolume().value();
+            if (ssaSolventX_.size() > 0) {
+                ssaSolventX_[globalDofIdx] = intQuants.xVolume().value();
             }
 
-            if (extboY_.size() > 0) {
-                extboY_[globalDofIdx] = intQuants.yVolume().value();
+            if (ssaSolventY_.size() > 0) {
+                ssaSolventY_[globalDofIdx] = intQuants.yVolume().value();
             }
 
-            if (extboZ_.size() > 0) {
-                extboZ_[globalDofIdx] = intQuants.zFraction().value();
+            if (ssaSolventZ_.size() > 0) {
+                ssaSolventZ_[globalDofIdx] = intQuants.zFraction().value();
             }
 
             if (mFracCo2_.size() > 0) {
@@ -1041,14 +1041,14 @@ public:
         if (sSol_.size() > 0)
             sol.insert ("SSOLVENT", Ewoms::UnitSystem::measure::identity, std::move(sSol_), Ewoms::data::TargetType::RESTART_SOLUTION);
 
-        if (extboX_.size() > 0)
-            sol.insert ("SS_X", Ewoms::UnitSystem::measure::identity, std::move(extboX_), Ewoms::data::TargetType::RESTART_SOLUTION);
+        if (ssaSolventX_.size() > 0)
+            sol.insert ("SS_X", Ewoms::UnitSystem::measure::identity, std::move(ssaSolventX_), Ewoms::data::TargetType::RESTART_SOLUTION);
 
-        if (extboY_.size() > 0)
-            sol.insert ("SS_Y", Ewoms::UnitSystem::measure::identity, std::move(extboY_), Ewoms::data::TargetType::RESTART_SOLUTION);
+        if (ssaSolventY_.size() > 0)
+            sol.insert ("SS_Y", Ewoms::UnitSystem::measure::identity, std::move(ssaSolventY_), Ewoms::data::TargetType::RESTART_SOLUTION);
 
-        if (extboZ_.size() > 0)
-            sol.insert ("SS_Z", Ewoms::UnitSystem::measure::identity, std::move(extboZ_), Ewoms::data::TargetType::RESTART_SOLUTION);
+        if (ssaSolventZ_.size() > 0)
+            sol.insert ("SS_Z", Ewoms::UnitSystem::measure::identity, std::move(ssaSolventZ_), Ewoms::data::TargetType::RESTART_SOLUTION);
 
         if (mFracOil_.size() > 0)
             sol.insert ("STD_OIL", Ewoms::UnitSystem::measure::identity, std::move(mFracOil_), Ewoms::data::TargetType::RESTART_SOLUTION);
@@ -2288,9 +2288,9 @@ private:
     ScalarBuffer viscosity_[numPhases];
     ScalarBuffer relativePermeability_[numPhases];
     ScalarBuffer sSol_;
-    ScalarBuffer extboX_;
-    ScalarBuffer extboY_;
-    ScalarBuffer extboZ_;
+    ScalarBuffer ssaSolventX_;
+    ScalarBuffer ssaSolventY_;
+    ScalarBuffer ssaSolventZ_;
     ScalarBuffer mFracOil_;
     ScalarBuffer mFracGas_;
     ScalarBuffer mFracCo2_;

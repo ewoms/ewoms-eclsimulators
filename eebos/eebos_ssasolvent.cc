@@ -24,25 +24,26 @@
 #include "config.h"
 
 #include "eebos.hh"
-#include "starteebos.hh"
+
+#include <ewoms/numerics/utils/start.hh>
 
 BEGIN_PROPERTIES
 
-NEW_TYPE_TAG(EebosExtboTypeTag, INHERITS_FROM(EebosTypeTag));
+NEW_TYPE_TAG(EebosSsaSolventTypeTag, INHERITS_FROM(EebosTypeTag));
 
 // enable the polymer extension of the black oil model
-SET_BOOL_PROP(EebosExtboTypeTag, EnableExtbo, true);
+SET_BOOL_PROP(EebosSsaSolventTypeTag, EnableSsaSolvent, true);
 
 END_PROPERTIES
 
 namespace Ewoms {
 
-void eebosExtboSetDeck(Ewoms::Deck* deck,
+void eebosSsaSolventSetDeck(Ewoms::Deck* deck,
                       Ewoms::ParseContext* parseContext,
                       Ewoms::ErrorGuard* errorGuard,
                       double externalSetupTime)
 {
-    using ProblemTypeTag = TTAG(EebosExtboTypeTag);
+    using ProblemTypeTag = TTAG(EebosSsaSolventTypeTag);
     using Vanguard = GET_PROP_TYPE(ProblemTypeTag, Vanguard);
 
     Vanguard::setExternalSetupTime(externalSetupTime);
@@ -51,10 +52,10 @@ void eebosExtboSetDeck(Ewoms::Deck* deck,
     Vanguard::setExternalDeck(deck);
 }
 
-int eebosExtboMain(int argc, char **argv)
+int eebosSsaSolventMain(int argc, char **argv)
 {
-    using ProblemTypeTag = TTAG(EebosExtboTypeTag);
-    return Ewoms::startEebos<ProblemTypeTag>(argc, argv);
+    using ProblemTypeTag = TTAG(EebosSsaSolventTypeTag);
+    return Ewoms::start<ProblemTypeTag>(argc, argv);
 }
 
 }

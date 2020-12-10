@@ -31,7 +31,7 @@ namespace Ewoms {
     BlackoilWellModel(Simulator& eebosSimulator)
         : eebosSimulator_(eebosSimulator)
         , has_solvent_(GET_PROP_VALUE(TypeTag, EnableSolvent))
-        , has_zFraction_(GET_PROP_VALUE(TypeTag, EnableExtbo))
+        , has_zFraction_(GET_PROP_VALUE(TypeTag, EnableSsaSolvent))
         , has_polymer_(GET_PROP_VALUE(TypeTag, EnablePolymer))
     {
         terminal_output_ = false;

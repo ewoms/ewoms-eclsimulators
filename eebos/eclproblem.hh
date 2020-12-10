@@ -366,7 +366,7 @@ SET_BOOL_PROP(EclBaseProblem, EnablePolymer, false);
 SET_BOOL_PROP(EclBaseProblem, EnableSolvent, false);
 SET_BOOL_PROP(EclBaseProblem, EnableEnergy, false);
 SET_BOOL_PROP(EclBaseProblem, EnableFoam, false);
-SET_BOOL_PROP(EclBaseProblem, EnableExtbo, false);
+SET_BOOL_PROP(EclBaseProblem, EnableSsaSolvent, false);
 
 // disable thermal flux boundaries by default
 SET_BOOL_PROP(EclBaseProblem, EnableThermalFluxBoundaries, false);
@@ -421,7 +421,7 @@ class EclProblem : public GET_PROP_TYPE(TypeTag, BaseProblem)
     enum { enableBrine = GET_PROP_VALUE(TypeTag, EnableBrine) };
     enum { enablePolymerMolarWeight = GET_PROP_VALUE(TypeTag, EnablePolymerMW) };
     enum { enableFoam = GET_PROP_VALUE(TypeTag, EnableFoam) };
-    enum { enableExtbo = GET_PROP_VALUE(TypeTag, EnableExtbo) };
+    enum { enableSsaSolvent = GET_PROP_VALUE(TypeTag, EnableSsaSolvent) };
     enum { enableTemperature = GET_PROP_VALUE(TypeTag, EnableTemperature) };
     enum { enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy) };
     enum { enableThermalFluxBoundaries = GET_PROP_VALUE(TypeTag, EnableThermalFluxBoundaries) };
@@ -456,7 +456,7 @@ class EclProblem : public GET_PROP_TYPE(TypeTag, BaseProblem)
     typedef BlackOilPolymerModule<TypeTag> PolymerModule;
     typedef BlackOilFoamModule<TypeTag> FoamModule;
     typedef BlackOilBrineModule<TypeTag> BrineModule;
-    typedef BlackOilExtboModule<TypeTag> ExtboModule;
+    typedef BlackOilSsaSolventModule<TypeTag> SsaSolventModule;
 
     typedef typename EclEquilInitializer<TypeTag>::ScalarFluidState InitialFluidState;
 
@@ -637,7 +637,7 @@ public:
         PolymerModule::initFromEclState(vanguard.eclState());
         FoamModule::initFromEclState(vanguard.eclState());
         BrineModule::initFromEclState(vanguard.eclState());
-        ExtboModule::initFromEclState(vanguard.eclState());
+        SsaSolventModule::initFromEclState(vanguard.eclState());
 
         // create the ECL writer
         eclWriter_.reset(new EclWriterType(simulator));
@@ -1960,9 +1960,9 @@ private:
         else if (!enablePolymer && deck.hasKeyword("POLYMER"))
             throw std::runtime_error("The deck enables the polymer option, but the simulator is compiled without it.");
 
-        if (enableExtbo && !deck.hasKeyword("PVTSOL"))
+        if (enableSsaSolvent && !deck.hasKeyword("PVTSOL"))
             throw std::runtime_error("The simulator requires the extendedBO option to be enabled, but the deck does not.");
-        else if (!enableExtbo && deck.hasKeyword("PVTSOL"))
+        else if (!enableSsaSolvent && deck.hasKeyword("PVTSOL"))
             throw std::runtime_error("The deck enables the extendedBO option, but the simulator is compiled without it.");
 
         if (deck.hasKeyword("TEMP") && deck.hasKeyword("THERMAL"))

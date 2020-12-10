@@ -31,7 +31,7 @@
 
 #include <ewoms/numerics/models/blackoil/blackoilpolymermodules.hh>
 #include <ewoms/numerics/models/blackoil/blackoilsolventmodules.hh>
-#include <ewoms/numerics/models/blackoil/blackoilextbomodules.hh>
+#include <ewoms/numerics/models/blackoil/blackoilssasolventmodules.hh>
 #include <ewoms/numerics/models/blackoil/blackoilfoammodules.hh>
 #include <ewoms/numerics/models/blackoil/blackoilbrinemodules.hh>
 
@@ -90,10 +90,10 @@ namespace Ewoms
         static const int numEnergyEq = Indices::numEnergy;
         static const int numFoamEq = Indices::numFoam;
         static const int numBrineEq = Indices::numBrine;
-        static const int numExtbos = Indices::numExtbos;
+        static const int numSsaSolvents = Indices::numSsaSolvents;
 
         // number of the conservation equations
-        static const int numWellConservationEq = numEq - numPolymerEq - numEnergyEq - numFoamEq - numBrineEq - numExtbos;
+        static const int numWellConservationEq = numEq - numPolymerEq - numEnergyEq - numFoamEq - numBrineEq - numSsaSolvents;
         // number of the well control equations
         static const int numWellControlEq = 1;
         // number of the well equations that will always be used

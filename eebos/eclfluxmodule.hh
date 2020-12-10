@@ -113,7 +113,7 @@ class EclTransExtensiveQuantities
     enum { gasPhaseIdx = FluidSystem::gasPhaseIdx };
     enum { numPhases = FluidSystem::numPhases };
     enum { enableSolvent = GET_PROP_VALUE(TypeTag, EnableSolvent) };
-    enum { enableExtbo = GET_PROP_VALUE(TypeTag, EnableExtbo) };
+    enum { enableSsaSolvent = GET_PROP_VALUE(TypeTag, EnableSsaSolvent) };
     enum { enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy) };
 
     typedef Ewoms::MathToolbox<Evaluation> Toolbox;
@@ -274,7 +274,7 @@ protected:
 
             const Evaluation& pressureInterior = intQuantsIn.fluidState().pressure(phaseIdx);
             Evaluation pressureExterior = Toolbox::value(intQuantsEx.fluidState().pressure(phaseIdx));
-            if (enableExtbo) // added stability; particulary useful for solvent migrating in pure water
+            if (enableSsaSolvent) // added stability; particulary useful for solvent migrating in pure water
                              // where the solvent fraction displays a 0/1 behaviour ...
                 pressureExterior += Toolbox::value(rhoAvg)*(distZ*g);
             else

@@ -16,8 +16,8 @@
   You should have received a copy of the GNU General Public License
   along with eWoms.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EFLOW_EXTBO_HH
-#define EFLOW_EXTBO_HH
+#ifndef EFLOW_SSASOLVENT_HH
+#define EFLOW_SSASOLVENT_HH
 
 #include <ewoms/eclio/parser/deck/deck.hh>
 #include <ewoms/eclio/parser/eclipsestate/eclipsestate.hh>
@@ -25,12 +25,12 @@
 #include <ewoms/eclio/parser/eclipsestate/summaryconfig/summaryconfig.hh>
 
 namespace Ewoms {
-void eflowExtboSetDeck(double setupTime,
+void eflowSsaSolventSetDeck(double setupTime,
                           Deck* deck,
                           EclipseState& eclState,
                           Schedule& schedule,
                           SummaryConfig& summaryConfig);
-int eflowExtboMain(int argc, char** argv, bool outputCout, bool outputFiles);
+int eflowSsaSolventMain(int argc, char** argv, bool outputCout, bool outputFiles);
 }
 
-#endif // EFLOW_EXTBO_HH
+#endif // EFLOW_SSASOLVENT_HH

@@ -35,7 +35,7 @@ private:
 
 public:
     typedef Ewoms::BlackOilOnePhaseIndices<GET_PROP_VALUE(TypeTag, EnableSolvent),
-                                         GET_PROP_VALUE(TypeTag, EnableExtbo),
+                                         GET_PROP_VALUE(TypeTag, EnableSsaSolvent),
                                          GET_PROP_VALUE(TypeTag, EnablePolymer),
                                          GET_PROP_VALUE(TypeTag, EnableEnergy),
                                          GET_PROP_VALUE(TypeTag, EnableFoam),

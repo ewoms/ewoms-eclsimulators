@@ -18,7 +18,7 @@
 */
 #include "config.h"
 
-#include <eflow/eflow_extbo.hh>
+#include <eflow/eflow_ssasolvent.hh>
 
 #include <ewoms/common/resetlocale.hh>
 #include <ewoms/eclgrids/cpgrid.hh>
@@ -33,19 +33,19 @@
 
 BEGIN_PROPERTIES
 
-NEW_TYPE_TAG(EclEFlowExtboProblem, INHERITS_FROM(EclEFlowProblem));
-SET_BOOL_PROP(EclEFlowExtboProblem, EnableExtbo, true);
+NEW_TYPE_TAG(EclEFlowSsaSolventProblem, INHERITS_FROM(EclEFlowProblem));
+SET_BOOL_PROP(EclEFlowSsaSolventProblem, EnableSsaSolvent, true);
 
 END_PROPERTIES
 
 namespace Ewoms {
-void eflowExtboSetDeck(double setupTime,
+void eflowSsaSolventSetDeck(double setupTime,
                           Deck* deck,
                           EclipseState& eclState,
                           Schedule& schedule,
                           SummaryConfig& summaryConfig)
 {
-    using TypeTag = TTAG(EclEFlowExtboProblem);
+    using TypeTag = TTAG(EclEFlowSsaSolventProblem);
     using Vanguard = GET_PROP_TYPE(TypeTag, Vanguard);
 
     Vanguard::setExternalSetupTime(setupTime);
@@ -56,7 +56,7 @@ void eflowExtboSetDeck(double setupTime,
 }
 
 // ----------------- Main program -----------------
-int eflowExtboMain(int argc, char** argv, bool outputCout, bool outputFiles)
+int eflowSsaSolventMain(int argc, char** argv, bool outputCout, bool outputFiles)
 {
     // we always want to use the default locale, and thus spare us the trouble
     // with incorrect locale settings.
@@ -69,7 +69,7 @@ int eflowExtboMain(int argc, char** argv, bool outputCout, bool outputFiles)
     Dune::MPIHelper::instance(argc, argv).rank();
 #endif
 
-    Ewoms::EFlowMain<TTAG(EclEFlowExtboProblem)>
+    Ewoms::EFlowMain<TTAG(EclEFlowSsaSolventProblem)>
         mainfunc {argc, argv, outputCout, outputFiles};
     return mainfunc.execute();
 }

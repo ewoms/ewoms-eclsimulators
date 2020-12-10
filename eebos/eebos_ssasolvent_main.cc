@@ -21,13 +21,20 @@
  *
  * \brief The main function for the stand alone solvent variant of eebos.
  *
- * This only calls the eebosExtboMain() function.
+ * This only calls the eebosSsaSolventMain() function.
  */
 #include "config.h"
 
-#include "eebos_extbo.hh"
+#include "eebos_ssasolvent.hh"
+
+#include <ewoms/material/fluidsystems/blackoilfluidsystem.hh>
+
+namespace Ewoms {
+namespace CO2DefaultTables {
+#include <ewoms/material/components/co2tables.inc.cc>
+}}
 
 int main(int argc, char** argv)
 {
-    return Ewoms::eebosExtboMain(argc, argv);
+    return Ewoms::eebosSsaSolventMain(argc, argv);
 }

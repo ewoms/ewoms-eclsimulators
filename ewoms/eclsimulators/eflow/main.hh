@@ -27,7 +27,7 @@
 #  include <eflow/eflow_gaswater.hh>
 #  include <eflow/eflow_solvent.hh>
 #  include <eflow/eflow_polymer.hh>
-#  include <eflow/eflow_extbo.hh>
+#  include <eflow/eflow_ssasolvent.hh>
 #  include <eflow/eflow_foam.hh>
 #  include <eflow/eflow_brine.hh>
 #  include <eflow/eflow_oilwater_brine.hh>
@@ -300,12 +300,12 @@ namespace Ewoms
             }
             // Extended BO case
             else if ( phases.active( Ewoms::Phase::ZFRACTION ) ) {
-                Ewoms::eflowExtboSetDeck(setupTime_,
+                Ewoms::eflowSsaSolventSetDeck(setupTime_,
                                           deck_.get(),
                                           *eclipseState_,
                                           *schedule_,
                                           *summaryConfig_);
-                return Ewoms::eflowExtboMain(argc_, argv_, outputCout_, outputFiles_);
+                return Ewoms::eflowSsaSolventMain(argc_, argv_, outputCout_, outputFiles_);
             }
             // Energy case
             else if (eclipseState_->getSimulationConfig().isThermal()) {
