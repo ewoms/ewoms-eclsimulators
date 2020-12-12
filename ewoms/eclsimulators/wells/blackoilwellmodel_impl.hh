@@ -457,7 +457,7 @@ namespace Ewoms {
         // Clear the communication data structures for above values.
         for(auto&& pinfo : local_parallel_well_info_)
         {
-            pinfo->clearCommunicateAbove();
+            pinfo->clearCommunicateAboveBelow();
         }
     }
 
@@ -733,7 +733,7 @@ namespace Ewoms {
                         continue;
                     } else {
                         // stopped wells are added to the container but marked as stopped
-                        well_state_.thp()[w] = 0.;
+                        well_state_.stopWell(w);
                         wellIsStopped = true;
                     }
                 }
@@ -780,7 +780,7 @@ namespace Ewoms {
                 }
 
                 if (well_status == Well::Status::STOP) {
-                    well_state_.thp()[w] = 0.;
+                    well_state_.stopWell(w);
                     wellIsStopped = true;
                 }
 
@@ -1389,30 +1389,29 @@ namespace Ewoms {
         const Ewoms::SummaryConfig& summaryConfig = eebosSimulator_.vanguard().summaryConfig();
         const bool write_restart_file = eebosSimulator_.vanguard().schedule().restart().getWriteRestartFile(reportStepIdx);
         int exception_thrown = 0;
-        try {
-            for (const auto& well : well_container_) {
-                const bool needed_for_summary = ((summaryConfig.hasSummaryKey( "WWPI:" + well->name()) ||
-                                                  summaryConfig.hasSummaryKey( "WOPI:" + well->name()) ||
-                                                  summaryConfig.hasSummaryKey( "WGPI:" + well->name())) && well->isInjector()) ||
-                                                ((summaryConfig.hasSummaryKey( "WWPP:" + well->name()) ||
-                                                  summaryConfig.hasSummaryKey( "WOPP:" + well->name()) ||
-                                                  summaryConfig.hasSummaryKey( "WGPP:" + well->name())) && well->isProducer());
+        for (const auto& well : well_container_) {
+            const bool needed_for_summary = ((summaryConfig.hasSummaryKey( "WWPI:" + well->name()) ||
+                                              summaryConfig.hasSummaryKey( "WOPI:" + well->name()) ||
+                                              summaryConfig.hasSummaryKey( "WGPI:" + well->name())) && well->isInjector()) ||
+                    ((summaryConfig.hasSummaryKey( "WWPP:" + well->name()) ||
+                      summaryConfig.hasSummaryKey( "WOPP:" + well->name()) ||
+                      summaryConfig.hasSummaryKey( "WGPP:" + well->name())) && well->isProducer());
 
-                bool needPotentialsForGuideRate = true;//eclWell.getGuideRatePhase() == Well::GuideRateTarget::UNDEFINED;
-                if (write_restart_file || needed_for_summary || needPotentialsForGuideRate)
-                {
+            bool needPotentialsForGuideRate = true;//eclWell.getGuideRatePhase() == Well::GuideRateTarget::UNDEFINED;
+            if (write_restart_file || needed_for_summary || needPotentialsForGuideRate)
+            {
+                try {
                     std::vector<double> potentials;
                     well->computeWellPotentials(eebosSimulator_, B_avg, well_state_copy, potentials, deferred_logger);
                     // putting the sucessfully calculated potentials to the well_potentials
                     for (int p = 0; p < np; ++p) {
                         well_potentials[well->indexOfWell() * np + p] = std::abs(potentials[p]);
                     }
+                } catch (std::exception& e) {
+                    exception_thrown = 1;
                 }
-            } // end of for (int w = 0; w < nw; ++w)
-        } catch (std::exception& e) {
-            exception_thrown = 1;
+            }
         }
-
         logAndCheckForExceptionsAndThrow(deferred_logger, exception_thrown, "computeWellPotentials() failed.", terminal_output_);
 
         // Store it in the well state

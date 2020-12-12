@@ -143,12 +143,13 @@ namespace Ewoms
                 const auto& wname = wells_ecl[w].name();
                 const auto& well_info = this->wellMap().at(wname);
                 const int connpos = well_info[1];
-                const int num_perf_this_well = well_info[2];
+                int num_perf_this_well = well_info[2];
+                int global_num_perf_this_well = parallel_well_info[w]->communication().sum(num_perf_this_well);
 
                 for (int perf = connpos; perf < connpos + num_perf_this_well; ++perf) {
                     if (wells_ecl[w].getStatus() == Well::Status::OPEN) {
                         for (int p = 0; p < np; ++p) {
-                            perfphaserates_[np*perf + p] = wellRates()[np*w + p] / double(num_perf_this_well);
+                            perfphaserates_[np*perf + p] = wellRates()[np*w + p] / double(global_num_perf_this_well);
                         }
                     }
                     perfPress()[perf] = cellPressures[well_perf_data[w][perf-connpos].cell_index];
@@ -182,12 +183,16 @@ namespace Ewoms
                 auto end = prevState->wellMap().end();
                 for (int w = 0; w < nw; ++w) {
                     const Well& well = wells_ecl[w];
-                    const int num_perf_this_well = well_perf_data[w].size();
+                    int num_perf_this_well = well_perf_data[w].size();
                     auto it = prevState->wellMap().find(well.name());
                     if ( it != end )
                     {
-                        const int oldIndex = (*it).second[ 0 ];
                         const int newIndex = w;
+                        const int oldIndex = it->second[ 0 ];
+                        if (prevState->status_[oldIndex] == Well::Status::SHUT) {
+                            // Well was shut in previous state, do not use its values.
+                            continue;
+                        }
 
                         // bhp
                         bhp()[ newIndex ] = prevState->bhp()[ oldIndex ];
@@ -222,6 +227,10 @@ namespace Ewoms
                         // perfPhaseRates
                         const int oldPerf_idx_beg = (*it).second[ 1 ];
                         const int num_perf_old_well = (*it).second[ 2 ];
+                        int num_perf_changed = (num_perf_old_well != num_perf_this_well) ? 1 : 0;
+                        num_perf_changed = parallel_well_info[w]->communication().sum(num_perf_changed);
+                        bool global_num_perf_same = (num_perf_changed == 0);
+
                         // copy perforation rates when the number of perforations is equal,
                         // otherwise initialize perfphaserates to well rates divided by the number of perforations.
 
@@ -229,7 +238,7 @@ namespace Ewoms
                         if (new_iter == this->wellMap().end())
                             throw std::logic_error("Fatal error in WellStateFullyImplicitBlackoil - could not find well: " + well.name());
                         int connpos = new_iter->second[1];
-                        if( num_perf_old_well == num_perf_this_well )
+                        if( global_num_perf_same )
                         {
                             int old_perf_phase_idx = oldPerf_idx_beg *np;
                             for (int perf_phase_idx = connpos*np;
@@ -238,14 +247,15 @@ namespace Ewoms
                                 perfPhaseRates()[ perf_phase_idx ] = prevState->perfPhaseRates()[ old_perf_phase_idx ];
                             }
                         } else {
+                            int global_num_perf_this_well = parallel_well_info[w]->communication().sum(num_perf_this_well);
                             for (int perf = connpos; perf < connpos + num_perf_this_well; ++perf) {
                                 for (int p = 0; p < np; ++p) {
-                                    perfPhaseRates()[np*perf + p] = wellRates()[np*newIndex + p] / double(num_perf_this_well);
+                                    perfPhaseRates()[np*perf + p] = wellRates()[np*newIndex + p] / double(global_num_perf_this_well);
                                 }
                             }
                         }
                         // perfPressures
-                        if( num_perf_old_well == num_perf_this_well )
+                        if( global_num_perf_same )
                         {
                             int oldPerf_idx = oldPerf_idx_beg;
                             for (int perf = connpos; perf < connpos + num_perf_this_well; ++perf, ++oldPerf_idx )
@@ -255,7 +265,7 @@ namespace Ewoms
                         }
                         // perfSolventRates
                         if (pu.has_solvent) {
-                            if( num_perf_old_well == num_perf_this_well )
+                            if( global_num_perf_same )
                             {
                                 int oldPerf_idx = oldPerf_idx_beg;
                                 for (int perf = connpos; perf < connpos + num_perf_this_well; ++perf, ++oldPerf_idx )
@@ -552,7 +562,7 @@ namespace Ewoms
             for( const auto& wt : this->wellMap() ) {
                 const auto w = wt.second[ 0 ];
                 const auto& pwinfo = *parallel_well_info_[w];
-                if (!this->open_for_output_[w] || !pwinfo.isOwner())
+                if ((this->status_[w] != Well::Status::OPEN) || !pwinfo.isOwner())
                     continue;
 
                 auto& well = res.at( wt.first );
@@ -896,7 +906,7 @@ namespace Ewoms
 
         /// One rate pr well
         double solventWellRate(const int w) const {
-            return std::accumulate(&perfRateSolvent_[0] + first_perf_index_[w], &perfRateSolvent_[0] + first_perf_index_[w+1], 0.0);
+            return parallel_well_info_[w]->sumPerfValues(&perfRateSolvent_[0] + first_perf_index_[w], &perfRateSolvent_[0] + first_perf_index_[w+1]);
         }
 
         /// One rate pr well connection.
@@ -905,7 +915,7 @@ namespace Ewoms
 
         /// One rate pr well
         double polymerWellRate(const int w) const {
-            return std::accumulate(&perfRatePolymer_[0] + first_perf_index_[w], &perfRatePolymer_[0] + first_perf_index_[w+1], 0.0);
+            return parallel_well_info_[w]->sumPerfValues(&perfRatePolymer_[0] + first_perf_index_[w], &perfRatePolymer_[0] + first_perf_index_[w+1]);
         }
 
         /// One rate pr well connection.
@@ -914,7 +924,7 @@ namespace Ewoms
 
         /// One rate pr well
         double brineWellRate(const int w) const {
-            return std::accumulate(&perfRateBrine_[0] + first_perf_index_[w], &perfRateBrine_[0] + first_perf_index_[w+1], 0.0);
+            return parallel_well_info_[w]->sumPerfValues(&perfRateBrine_[0] + first_perf_index_[w], &perfRateBrine_[0] + first_perf_index_[w+1]);
         }
 
         std::vector<double>& wellReservoirRates()
@@ -1064,6 +1074,10 @@ namespace Ewoms
                 this->well_reservoir_rates_[np * well_index + p] = 0;
         }
 
+        virtual void stopWell(int well_index) override {
+            WellState::stopWell(well_index);
+        }
+
         template<class Comm>
         void communicateGroupRates(const Comm& comm)
         {
@@ -1167,7 +1181,7 @@ namespace Ewoms
                 if (it != end) {
                     // ... set the GRUP/not GRUP states.
                     const int well_index = it->second[0];
-                    if (!this->open_for_output_[well_index]) {
+                    if (this->status_[well_index] != Well::Status::OPEN) {
                         // Well is shut.
                         if (well.isInjector()) {
                             globalIsInjectionGrup_[global_well_index] = 0;

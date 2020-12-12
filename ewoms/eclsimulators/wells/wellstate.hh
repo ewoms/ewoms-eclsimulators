@@ -68,7 +68,7 @@ namespace Ewoms
                 // const int np = wells->number_of_phases;
                 const int np = pu.num_phases;
                 np_ = np;
-                open_for_output_.assign(nw, true);
+                status_.assign(nw, Well::Status::OPEN);
                 bhp_.resize(nw, 0.0);
                 thp_.resize(nw, 0.0);
                 temperature_.resize(nw, 273.15 + 15.56); // standard condition temperature
@@ -218,13 +218,22 @@ namespace Ewoms
             return np_;
         }
 
+        void openWell(int well_index) {
+            this->status_[well_index] = Well::Status::OPEN;
+        }
+
         virtual void shutWell(int well_index) {
-            this->open_for_output_[well_index] = false;
+            this->status_[well_index] = Well::Status::SHUT;
             this->thp_[well_index] = 0;
             this->bhp_[well_index] = 0;
             const int np = numPhases();
             for (int p = 0; p < np; ++p)
                 this->wellrates_[np * well_index + p] = 0;
+        }
+
+        virtual void stopWell(int well_index) {
+            this->status_[well_index] = Well::Status::STOP;
+            this->thp_[well_index] = 0;
         }
 
         virtual data::Wells report(const PhaseUsage& pu, const int* globalCellIdxMap) const
@@ -234,7 +243,7 @@ namespace Ewoms
             data::Wells dw;
             for( const auto& itr : this->wellMap_ ) {
                 const auto well_index = itr.second[ 0 ];
-                if (!this->open_for_output_[well_index])
+                if (this->status_[well_index] != Well::Status::OPEN)
                     continue;
 
                 const auto& pwinfo = *parallel_well_info_[well_index];
@@ -311,7 +320,7 @@ namespace Ewoms
         std::vector<double> perfpress_;
         int np_;
     protected:
-        std::vector<bool>   open_for_output_;
+        std::vector<Well::Status> status_;
     private:
 
         WellMapType wellMap_;

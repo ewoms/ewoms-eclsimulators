@@ -188,8 +188,11 @@ namespace Ewoms {
 
         /// Called once before each time step.
         /// \param[in] timer                  simulation timer
-        void prepareStep(const SimulatorTimerInterface& timer)
+        SimulatorReportSingle prepareStep(const SimulatorTimerInterface& timer)
         {
+            SimulatorReportSingle report;
+            Dune::Timer perfTimer;
+            perfTimer.start();
             // update the solution variables in eebos
             if ( timer.lastStepFailed() ) {
                 eebosSimulator_.model().updateFailed();
@@ -213,6 +216,9 @@ namespace Ewoms {
                 std::cout << "equation scaling not suported yet" << std::endl;
                 //updateEquationsScaling();
             }
+            report.pre_post_time += perfTimer.stop();
+
+            return report;
         }
 
         /// Called once per nonlinear iteration.
@@ -354,9 +360,14 @@ namespace Ewoms {
         /// Called once after each time step.
         /// In this class, this function does nothing.
         /// \param[in] timer                  simulation timer
-        void afterStep(const SimulatorTimerInterface& timer EWOMS_UNUSED)
+        SimulatorReportSingle afterStep(const SimulatorTimerInterface& timer EWOMS_UNUSED)
         {
+            SimulatorReportSingle report;
+            Dune::Timer perfTimer;
+            perfTimer.start();
             eebosSimulator_.problem().endTimeStep();
+            report.pre_post_time += perfTimer.stop();
+            return report;
         }
 
         /// Assemble the residual and Jacobian of the nonlinear system.

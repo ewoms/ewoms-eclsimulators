@@ -2019,7 +2019,7 @@ namespace Ewoms
         //    This accumulation must be done per well.
         const auto beg = perf_pressure_diffs_.begin();
         const auto end = perf_pressure_diffs_.end();
-        std::partial_sum(beg, end, beg);
+        this->parallel_well_info_.partialSumPerfValues(beg, end);
     }
 
     template<typename TypeTag>
