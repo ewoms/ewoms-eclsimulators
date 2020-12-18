@@ -176,14 +176,31 @@ private:
     {
 #if HAVE_MPI
         if (m_op == Operation::PACKSIZE) {
-            Mpi::packSize(data, comm_);
+            bool hasValue = data.operator bool();
+            if (hasValue)
+                this->operator()(*data);
+
+            m_packSize += Mpi::packSize(hasValue, comm_);
         } else if (m_op == Operation::PACK) {
-            Mpi::pack(data, m_buffer, m_position, comm_);
+            bool hasValue = data.operator bool();
+            Mpi::pack(hasValue, m_buffer, m_position, comm_);
+            if (hasValue) {
+                (*this)(*data);
+            }
         } else if (m_op == Operation::UNPACK) {
-            Mpi::unpack(const_cast<Ewoms::optional<T>&>(data),
+            bool hasValue;
+            Mpi::unpack(hasValue,
                         m_buffer,
                         m_position,
                         comm_);
+
+            if (!hasValue)
+                const_cast<Ewoms::optional<T>&>(data) = Ewoms::nullopt;
+            else {
+                T val;
+                (*this)(val);
+                const_cast<Ewoms::optional<T>&>(data) = Ewoms::optional<T>(val);
+            }
         }
 #endif
 
@@ -200,7 +217,7 @@ private:
     {
 #if HAVE_MPI
         if (m_op == Operation::PACKSIZE) {
-            Mpi::packSize(data, comm_);
+            m_packSize += Mpi::packSize(data, comm_);
         } else if (m_op == Operation::PACK) {
             Mpi::pack(data, m_buffer, m_position, comm_);
         } else if (m_op == Operation::UNPACK) {
