@@ -53,7 +53,7 @@ SET_TYPE_PROP(EebosTypeTag, EclWellModel, Ewoms::BlackoilWellModel<TypeTag>);
 // currently, eebos uses the non-multisegment well model by default to avoid
 // regressions. the --use-multisegment-well=true|false command line parameter is still
 // available in eebos, but hidden from view.
-SET_BOOL_PROP(EebosTypeTag, UseMultisegmentWell, false);
+SET_BOOL_PROP(EebosTypeTag, UseMultisegmentWell, true);
 
 // set some properties that are only required by the well model
 SET_BOOL_PROP(EebosTypeTag, MatrixAddWellContributions, true);

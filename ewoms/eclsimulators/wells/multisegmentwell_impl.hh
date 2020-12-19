@@ -622,66 +622,6 @@ namespace Ewoms
         duneC_.mmtv(invDrw, r);
     }
 
-#if HAVE_CUDA || HAVE_OPENCL
-    template<typename TypeTag>
-    void
-    MultisegmentWell<TypeTag>::
-    addWellContribution(WellContributions& wellContribs) const
-    {
-        unsigned int Nb = duneB_.M();       // number of blockrows in matrix A
-        unsigned int Mb = duneB_.N();       // number of blockrows in duneB_, duneC_ and duneD_
-        unsigned int BnumBlocks = duneB_.nonzeroes();
-        unsigned int DnumBlocks = duneD_.nonzeroes();
-
-        // duneC
-        std::vector<unsigned int> Ccols;
-        std::vector<double> Cvals;
-        Ccols.reserve(BnumBlocks);
-        Cvals.reserve(BnumBlocks * numEq * numWellEq);
-        for (auto rowC = duneC_.begin(); rowC != duneC_.end(); ++rowC) {
-            for (auto colC = rowC->begin(), endC = rowC->end(); colC != endC; ++colC) {
-                Ccols.emplace_back(colC.index());
-                for (int i = 0; i < numWellEq; ++i) {
-                    for (int j = 0; j < numEq; ++j) {
-                        Cvals.emplace_back((*colC)[i][j]);
-                    }
-                }
-            }
-        }
-
-        // duneD
-        Dune::UMFPack<DiagMatWell> umfpackMatrix(duneD_, 0);
-        double *Dvals = umfpackMatrix.getInternalMatrix().getValues();
-        auto *Dcols = umfpackMatrix.getInternalMatrix().getColStart();
-        auto *Drows = umfpackMatrix.getInternalMatrix().getRowIndex();
-
-        // duneB
-        std::vector<unsigned int> Bcols;
-        std::vector<unsigned int> Brows;
-        std::vector<double> Bvals;
-        Bcols.reserve(BnumBlocks);
-        Brows.reserve(Mb+1);
-        Bvals.reserve(BnumBlocks * numEq * numWellEq);
-        Brows.emplace_back(0);
-        unsigned int sumBlocks = 0;
-        for (auto rowB = duneB_.begin(); rowB != duneB_.end(); ++rowB) {
-            int sizeRow = 0;
-            for (auto colB = rowB->begin(), endB = rowB->end(); colB != endB; ++colB) {
-                Bcols.emplace_back(colB.index());
-                for (int i = 0; i < numWellEq; ++i) {
-                    for (int j = 0; j < numEq; ++j) {
-                        Bvals.emplace_back((*colB)[i][j]);
-                    }
-                }
-                sizeRow++;
-            }
-            sumBlocks += sizeRow;
-            Brows.emplace_back(sumBlocks);
-        }
-
-        wellContribs.addMultisegmentWellContribution(numEq, numWellEq, Nb, Mb, BnumBlocks, Bvals, Bcols, Brows, DnumBlocks, Dvals, Dcols, Drows, Cvals);
-    }
-#endif
 
     template <typename TypeTag>
     void
@@ -1655,17 +1595,11 @@ namespace Ewoms
             segment_densities_[seg] = density / volrat;
 
             // calculate the mass rates
-            // TODO: for now, we are not considering the upwinding for this amount
-            // since how to address the fact that the derivatives is not trivial for now
-            // and segment_mass_rates_ goes a long way with the frictional pressure loss
-            // and accelerational pressure loss, which needs some work to handle
             segment_mass_rates_[seg] = 0.;
             for (int comp_idx = 0; comp_idx < num_components_; ++comp_idx) {
-                const EvalWell rate = getSegmentRate(seg, comp_idx);
+                const EvalWell rate = getSegmentRateUpwinding(seg, comp_idx);
                 segment_mass_rates_[seg] += rate * surf_dens[comp_idx];
             }
-
-            segment_reservoir_volume_rates_[seg] = segment_mass_rates_[seg] / segment_densities_[seg];
         }
     }
 
@@ -2066,8 +2000,16 @@ namespace Ewoms
     getFrictionPressureLoss(const int seg) const
     {
         const EvalWell mass_rate = segment_mass_rates_[seg];
-        const EvalWell density = segment_densities_[seg];
-        const EvalWell visc = segment_viscosities_[seg];
+        const int seg_upwind = upwinding_segments_[seg];
+        EvalWell density = segment_densities_[seg_upwind];
+        EvalWell visc = segment_viscosities_[seg_upwind];
+        // WARNING
+        // We disregard the derivatives from the upwind density to make sure derivatives
+        // wrt. to different segments dont get mixed.
+        if (seg != seg_upwind) {
+            density.clearDerivatives();
+            visc.clearDerivatives();
+        }
         const int outlet_segment_index = segmentNumberToIndex(segmentSet()[seg].outletSegment());
         const double length = segmentSet()[seg].totalLength() - segmentSet()[outlet_segment_index].totalLength();
         assert(length > 0.);
@@ -2555,22 +2497,13 @@ namespace Ewoms
         // TODO: we should decide whether to keep the updated well_state, or recover to use the old well_state
         if (converged) {
             std::ostringstream sstr;
-            sstr << " well " << name() << " manage to get converged within " << it << " inner iterations \n";
+            sstr << " well " << name() << " converged within " << it << " inner iterations \n";
             if (relax_convergence)
-                sstr << "A relaxed tolerance is used after "<< param_.strict_inner_iter_ms_wells_ << " iterations";
+                sstr << "A relaxed tolerance was used after "<< param_.strict_inner_iter_ms_wells_ << " iterations";
             deferred_logger.debug(sstr.str());
         } else {
             std::ostringstream sstr;
             sstr << " well " << name() << " did not get converged within " << it << " inner iterations \n";
-            sstr << " outputting the residual history for well " << name() << " during inner iterations \n";
-            for (int i = 0; i < it; ++i) {
-                const auto& residual = residual_history[i];
-                sstr << " residual at " << i << "th iteration ";
-                for (const auto& res : residual) {
-                    sstr << " " << res;
-                }
-                sstr << " " << measure_history[i] << " \n";
-            }
             deferred_logger.debug(sstr.str());
         }
 
@@ -3304,7 +3237,6 @@ namespace Ewoms
     MultisegmentWell<TypeTag>::
     assembleValvePressureEq(const int seg, WellState& well_state) const
     {
-        // TODO: upwinding needs to be taken care of
         // top segment can not be a spiral ICD device
         assert(seg != 0);
 
@@ -3764,11 +3696,11 @@ namespace Ewoms
     MultisegmentWell<TypeTag>::
     pressureDropSpiralICD(const int seg) const
     {
-        // TODO: We have to consider the upwinding here
         const SICD& sicd = segmentSet()[seg].spiralICD();
 
-        const std::vector<EvalWell>& phase_fractions = segment_phase_fractions_[seg];
-        const std::vector<EvalWell>& phase_viscosities = segment_phase_viscosities_[seg];
+        const int seg_upwind = upwinding_segments_[seg];
+        const std::vector<EvalWell>& phase_fractions = segment_phase_fractions_[seg_upwind];
+        const std::vector<EvalWell>& phase_viscosities = segment_phase_viscosities_[seg_upwind];
 
         EvalWell water_fraction = 0.;
         EvalWell water_viscosity = 0.;
@@ -3787,18 +3719,32 @@ namespace Ewoms
         }
 
         EvalWell gas_fraction = 0.;
-        EvalWell gas_viscosities = 0.;
+        EvalWell gas_viscosity = 0.;
         if (FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
             const int gas_pos = Indices::canonicalToActiveComponentIndex(FluidSystem::gasCompIdx);
             gas_fraction = phase_fractions[gas_pos];
-            gas_viscosities = phase_viscosities[gas_pos];
+            gas_viscosity = phase_viscosities[gas_pos];
+        }
+
+        EvalWell density = segment_densities_[seg_upwind];
+        // WARNING
+        // We disregard the derivatives from the upwind density to make sure derivatives
+        // wrt. to different segments dont get mixed.
+        if (seg != seg_upwind) {
+            water_fraction.clearDerivatives();
+            water_viscosity.clearDerivatives();
+            oil_fraction.clearDerivatives();
+            oil_viscosity.clearDerivatives();
+            gas_fraction.clearDerivatives();
+            gas_viscosity.clearDerivatives();
+            density.clearDerivatives();
         }
 
         const EvalWell liquid_emulsion_viscosity = mswellhelpers::emulsionViscosity(water_fraction, water_viscosity,
                                                      oil_fraction, oil_viscosity, sicd);
-        const EvalWell mixture_viscosity = (water_fraction + oil_fraction) * liquid_emulsion_viscosity + gas_fraction * gas_viscosities;
+        const EvalWell mixture_viscosity = (water_fraction + oil_fraction) * liquid_emulsion_viscosity + gas_fraction * gas_viscosity;
 
-        const EvalWell& reservoir_rate = segment_reservoir_volume_rates_[seg];
+        const EvalWell reservoir_rate = segment_mass_rates_[seg] / density;
 
         const EvalWell reservoir_rate_icd = reservoir_rate * sicd.scalingFactor();
 
@@ -3806,7 +3752,6 @@ namespace Ewoms
 
         using MathTool = MathToolbox<EvalWell>;
 
-        const EvalWell& density = segment_densities_[seg];
         const double density_cali = sicd.densityCalibration();
         const EvalWell temp_value1 = MathTool::pow(density / density_cali, 0.75);
         const EvalWell temp_value2 = MathTool::pow(mixture_viscosity / viscosity_cali, 0.25);
@@ -3913,8 +3858,17 @@ namespace Ewoms
         const Valve& valve = segmentSet()[seg].valve();
 
         const EvalWell& mass_rate = segment_mass_rates_[seg];
-        const EvalWell& visc = segment_viscosities_[seg];
-        const EvalWell& density = segment_densities_[seg];
+        const int seg_upwind = upwinding_segments_[seg];
+        EvalWell visc = segment_viscosities_[seg_upwind];
+        EvalWell density = segment_densities_[seg_upwind];
+        // WARNING
+        // We disregard the derivatives from the upwind density to make sure derivatives
+        // wrt. to different segments dont get mixed.
+        if (seg != seg_upwind) {
+            visc.clearDerivatives();
+            density.clearDerivatives();
+        }
+
         const double additional_length = valve.pipeAdditionalLength();
         const double roughness = valve.pipeRoughness();
         const double diameter = valve.pipeDiameter();
@@ -3924,7 +3878,7 @@ namespace Ewoms
             mswellhelpers::frictionPressureLoss(additional_length, diameter, area, roughness, density, mass_rate, visc);
 
         const double area_con = valve.conCrossArea();
-        const double cv = valve.conEFlowCoefficient();
+        const double cv = valve.conFlowCoefficient();
 
         const EvalWell constriction_pressure_loss =
             mswellhelpers::valveContrictionPressureLoss(mass_rate, density, area_con, cv);

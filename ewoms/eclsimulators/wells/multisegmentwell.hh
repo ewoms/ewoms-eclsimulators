@@ -144,11 +144,6 @@ namespace Ewoms
         /// r = r - C D^-1 Rw
         virtual void apply(BVector& r) const override;
 
-#if HAVE_CUDA || HAVE_OPENCL
-        /// add the contribution (C, D, B matrices) of this Well to the WellContributions object
-        void addWellContribution(WellContributions& wellContribs) const;
-#endif
-
         /// using the solution x to recover the solution xw for wells and applying
         /// xw to update Well State
         virtual void recoverWellSolutionAndUpdateWellState(const BVector& x,
@@ -313,9 +308,6 @@ namespace Ewoms
         std::vector<int> upwinding_segments_;
 
         mutable int debug_cost_counter_ = 0;
-
-        // TODO: this is the old implementation, it is possible the new value does not need it anymore
-        std::vector<EvalWell> segment_reservoir_volume_rates_;
 
         std::vector<std::vector<EvalWell>> segment_phase_fractions_;
 
