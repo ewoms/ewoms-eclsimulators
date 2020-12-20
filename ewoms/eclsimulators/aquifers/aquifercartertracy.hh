@@ -44,14 +44,14 @@ public:
     using typename Base::RateVector;
     using typename Base::Scalar;
     using typename Base::Simulator;
+    using typename Base::ElementMapper;
 
     using Base::waterCompIdx;
     using Base::waterPhaseIdx;
     AquiferCarterTracy(const std::vector<Aquancon::AquancCell>& connections,
-                       const std::unordered_map<int, int>& cartesian_to_compressed,
                        const Simulator& eebosSimulator,
                        const AquiferCT::AQUCT_data& aquct_data)
-        : Base(aquct_data.aquiferID, connections, cartesian_to_compressed, eebosSimulator)
+        : Base(aquct_data.aquiferID, connections, eebosSimulator)
         , aquct_data_(aquct_data)
     {
     }
@@ -89,17 +89,9 @@ protected:
     // This function is used to initialize and calculate the alpha_i for each grid connection to the aquifer
     inline void initializeConnections() override
     {
-        const auto& eclState = this->eebos_simulator_.vanguard().eclState();
-        const auto& ugrid = this->eebos_simulator_.vanguard().grid();
-        const auto& grid = eclState.getInputGrid();
-
-        // We hack the cell depth values for now. We can actually get it from elementcontext pos
         this->cell_depth_.resize(this->size(), this->aquiferDepth());
         this->alphai_.resize(this->size(), 1.0);
         this->faceArea_connected_.resize(this->size(), 0.0);
-
-        auto cell2Faces = Ewoms::UgGridHelpers::cell2Faces(ugrid);
-        auto faceCells = Ewoms::UgGridHelpers::faceCells(ugrid);
 
         // Translate the C face tag into the enum used by ewoms-eclio's TransMult class
         Ewoms::FaceDir::DirEnum faceDirection;
@@ -108,22 +100,45 @@ protected:
         Scalar denom_face_areas = 0.;
         this->cellToConnectionIdx_.resize(this->eebos_simulator_.gridView().size(/*codim=*/0), -1);
         for (size_t idx = 0; idx < this->size(); ++idx) {
-            const auto it = this->cartesian_to_compressed_.find(this->connections_[idx].global_index);
-            if (it == this->cartesian_to_compressed_.end())
+            const auto global_index = this->connections_[idx].global_index;
+            const int cell_index = this->eebos_simulator_.vanguard().compressedIndex(global_index);
+
+            if (cell_index < 0) //the global_index is not part of this grid
                 continue;
 
-            const int cell_index = it->second;
             this->cellToConnectionIdx_[cell_index] = idx;
+            this->cell_depth_.at(idx) = this->eebos_simulator_.vanguard().cellCenterDepth(cell_index);
+        }
+        // get default areas for all intersections
+        const auto& gridView = this->eebos_simulator_.vanguard().gridView();
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
+        ElementMapper elemMapper(gridView, Dune::mcmgElementLayout());
+#else
+        ElementMapper elemMapper(gridView);
+#endif
+        auto elemIt = gridView.template begin</*codim=*/ 0>();
+        const auto& elemEndIt = gridView.template end</*codim=*/ 0>();
+        for (; elemIt != elemEndIt; ++elemIt) {
+            const auto& elem = *elemIt;
+            unsigned cell_index = elemMapper.index(elem);
+            int idx = this->cellToConnectionIdx_[cell_index];
 
-            const auto cellFacesRange = cell2Faces[cell_index];
-            for (auto cellFaceIter = cellFacesRange.begin(); cellFaceIter != cellFacesRange.end(); ++cellFaceIter) {
-                // The index of the face in the compressed grid
-                const int faceIdx = *cellFaceIter;
+            // only deal with connections given by the aquifer
+            if( idx < 0)
+                continue;
 
-                // the logically-Cartesian direction of the face
-                const int faceTag = Ewoms::UgGridHelpers::faceTag(ugrid, cellFaceIter);
+            auto isIt = gridView.ibegin(elem);
+            const auto& isEndIt = gridView.iend(elem);
+            for (; isIt != isEndIt; ++ isIt) {
+                // store intersection, this might be costly
+                const auto& intersection = *isIt;
 
-                switch (faceTag) {
+                // only deal with grid boundaries
+                if (!intersection.boundary())
+                    continue;
+
+                int insideFaceIdx  = intersection.indexInInside();
+                switch (insideFaceIdx) {
                 case 0:
                     faceDirection = Ewoms::FaceDir::XMinus;
                     break;
@@ -148,12 +163,10 @@ protected:
                 }
 
                 if (faceDirection == this->connections_[idx].face_dir) {
-                    this->faceArea_connected_.at(idx) = this->getFaceArea(faceCells, ugrid, faceIdx, idx);
+                    this->faceArea_connected_[idx] = this->getFaceArea(intersection, idx);
                     denom_face_areas += (this->connections_[idx].influx_mult * this->faceArea_connected_.at(idx));
                 }
             }
-            auto cellCenter = grid.getCellCenter(this->connections_[idx].global_index);
-            this->cell_depth_.at(idx) = cellCenter[2];
         }
 
         const double eps_sqrt = std::sqrt(std::numeric_limits<double>::epsilon());

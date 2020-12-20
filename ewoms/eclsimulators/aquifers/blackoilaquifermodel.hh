@@ -30,12 +30,41 @@
 #include <ewoms/eclsimulators/aquifers/aquifercartertracy.hh>
 #include <ewoms/eclsimulators/aquifers/aquiferfetkovich.hh>
 
+#include <ewoms/eclgrids/cpgrid.hh>
+#include <ewoms/eclgrids/polyhedralgrid.hh>
+#if HAVE_DUNE_ALUGRID
+#include <dune/alugrid/grid.hh>
+#endif
+
 #include <ewoms/common/densead/math.hh>
 
 #include <vector>
+#include <type_traits>
 
 namespace Ewoms
 {
+
+template<class Grid>
+class SupportsFaceTag
+    : public std::integral_constant<bool, false>
+{};
+
+template<>
+class SupportsFaceTag<Dune::CpGrid>
+    : public std::integral_constant<bool, true>
+{};
+
+template<>
+class SupportsFaceTag<Dune::PolyhedralGrid<3, 3>>
+    : public std::integral_constant<bool, true>
+{};
+
+#if HAVE_DUNE_ALUGRID
+template<>
+class SupportsFaceTag<Dune::ALUGrid<3, 3, Dune::cube, Dune::nonconforming>>
+    : public std::integral_constant<bool, true>
+{};
+#endif
 
 /// Class for handling the blackoil well model.
 template <typename TypeTag>
@@ -78,7 +107,6 @@ protected:
 
     Simulator& simulator_;
 
-    std::unordered_map<int, int> cartesian_to_compressed_;
     // TODO: probably we can use one variable to store both types of aquifers, because
     // they share the base class
     mutable std::vector<AquiferCarterTracy_object> aquifers_CarterTracy;

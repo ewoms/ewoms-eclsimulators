@@ -228,6 +228,9 @@ public:
 
         cartesianIndexMapper_.reset(new CartesianIndexMapper(*grid_));
         this->updateGridView_();
+        this->updateCartesianToCompressedMapping_();
+        this->updateCellDepths_();
+
 #if HAVE_MPI
         if (mpiSize > 1) {
             try

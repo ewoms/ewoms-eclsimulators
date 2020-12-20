@@ -47,6 +47,7 @@ public:
     using BlackoilIndices = GET_PROP_TYPE(TypeTag, Indices);
     using RateVector = GET_PROP_TYPE(TypeTag, RateVector);
     using IntensiveQuantities = GET_PROP_TYPE(TypeTag, IntensiveQuantities);
+    using ElementMapper = GET_PROP_TYPE(TypeTag, ElementMapper);
 
     enum { enableTemperature = GET_PROP_VALUE(TypeTag, EnableTemperature) };
     enum { enableEnergy = GET_PROP_VALUE(TypeTag, EnableEnergy) };
@@ -72,12 +73,10 @@ public:
     // Constructor
     AquiferInterface(int aqID,
                      const std::vector<Aquancon::AquancCell>& connections,
-                     const std::unordered_map<int, int>& cartesian_to_compressed,
                      const Simulator& eebosSimulator)
         : aquiferID(aqID)
         , connections_(connections)
         , eebos_simulator_(eebosSimulator)
-        , cartesian_to_compressed_(cartesian_to_compressed)
     {
     }
 
@@ -196,29 +195,13 @@ protected:
         rhow_.at(idx) = fs.density(waterPhaseIdx);
     }
 
-    template <class faceCellType, class ugridType>
-    inline double getFaceArea(const faceCellType& faceCells,
-                              const ugridType& ugrid,
-                              const int faceIdx,
-                              const int idx) const
+    template <class Intersection>
+    inline double getFaceArea(const Intersection& intersection,
+                              unsigned idx) const
     {
-        // Check now if the face is outside of the reservoir, or if it adjoins an inactive cell
-        // Do not make the connection if the product of the two cellIdx > 0. This is because the
-        // face is within the reservoir/not connected to boundary. (We still have yet to check for inactive cell
-        // adjoining)
-        double faceArea = 0.;
-        const auto cellNeighbour0 = faceCells(faceIdx, 0);
-        const auto cellNeighbour1 = faceCells(faceIdx, 1);
-        const auto defaultFaceArea = Ewoms::UgGridHelpers::faceArea(ugrid, faceIdx);
-        const auto calculatedFaceArea
-            = (!this->connections_[idx].influx_coeff.first) ? defaultFaceArea : this->connections_[idx].influx_coeff.second;
-        faceArea = (cellNeighbour0 * cellNeighbour1 > 0) ? 0. : calculatedFaceArea;
-        if (cellNeighbour1 == 0) {
-            faceArea = (cellNeighbour0 < 0) ? faceArea : 0.;
-        } else if (cellNeighbour0 == 0) {
-            faceArea = (cellNeighbour1 < 0) ? faceArea : 0.;
-        }
-        return faceArea;
+        const auto& geometry = intersection.geometry();
+        const auto defaultFaceArea = geometry.volume();
+        return (!this->connections_[idx].influx_coeff.first) ? defaultFaceArea : this->connections_[idx].influx_coeff.second;
     }
 
     virtual void endTimeStep() = 0;
@@ -226,7 +209,6 @@ protected:
     const int aquiferID;
     const std::vector<Aquancon::AquancCell> connections_;
     const Simulator& eebos_simulator_;
-    const std::unordered_map<int, int> cartesian_to_compressed_;
 
     // Grid variables
     std::vector<Scalar> faceArea_connected_;
