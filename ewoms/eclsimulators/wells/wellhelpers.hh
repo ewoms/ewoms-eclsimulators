@@ -19,6 +19,8 @@
 #ifndef EWOMS_WELLHELPERS_HH
 #define EWOMS_WELLHELPERS_HH
 
+#include <ewoms/eclgrids/gridhelpers.hh>
+
 #include <ewoms/eclio/opmlog/opmlog.hh>
 #include <ewoms/eclsimulators/wells/parallelwellinfo.hh>
 
@@ -37,7 +39,7 @@ namespace Ewoms {
             constexpr T operator()(const T &a, const T &b)
             { return a + b; }
         };
-        
+
         /// \brief A wrapper around the B matrix for distributed wells
         ///
         /// For standard wells the B matrix, is basically a multiplication

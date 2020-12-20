@@ -49,6 +49,8 @@
 #include <ewoms/material/fluidstates/simplemodularfluidstate.hh>
 #include <ewoms/material/fluidmatrixinteractions/eclmateriallawmanager.hh>
 
+#include <dune/grid/common/mcmgmapper.hh>
+
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -63,7 +65,9 @@ BEGIN_PROPERTIES
 
 NEW_PROP_TAG(Simulator);
 NEW_PROP_TAG(Grid);
+NEW_PROP_TAG(GridView);
 NEW_PROP_TAG(FluidSystem);
+NEW_PROP_TAG(ElementMapper);
 
 END_PROPERTIES
 
